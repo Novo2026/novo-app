@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Calculator } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Calculator, AlertTriangle } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import type { FinancialProfile, HomeEquity, StrategyResult } from '../types';
@@ -60,8 +60,32 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
     ? homeEquity.helocLimit - homeEquity.helocBalance
     : homeEquityMetrics.availableHELOC;
 
-  const showHELOCStrategy = homeEquity.ownsHome && availableHELOCCredit > 5000;
   const helocRate = homeEquity.hasHELOC && homeEquity.helocRate ? homeEquity.helocRate : 8.5;
+
+  const debtAnalysis = debts.map(debt => {
+    const rateDiff = debt.interestRate - helocRate;
+    let suitability: 'good' | 'marginal' | 'bad';
+
+    if (rateDiff > 0.5) {
+      suitability = 'good';
+    } else if (rateDiff >= -0.5 && rateDiff <= 0.5) {
+      suitability = 'marginal';
+    } else {
+      suitability = 'bad';
+    }
+
+    return {
+      debt,
+      rateDiff,
+      suitability,
+    };
+  });
+
+  const goodDebts = debtAnalysis.filter(d => d.suitability === 'good');
+  const badDebts = debtAnalysis.filter(d => d.suitability === 'bad');
+  const helocMakesSense = goodDebts.length > 0;
+
+  const showHELOCStrategy = homeEquity.ownsHome && availableHELOCCredit > 5000;
 
   const handleNext = () => {
     if (step === 1) {
@@ -629,6 +653,89 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                     <span className="font-bold">
                       {CalculationService.formatCurrency(cashFlowMetrics.availableCashFlow)}
                     </span>
+                  </div>
+                </div>
+
+                {!helocMakesSense && badDebts.length > 0 && (
+                  <div className="bg-red-500 border-2 border-red-300 rounded-lg p-4 mb-4 text-white">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-6 h-6 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm space-y-2">
+                        <p className="font-bold text-base">HELOC Velocity Banking Alert</p>
+                        <p>Your HELOC rate ({helocRate.toFixed(2)}%) is higher than or equal to some of your debt rates.</p>
+                        <p className="font-semibold">Using your HELOC to pay these debts would cost you MORE in interest, not less.</p>
+                        <div className="mt-3 bg-white/20 rounded p-3">
+                          <p className="font-semibold mb-2">Debts NOT suitable for HELOC:</p>
+                          <ul className="space-y-1 text-xs">
+                            {badDebts.map(({ debt }) => (
+                              <li key={debt.id}>
+                                {debt.accountName}: {debt.interestRate.toFixed(2)}% (lower than HELOC)
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div className="mt-3 bg-white/20 rounded p-3">
+                          <p className="font-semibold">Recommendation:</p>
+                          <ul className="list-disc list-inside text-xs space-y-1 mt-1">
+                            <li>Keep making regular payments on lower-rate debts</li>
+                            <li>Use extra cash flow strategy instead</li>
+                            <li>Only use HELOC for debts with higher rates</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {helocMakesSense && badDebts.length > 0 && (
+                  <div className="bg-amber-500 border-2 border-amber-300 rounded-lg p-4 mb-4 text-white">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-6 h-6 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm space-y-2">
+                        <p className="font-bold text-base">Partial HELOC Warning</p>
+                        <p>Some debts have rates lower than your HELOC ({helocRate.toFixed(2)}%).</p>
+                        <div className="mt-2 bg-white/20 rounded p-3">
+                          <p className="font-semibold mb-2">Skip these debts with HELOC:</p>
+                          <ul className="space-y-1 text-xs">
+                            {badDebts.map(({ debt }) => (
+                              <li key={debt.id}>
+                                {debt.accountName}: {debt.interestRate.toFixed(2)}%
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-white rounded-lg p-4 mb-4 text-gray-800">
+                  <h5 className="font-semibold text-sm mb-3">Debt Suitability for HELOC:</h5>
+                  <div className="space-y-2">
+                    {debtAnalysis.map(({ debt, rateDiff, suitability }) => {
+                      const bgColor = suitability === 'good' ? 'bg-[#27AE60]' : suitability === 'marginal' ? 'bg-[#F2C94C]' : 'bg-red-500';
+                      const textColor = suitability === 'bad' ? 'text-white' : 'text-gray-800';
+
+                      return (
+                        <div key={debt.id} className={`${bgColor} ${textColor} rounded p-3 text-sm`}>
+                          <div className="flex justify-between items-center">
+                            <span className="font-semibold">{debt.accountName}</span>
+                            <span className="font-bold">{debt.interestRate.toFixed(2)}%</span>
+                          </div>
+                          <div className="text-xs mt-1 opacity-90">
+                            {suitability === 'good' && (
+                              <span>Good match - saves {rateDiff.toFixed(2)}% interest</span>
+                            )}
+                            {suitability === 'marginal' && (
+                              <span>Marginal benefit - within 0.5% of HELOC rate</span>
+                            )}
+                            {suitability === 'bad' && (
+                              <span>DO NOT USE HELOC - Would cost {Math.abs(rateDiff).toFixed(2)}% MORE</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
