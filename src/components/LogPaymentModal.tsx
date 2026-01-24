@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { X, CheckCircle, AlertTriangle } from 'lucide-react';
+import { X, CheckCircle, AlertTriangle, Edit2 } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import CelebrationModal from './CelebrationModal';
+import EditDebtModal from './EditDebtModal';
 import type { Debt, Transaction, Milestone } from '../types';
 
 interface LogPaymentModalProps {
@@ -22,6 +23,7 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
   const [notes, setNotes] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [calculationResult, setCalculationResult] = useState<{
     debtName: string;
     previousBalance: number;
@@ -325,6 +327,18 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
     );
   }
 
+  if (showEditModal && selectedDebt) {
+    return (
+      <EditDebtModal
+        debt={selectedDebt}
+        onClose={() => setShowEditModal(false)}
+        onSuccess={() => {
+          setShowEditModal(false);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
@@ -354,6 +368,16 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
                 </option>
               ))}
             </select>
+            {selectedDebt && (
+              <button
+                type="button"
+                onClick={() => setShowEditModal(true)}
+                className="mt-2 text-sm text-[#2D9CDB] hover:text-[#1E8BBD] font-medium flex items-center gap-1 transition-colors"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+                Need to update this debt? Edit Debt
+              </button>
+            )}
           </div>
 
           {selectedDebt && (
