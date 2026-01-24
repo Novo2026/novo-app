@@ -100,14 +100,14 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
     onDataUpdate();
   };
 
-  const getRecentActivity = (): { date: string; description: string; type: 'payment' | 'paidoff' | 'charge'; transaction?: Transaction }[] => {
-    const activities: { date: string; description: string; type: 'payment' | 'paidoff' | 'charge'; transaction?: Transaction }[] = [];
+  const getRecentActivity = (): { date: string; description: string; type: 'payment' | 'paidoff' | 'charge' | 'milestone'; transaction?: Transaction; icon?: string }[] => {
+    const activities: { date: string; description: string; type: 'payment' | 'paidoff' | 'charge' | 'milestone'; transaction?: Transaction; icon?: string }[] = [];
 
     const sortedTransactions = [...transactions].sort((a, b) =>
       new Date(b.date).getTime() - new Date(a.date).getTime()
     );
 
-    sortedTransactions.slice(0, 5).forEach(t => {
+    sortedTransactions.slice(0, 10).forEach(t => {
       if (t.type === 'payment') {
         activities.push({
           date: t.date,
@@ -125,17 +125,19 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
       }
     });
 
-    debts.filter(d => d.isPaidOff && d.paidOffDate).forEach(d => {
+    const milestones = StorageService.getMilestones();
+    milestones.forEach(m => {
       activities.push({
-        date: d.paidOffDate!,
-        description: `Paid off ${d.accountName}!`,
-        type: 'paidoff',
+        date: m.date,
+        description: m.title,
+        type: 'milestone',
+        icon: '🎉',
       });
     });
 
     return activities
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 5);
+      .slice(0, 8);
   };
 
   const recentActivity = getRecentActivity();
@@ -334,13 +336,19 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
             <div className="space-y-4">
               {recentActivity.map((activity, index) => (
                 <div key={index} className="flex items-start space-x-3 pb-4 border-b border-gray-100 last:border-0 last:pb-0">
-                  <div className={`w-2 h-2 rounded-full mt-2 ${
-                    activity.type === 'paidoff' ? 'bg-[#27AE60]' :
-                    activity.type === 'payment' ? 'bg-[#2D9CDB]' :
-                    'bg-[#F2C94C]'
-                  }`} />
+                  {activity.type === 'milestone' ? (
+                    <span className="text-2xl mt-0.5">{activity.icon}</span>
+                  ) : (
+                    <div className={`w-2 h-2 rounded-full mt-2 ${
+                      activity.type === 'paidoff' ? 'bg-[#27AE60]' :
+                      activity.type === 'payment' ? 'bg-[#2D9CDB]' :
+                      'bg-[#F2C94C]'
+                    }`} />
+                  )}
                   <div className="flex-1">
-                    <p className="text-gray-800 font-medium">{activity.description}</p>
+                    <p className={`font-medium ${activity.type === 'milestone' ? 'text-[#27AE60]' : 'text-gray-800'}`}>
+                      {activity.description}
+                    </p>
                     <p className="text-sm text-gray-500">{CalculationService.formatDate(activity.date)}</p>
                   </div>
                   {activity.transaction && (

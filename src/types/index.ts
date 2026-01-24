@@ -135,10 +135,23 @@ export interface StrategyResult {
   }[];
 }
 
+export interface Milestone {
+  id: string;
+  type: 'debt_payoff' | 'goal_reached' | 'milestone';
+  title: string;
+  description: string;
+  date: string;
+  debtId?: string;
+  debtName?: string;
+  amount?: number;
+  freedPayment?: number;
+}
+
 export interface AppData {
   debts: Debt[];
   transactions: Transaction[];
   savingsAccounts: SavingsAccount[];
+  milestones?: Milestone[];
   financialProfile?: FinancialProfile;
   homeEquity?: HomeEquity;
   strategy?: Strategy;

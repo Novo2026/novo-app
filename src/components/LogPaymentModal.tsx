@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { X, CheckCircle, AlertTriangle } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
-import type { Debt, Transaction } from '../types';
+import CelebrationModal from './CelebrationModal';
+import type { Debt, Transaction, Milestone } from '../types';
 
 interface LogPaymentModalProps {
   preselectedDebtId: string | null;
@@ -20,6 +21,7 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
   const [calculationResult, setCalculationResult] = useState<{
     debtName: string;
     previousBalance: number;
@@ -28,6 +30,9 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
     newBalance: number;
     principalPaid: number;
     progress: number;
+    isPaidOff: boolean;
+    freedPayment: number;
+    totalDebtEliminated: number;
   } | null>(null);
 
   const debts = StorageService.getDebts().filter(d => !d.isPaidOff && d.category !== 'HELOC');
@@ -118,6 +123,7 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
 
     const paidOff = debt.startingBalance - calculation.newBalance;
     const progress = (paidOff / debt.startingBalance) * 100;
+    const isPaidOff = calculation.newBalance === 0;
 
     setCalculationResult({
       debtName: debt.accountName,
@@ -127,18 +133,67 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
       newBalance: calculation.newBalance,
       principalPaid: calculation.principalPaid,
       progress,
+      isPaidOff,
+      freedPayment: debt.minimumPayment,
+      totalDebtEliminated: debt.startingBalance,
     });
 
-    setShowSuccess(true);
+    if (isPaidOff) {
+      const milestone: Milestone = {
+        id: `milestone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        type: 'debt_payoff',
+        title: `Paid off ${debt.accountName}`,
+        description: `Successfully eliminated ${CalculationService.formatCurrency(debt.startingBalance)} in debt`,
+        date: paymentDate,
+        debtId: selectedDebtId,
+        debtName: debt.accountName,
+        amount: debt.startingBalance,
+        freedPayment: debt.minimumPayment,
+      };
+      StorageService.addMilestone(milestone);
+
+      const profile = StorageService.getFinancialProfile();
+      if (profile) {
+        profile.monthlyNetIncome += debt.minimumPayment;
+        StorageService.saveFinancialProfile(profile);
+      }
+
+      const activeDebts = StorageService.getDebts().filter(d => !d.isPaidOff && d.id !== selectedDebtId);
+      if (activeDebts.length > 0) {
+        const strategy = StorageService.getStrategy();
+        if (strategy && strategy.extraMonthlyPayment !== undefined) {
+          strategy.extraMonthlyPayment += debt.minimumPayment;
+          StorageService.saveStrategy(strategy);
+
+          const strategyResult = CalculationService.projectDebtPayoff(activeDebts, strategy.extraMonthlyPayment);
+          StorageService.saveStrategyResult(strategyResult);
+        }
+      }
+
+      setShowCelebration(true);
+    } else {
+      setShowSuccess(true);
+    }
   };
 
   const handleClose = () => {
-    if (showSuccess) {
+    if (showSuccess || showCelebration) {
       onSuccess();
     } else {
       onClose();
     }
   };
+
+  if (showCelebration && calculationResult) {
+    return (
+      <CelebrationModal
+        debtName={calculationResult.debtName}
+        debtAmount={calculationResult.totalDebtEliminated}
+        freedPayment={calculationResult.freedPayment}
+        onViewPlan={handleClose}
+      />
+    );
+  }
 
   if (showSuccess && calculationResult) {
     return (

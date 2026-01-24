@@ -2,6 +2,7 @@ import type {
   Debt,
   Transaction,
   SavingsAccount,
+  Milestone,
   FinancialProfile,
   HomeEquity,
   Strategy,
@@ -13,6 +14,7 @@ const STORAGE_KEYS = {
   DEBTS: 'novo_debts',
   TRANSACTIONS: 'novo_payments',
   SAVINGS_ACCOUNTS: 'novo_savings_accounts',
+  MILESTONES: 'novo_milestones',
   FINANCIAL_PROFILE: 'novo_financial_profile',
   HOME_EQUITY: 'novo_home_equity',
   STRATEGY: 'novo_strategy',
@@ -53,6 +55,21 @@ export const StorageService = {
 
   saveSavingsAccounts(accounts: SavingsAccount[]): void {
     localStorage.setItem(STORAGE_KEYS.SAVINGS_ACCOUNTS, JSON.stringify(accounts));
+  },
+
+  getMilestones(): Milestone[] {
+    const data = localStorage.getItem(STORAGE_KEYS.MILESTONES);
+    return data ? JSON.parse(data) : [];
+  },
+
+  saveMilestones(milestones: Milestone[]): void {
+    localStorage.setItem(STORAGE_KEYS.MILESTONES, JSON.stringify(milestones));
+  },
+
+  addMilestone(milestone: Milestone): void {
+    const milestones = this.getMilestones();
+    milestones.unshift(milestone);
+    this.saveMilestones(milestones);
   },
 
   getFinancialProfile(): FinancialProfile | null {
@@ -96,6 +113,7 @@ export const StorageService = {
       debts: this.getDebts(),
       transactions: this.getTransactions(),
       savingsAccounts: this.getSavingsAccounts(),
+      milestones: this.getMilestones(),
       financialProfile: this.getFinancialProfile() || undefined,
       homeEquity: this.getHomeEquity() || undefined,
       strategy: this.getStrategy() || undefined,
@@ -121,6 +139,7 @@ export const StorageService = {
       if (data.debts) this.saveDebts(data.debts);
       if (data.transactions) this.saveTransactions(data.transactions);
       if (data.savingsAccounts) this.saveSavingsAccounts(data.savingsAccounts);
+      if (data.milestones) this.saveMilestones(data.milestones);
       if (data.financialProfile) this.saveFinancialProfile(data.financialProfile);
       if (data.homeEquity) this.saveHomeEquity(data.homeEquity);
       if (data.strategy) this.saveStrategy(data.strategy);
