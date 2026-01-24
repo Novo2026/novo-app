@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, Edit2 } from 'lucide-react';
+import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, Edit2, Pencil, Trash2 } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import LogPaymentModal from './LogPaymentModal';
 import EditPaymentModal from './EditPaymentModal';
+import EditDebtModal from './EditDebtModal';
 import type { Debt, Transaction } from '../types';
 
 interface DashboardProps {
@@ -16,6 +17,10 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const [showEditPayment, setShowEditPayment] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [showEditDebt, setShowEditDebt] = useState(false);
+  const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingDebt, setDeletingDebt] = useState<Debt | null>(null);
 
   const debts = StorageService.getDebts();
   const transactions = StorageService.getTransactions();
@@ -65,6 +70,33 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
   const handlePaymentLogged = () => {
     setShowLogPayment(false);
     setSelectedDebtId(null);
+    onDataUpdate();
+  };
+
+  const handleEditClick = (debt: Debt, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingDebt(debt);
+    setShowEditDebt(true);
+  };
+
+  const handleDeleteClick = (debt: Debt, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeletingDebt(debt);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deletingDebt) {
+      StorageService.deleteDebt(deletingDebt.id);
+      setShowDeleteConfirm(false);
+      setDeletingDebt(null);
+      onDataUpdate();
+    }
+  };
+
+  const handleDebtEdited = () => {
+    setShowEditDebt(false);
+    setEditingDebt(null);
     onDataUpdate();
   };
 
@@ -214,16 +246,32 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
             return (
               <div
                 key={debt.id}
-                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer border border-gray-200"
+                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow border border-gray-200"
               >
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <h4 className="font-bold text-lg text-gray-800">{debt.accountName}</h4>
                     <p className="text-sm text-gray-500">{debt.category}</p>
                   </div>
-                  <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded font-medium">
-                    {debt.interestRate}% APR
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded font-medium">
+                      {debt.interestRate}% APR
+                    </span>
+                    <button
+                      onClick={(e) => handleEditClick(debt, e)}
+                      className="p-1.5 text-gray-500 hover:text-[#2D9CDB] hover:bg-blue-50 rounded transition-colors"
+                      title="Edit debt"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => handleDeleteClick(debt, e)}
+                      className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                      title="Delete debt"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
                 <div className="mb-4">
                   <p className="text-3xl font-bold text-[#1E3A5F] mb-1">
@@ -338,6 +386,45 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
             onDataUpdate();
           }}
         />
+      )}
+
+      {showEditDebt && editingDebt && (
+        <EditDebtModal
+          debt={editingDebt}
+          onClose={() => {
+            setShowEditDebt(false);
+            setEditingDebt(null);
+          }}
+          onSuccess={handleDebtEdited}
+        />
+      )}
+
+      {showDeleteConfirm && deletingDebt && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Delete Debt</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete <strong>{deletingDebt.accountName}</strong>? This will also delete all associated payment history. This cannot be undone.
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeletingDebt(null);
+                }}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

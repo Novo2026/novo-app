@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Plus, ArrowLeft, DollarSign } from 'lucide-react';
+import { Plus, ArrowLeft, DollarSign, Pencil, Trash2 } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import AddDebtModal from './AddDebtModal';
 import AddChargeModal from './AddChargeModal';
 import DebtDetailView from './DebtDetailView';
+import EditDebtModal from './EditDebtModal';
 import type { Debt } from '../types';
 
 interface MyDebtsProps {
@@ -16,6 +17,10 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
   const [showAddCharge, setShowAddCharge] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
+  const [showEditDebt, setShowEditDebt] = useState(false);
+  const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingDebt, setDeletingDebt] = useState<Debt | null>(null);
 
   const debts = StorageService.getDebts().filter(d => d.category !== 'HELOC');
 
@@ -40,6 +45,33 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
   const handleChargeAdded = () => {
     setShowAddCharge(false);
     setSelectedDebtId(null);
+    onDataUpdate();
+  };
+
+  const handleEditClick = (debt: Debt, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingDebt(debt);
+    setShowEditDebt(true);
+  };
+
+  const handleDeleteClick = (debt: Debt, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeletingDebt(debt);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deletingDebt) {
+      StorageService.deleteDebt(deletingDebt.id);
+      setShowDeleteConfirm(false);
+      setDeletingDebt(null);
+      onDataUpdate();
+    }
+  };
+
+  const handleDebtEdited = () => {
+    setShowEditDebt(false);
+    setEditingDebt(null);
     onDataUpdate();
   };
 
@@ -112,15 +144,31 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                     <h3 className="font-bold text-xl text-gray-800 mb-1">{debt.accountName}</h3>
                     <p className="text-sm text-gray-500">{debt.category}</p>
                   </div>
-                  {debt.isPaidOff ? (
-                    <span className="bg-[#27AE60] text-white text-xs font-bold px-3 py-1 rounded-full">
-                      PAID OFF
-                    </span>
-                  ) : (
-                    <span className="bg-red-100 text-red-700 text-xs font-semibold px-2 py-1 rounded">
-                      {debt.interestRate}% APR
-                    </span>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    {debt.isPaidOff ? (
+                      <span className="bg-[#27AE60] text-white text-xs font-bold px-3 py-1 rounded-full">
+                        PAID OFF
+                      </span>
+                    ) : (
+                      <span className="bg-red-100 text-red-700 text-xs font-semibold px-2 py-1 rounded">
+                        {debt.interestRate}% APR
+                      </span>
+                    )}
+                    <button
+                      onClick={(e) => handleEditClick(debt, e)}
+                      className="p-1.5 text-gray-500 hover:text-[#2D9CDB] hover:bg-blue-50 rounded transition-colors"
+                      title="Edit debt"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => handleDeleteClick(debt, e)}
+                      className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                      title="Delete debt"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mb-4">
@@ -192,6 +240,45 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
           }}
           onSuccess={handleChargeAdded}
         />
+      )}
+
+      {showEditDebt && editingDebt && (
+        <EditDebtModal
+          debt={editingDebt}
+          onClose={() => {
+            setShowEditDebt(false);
+            setEditingDebt(null);
+          }}
+          onSuccess={handleDebtEdited}
+        />
+      )}
+
+      {showDeleteConfirm && deletingDebt && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Delete Debt</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete <strong>{deletingDebt.accountName}</strong>? This will also delete all associated payment history. This cannot be undone.
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeletingDebt(null);
+                }}
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

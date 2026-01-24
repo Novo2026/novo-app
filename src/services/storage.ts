@@ -29,6 +29,14 @@ export const StorageService = {
     localStorage.setItem(STORAGE_KEYS.DEBTS, JSON.stringify(debts));
   },
 
+  deleteDebt(debtId: string): void {
+    const debts = this.getDebts().filter(d => d.id !== debtId);
+    this.saveDebts(debts);
+
+    const transactions = this.getTransactions().filter(t => t.debtId !== debtId);
+    this.saveTransactions(transactions);
+  },
+
   getTransactions(): Transaction[] {
     const data = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
     return data ? JSON.parse(data) : [];
