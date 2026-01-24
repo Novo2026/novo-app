@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, BookOpen, Play, TrendingUp, Repeat, DollarSign, PiggyBank, BarChart3, AlertCircle, HelpCircle, ArrowUp, Wallet, Zap, LineChart, Bot, Settings as SettingsIcon } from 'lucide-react';
+import { ChevronDown, ChevronUp, BookOpen, Play, TrendingUp, Repeat, DollarSign, PiggyBank, BarChart3, AlertCircle, HelpCircle, ArrowUp, Wallet, Zap, LineChart, Bot, Settings as SettingsIcon, Target } from 'lucide-react';
 
 interface GuideSection {
   id: string;
@@ -432,8 +432,122 @@ function Guide() {
       )
     },
     {
+      id: 'smart-chunking-calculator',
+      title: '8. Using the Smart Chunking Calculator (Advanced)',
+      icon: Target,
+      color: 'bg-purple-600',
+      content: (
+        <div className="space-y-4">
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">What Is the Smart Chunking Calculator?</h4>
+            <p className="text-gray-700">
+              The Smart Chunking Calculator helps you determine optimal chunk sizes and shows why HELOC chunking beats direct mortgage payments. It's a powerful tool for advanced HELOC velocity banking users.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">Finding the Calculator:</h4>
+            <ol className="space-y-1 text-gray-700 ml-4 list-decimal">
+              <li>Go to Payment Strategies tab</li>
+              <li>Expand "Smart Chunking Calculator" section (accordion)</li>
+              <li>Complete qualification quiz to access recommendations</li>
+            </ol>
+          </div>
+
+          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r">
+            <h4 className="font-semibold text-amber-900 mb-2">Qualification Requirements:</h4>
+            <p className="text-amber-800 mb-2">Before using chunking strategies, you must have:</p>
+            <ul className="space-y-1 text-amber-800 ml-4">
+              <li>• At least $1,000 in emergency savings</li>
+              <li>• Stable income for 3+ months</li>
+              <li>• No missed payments in last 6 months</li>
+              <li>• Willingness to track HELOC balance regularly</li>
+              <li>• Commitment to financial discipline</li>
+            </ul>
+            <p className="text-amber-800 mt-2 font-semibold">
+              If you don't qualify yet, focus on building emergency fund and payment consistency first.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">What the Calculator Shows:</h4>
+            <ol className="space-y-2 text-gray-700 ml-4 list-decimal">
+              <li><strong>Recommended Chunk Size:</strong> Based on your monthly cash flow (typically 2-3x)</li>
+              <li><strong>Comparison:</strong> Direct payment vs HELOC chunking (shows why chunking wins)</li>
+              <li><strong>Payback Timeline:</strong> Month-by-month projection of HELOC payback</li>
+              <li><strong>Advanced Strategy:</strong> How to use HELOC as checking account</li>
+              <li><strong>Risk Warnings:</strong> What could go wrong and safety rules</li>
+            </ol>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">Understanding the Math:</h4>
+            <p className="text-gray-700 mb-2">
+              The calculator shows why chunking is more powerful than direct extra payments.
+            </p>
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r">
+              <p className="font-semibold text-blue-900 mb-2">Example: $10,000 extra toward mortgage</p>
+              <ul className="space-y-2 text-blue-800">
+                <li><strong>Direct payment:</strong> Cash is gone, locked in mortgage forever</li>
+                <li><strong>HELOC chunking:</strong> Same mortgage savings, but you pay back HELOC in 2-4 months for ~$200 interest cost, keeping cash flow intact</li>
+              </ul>
+              <p className="text-blue-800 mt-2">
+                You "rent" the HELOC for a small cost to gain massive mortgage interest savings, then repeat the cycle.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-r">
+            <h4 className="font-semibold text-purple-900 mb-2">Advanced Strategy: HELOC as Checking</h4>
+            <p className="text-purple-800 mb-2">
+              Experienced users can route all income through HELOC to minimize average daily balance:
+            </p>
+            <ul className="space-y-1 text-purple-800 ml-4">
+              <li>• Paychecks deposit to HELOC (drops balance)</li>
+              <li>• Bills pay from HELOC (raises balance slightly)</li>
+              <li>• Net effect: HELOC drops faster due to lower average balance</li>
+            </ul>
+            <p className="text-purple-800 mt-2 font-semibold">
+              This requires extreme discipline and daily tracking. Only attempt if you're confident in your spending control.
+            </p>
+          </div>
+
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r">
+            <h4 className="font-semibold text-red-900 mb-2">Safety Rules:</h4>
+            <ol className="space-y-1 text-red-800 ml-4 list-decimal">
+              <li>Never chunk more than 3x your monthly cash flow</li>
+              <li>Keep at least $5,000 available on HELOC for emergencies</li>
+              <li>Track your HELOC balance weekly minimum</li>
+              <li>If balance isn't dropping, stop and reassess</li>
+              <li>Build 3-6 months emergency fund before aggressive chunking</li>
+            </ol>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">When to Ask for Help:</h4>
+            <ul className="space-y-2 text-gray-700 ml-4">
+              <li>• <strong>Not sure if chunking is right for you?</strong> Ask NOVO AI Coach</li>
+              <li>• <strong>Want personalized guidance?</strong> Contact Ben Hulshof at <a href="mailto:ben@windmillmortgage.com" className="text-blue-600 underline hover:text-blue-800">ben@windmillmortgage.com</a> or <a href="tel:614-327-2213" className="text-blue-600 underline hover:text-blue-800">614-327-2213</a></li>
+              <li>• <strong>Confused about rate arbitrage?</strong> Expand "HELOC Strategy Guidance" section</li>
+            </ul>
+          </div>
+
+          <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r">
+            <h4 className="font-semibold text-orange-900 mb-2">Common Mistakes to Avoid:</h4>
+            <ul className="space-y-2 text-orange-800">
+              <li>• <strong>Chunking more than you can pay back in 6 months</strong> (too risky)</li>
+              <li>• <strong>Using HELOC for lifestyle spending</strong> instead of debt elimination</li>
+              <li>• <strong>Ignoring HELOC interest charges</strong> (they add up)</li>
+              <li>• <strong>Not tracking balance regularly</strong> (surprises happen)</li>
+              <li>• <strong>Chunking when HELOC rate is higher than debt rate</strong> (loses money)</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
       id: 'logging-payments',
-      title: '8. Logging Payments',
+      title: '9. Logging Payments',
       icon: DollarSign,
       color: 'bg-pink-500',
       content: (
@@ -497,7 +611,7 @@ function Guide() {
     },
     {
       id: 'dashboard',
-      title: '9. Reading Your Dashboard',
+      title: '10. Reading Your Dashboard',
       icon: BarChart3,
       color: 'bg-blue-600',
       content: (
@@ -551,7 +665,7 @@ function Guide() {
     },
     {
       id: 'savings-tracker',
-      title: '10. Using the Savings Tracker',
+      title: '11. Using the Savings Tracker',
       icon: PiggyBank,
       color: 'bg-green-600',
       content: (
@@ -610,7 +724,7 @@ function Guide() {
     },
     {
       id: 'progress-reports',
-      title: '11. Progress Reports & Charts',
+      title: '12. Progress Reports & Charts',
       icon: LineChart,
       color: 'bg-purple-600',
       content: (
@@ -661,7 +775,7 @@ function Guide() {
     },
     {
       id: 'ask-novo-ai',
-      title: '12. Ask NOVO AI Coach',
+      title: '13. Ask NOVO AI Coach',
       icon: Bot,
       color: 'bg-indigo-500',
       content: (
@@ -703,7 +817,7 @@ function Guide() {
     },
     {
       id: 'updating-info',
-      title: '13. Updating Your Information',
+      title: '14. Updating Your Information',
       icon: SettingsIcon,
       color: 'bg-gray-600',
       content: (
@@ -753,7 +867,7 @@ function Guide() {
     },
     {
       id: 'troubleshooting',
-      title: '14. Troubleshooting & Tips',
+      title: '15. Troubleshooting & Tips',
       icon: AlertCircle,
       color: 'bg-orange-500',
       content: (
@@ -811,7 +925,7 @@ function Guide() {
     },
     {
       id: 'getting-help',
-      title: '15. Getting Help',
+      title: '16. Getting Help',
       icon: HelpCircle,
       color: 'bg-blue-700',
       content: (
