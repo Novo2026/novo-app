@@ -1,6 +1,7 @@
 import { RefreshCw, TrendingDown, Calendar, DollarSign } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
+import ChunkingRecommendation from './ChunkingRecommendation';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import type { StrategyResult } from '../types';
 
@@ -347,6 +348,20 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
           </div>
         </div>
       </div>
+
+      {result.strategy.type === 'heloc-velocity' && financialProfile && homeEquity && (
+        <ChunkingRecommendation
+          monthlyCashFlow={
+            financialProfile.monthlyNetIncome -
+            financialProfile.monthlyEssentialExpenses -
+            financialProfile.monthlyDiscretionaryExpenses -
+            allDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
+          }
+          currentHELOCBalance={helocBalance}
+          helocLimit={homeEquity.helocLimit || 0}
+          helocRate={helocRate}
+        />
+      )}
 
       <div className="bg-white rounded-lg shadow-md p-6">
         <h3 className="text-xl font-bold text-gray-800 mb-4">Debt Payoff Timeline</h3>

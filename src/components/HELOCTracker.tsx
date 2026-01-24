@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import { CheckingTracker } from './CheckingTracker';
+import ChunkingRecommendation from './ChunkingRecommendation';
 import type { Debt } from '../types';
 
 interface HELOCTransaction {
@@ -29,6 +30,9 @@ export function HELOCTracker() {
   const [editingTransaction, setEditingTransaction] = useState<HELOCTransaction | null>(null);
 
   const homeEquity = StorageService.getHomeEquity();
+  const financialProfile = StorageService.getFinancialProfile();
+  const debts = StorageService.getDebts().filter(d => !d.isPaidOff);
+  const totalMinimumPayments = debts.reduce((sum, d) => sum + d.minimumPayment, 0);
 
   const handleTrackingTypeChange = (type: TrackingType) => {
     setTrackingType(type);
@@ -237,6 +241,20 @@ export function HELOCTracker() {
               </button>
             </div>
           </div>
+
+          {financialProfile && (
+            <ChunkingRecommendation
+              monthlyCashFlow={
+                financialProfile.monthlyNetIncome -
+                financialProfile.monthlyEssentialExpenses -
+                financialProfile.monthlyDiscretionaryExpenses -
+                totalMinimumPayments
+              }
+              currentHELOCBalance={currentBalance}
+              helocLimit={helocLimit}
+              helocRate={interestRate}
+            />
+          )}
 
           <TransactionLedger
             transactions={transactions}
