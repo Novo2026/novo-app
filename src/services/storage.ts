@@ -19,6 +19,7 @@ const STORAGE_KEYS = {
   HOME_EQUITY: 'novo_home_equity',
   STRATEGY: 'novo_strategy',
   STRATEGY_RESULT: 'novo_strategy_result',
+  HELOC_TRANSACTIONS: 'novo_heloc_transactions',
 };
 
 export const StorageService = {
