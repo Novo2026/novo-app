@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { TrendingUp, Plus, Download, Edit2, X } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import { CheckingTracker } from './CheckingTracker';
+import Accordion from './Accordion';
 import ChunkingRecommendation from './ChunkingRecommendation';
 import ChunkingScenarioComparison from './ChunkingScenarioComparison';
 import ChunkingPlanCalculator from './ChunkingPlanCalculator';
@@ -32,6 +33,7 @@ export function HELOCTracker() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showInterestModal, setShowInterestModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<HELOCTransaction | null>(null);
+  const [transactionJustLogged, setTransactionJustLogged] = useState(false);
 
   const homeEquity = StorageService.getHomeEquity();
   const financialProfile = StorageService.getFinancialProfile();
@@ -246,93 +248,301 @@ export function HELOCTracker() {
             </div>
           </div>
 
-          {financialProfile && (
-            <>
-              <ChunkingRecommendation
-                monthlyCashFlow={
-                  financialProfile.monthlyNetIncome -
-                  financialProfile.monthlyEssentialExpenses -
-                  financialProfile.monthlyDiscretionaryExpenses -
-                  totalMinimumPayments
-                }
-                currentHELOCBalance={currentBalance}
-                helocLimit={helocLimit}
-                helocRate={interestRate}
+          <Accordion
+            emoji="📊"
+            title="HELOC Transaction History"
+            defaultOpen={transactionJustLogged}
+          >
+            <div className="pt-4">
+              <TransactionLedger
+                transactions={transactions}
+                onEdit={(transaction) => {
+                  setEditingTransaction(transaction);
+                  if (transaction.type === 'draw') setShowDrawModal(true);
+                  else if (transaction.type === 'payment') setShowPaymentModal(true);
+                  else setShowInterestModal(true);
+                }}
+                onDelete={(id) => {
+                  if (confirm('Delete this transaction? All balances will be recalculated from this point forward.')) {
+                    const filtered = transactions.filter(t => t.id !== id);
+                    recalculateBalances(filtered);
+                    localStorage.setItem('novo_heloc_transactions', JSON.stringify(filtered));
+                    alert('Transaction deleted. Balances updated.');
+                    window.location.reload();
+                  }
+                }}
               />
-
-              {(() => {
-                const mortgageDebt = debts.find(d => d.category === 'Mortgage');
-                const cashFlow = financialProfile.monthlyNetIncome -
-                  financialProfile.monthlyEssentialExpenses -
-                  financialProfile.monthlyDiscretionaryExpenses -
-                  totalMinimumPayments;
-
-                const recommendedChunkSize = Math.floor((cashFlow * 2.5) / 1000) * 1000;
-
-                if (mortgageDebt && recommendedChunkSize >= 5000) {
-                  return (
-                    <>
-                      <ChunkingScenarioComparison
-                        chunkAmount={recommendedChunkSize}
-                        mortgageBalance={mortgageDebt.currentBalance}
-                        mortgageRate={mortgageDebt.interestRate}
-                        helocRate={interestRate}
-                        monthlyCashFlow={cashFlow}
-                      />
-                      <ChunkingPlanCalculator
-                        initialChunkAmount={recommendedChunkSize}
-                        monthlyCashFlow={cashFlow}
-                        helocRate={interestRate}
-                        currentHELOCBalance={currentBalance}
-                      />
-                      <AdvancedVelocityBanking
-                        chunkAmount={recommendedChunkSize}
-                        biweeklyPaycheck={financialProfile.monthlyNetIncome / 2}
-                        monthlyBills={financialProfile.monthlyEssentialExpenses + financialProfile.monthlyDiscretionaryExpenses}
-                        helocRate={interestRate}
-                      />
-                      <ChunkingRiskAssessment />
-                    </>
-                  );
-                }
-                return null;
-              })()}
-            </>
-          )}
-
-          <TransactionLedger
-            transactions={transactions}
-            onEdit={(transaction) => {
-              setEditingTransaction(transaction);
-              if (transaction.type === 'draw') setShowDrawModal(true);
-              else if (transaction.type === 'payment') setShowPaymentModal(true);
-              else setShowInterestModal(true);
-            }}
-            onDelete={(id) => {
-              if (confirm('Delete this transaction? All balances will be recalculated from this point forward.')) {
-                const filtered = transactions.filter(t => t.id !== id);
-                recalculateBalances(filtered);
-                localStorage.setItem('novo_heloc_transactions', JSON.stringify(filtered));
-                alert('Transaction deleted. Balances updated.');
-                window.location.reload();
-              }
-            }}
-          />
+            </div>
+          </Accordion>
 
           {chartData.length > 0 && (
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">HELOC Balance Over Time</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => CalculationService.formatCurrency(value as number)} />
-                  <Line type="monotone" dataKey="balance" stroke="#2D9CDB" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            <Accordion
+              emoji="📈"
+              title="HELOC Balance Over Time"
+              defaultOpen={false}
+            >
+              <div className="pt-4">
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => CalculationService.formatCurrency(value as number)} />
+                    <Line type="monotone" dataKey="balance" stroke="#2D9CDB" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Accordion>
           )}
+
+          {financialProfile && (() => {
+            const mortgageDebt = debts.find(d => d.category === 'Mortgage');
+            const cashFlow = financialProfile.monthlyNetIncome -
+              financialProfile.monthlyEssentialExpenses -
+              financialProfile.monthlyDiscretionaryExpenses -
+              totalMinimumPayments;
+
+            const recommendedChunkSize = Math.floor((cashFlow * 2.5) / 1000) * 1000;
+
+            if (mortgageDebt && recommendedChunkSize >= 5000) {
+              return (
+                <Accordion
+                  emoji="🎯"
+                  title="Smart Chunking Guide"
+                  defaultOpen={currentBalance > 0}
+                >
+                  <div className="pt-4 space-y-6">
+                    <ChunkingRecommendation
+                      monthlyCashFlow={cashFlow}
+                      currentHELOCBalance={currentBalance}
+                      helocLimit={helocLimit}
+                      helocRate={interestRate}
+                    />
+                    <ChunkingScenarioComparison
+                      chunkAmount={recommendedChunkSize}
+                      mortgageBalance={mortgageDebt.currentBalance}
+                      mortgageRate={mortgageDebt.interestRate}
+                      helocRate={interestRate}
+                      monthlyCashFlow={cashFlow}
+                    />
+                    <ChunkingPlanCalculator
+                      initialChunkAmount={recommendedChunkSize}
+                      monthlyCashFlow={cashFlow}
+                      helocRate={interestRate}
+                      currentHELOCBalance={currentBalance}
+                    />
+                    <AdvancedVelocityBanking
+                      chunkAmount={recommendedChunkSize}
+                      biweeklyPaycheck={financialProfile.monthlyNetIncome / 2}
+                      monthlyBills={financialProfile.monthlyEssentialExpenses + financialProfile.monthlyDiscretionaryExpenses}
+                      helocRate={interestRate}
+                    />
+                    <ChunkingRiskAssessment />
+                  </div>
+                </Accordion>
+              );
+            }
+            return null;
+          })()}
+
+          <Accordion
+            emoji="💡"
+            title="How HELOC Velocity Banking Works"
+            defaultOpen={false}
+          >
+            <div className="pt-4 space-y-6">
+              <div>
+                <h4 className="font-bold text-gray-800 mb-3 text-lg">The 3-Step HELOC Cycle</h4>
+                <div className="space-y-4">
+                  <div className="bg-blue-50 rounded-lg p-4 border-l-4 border-[#2D9CDB]">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0 w-8 h-8 bg-[#2D9CDB] text-white rounded-full flex items-center justify-center font-bold">
+                        1
+                      </div>
+                      <div>
+                        <h5 className="font-bold text-gray-800 mb-1">Draw from HELOC</h5>
+                        <p className="text-gray-700 text-sm">
+                          Use your HELOC to pay off high-interest debt (credit cards, personal loans). This swaps expensive debt for cheaper HELOC debt.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-green-50 rounded-lg p-4 border-l-4 border-[#27AE60]">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0 w-8 h-8 bg-[#27AE60] text-white rounded-full flex items-center justify-center font-bold">
+                        2
+                      </div>
+                      <div>
+                        <h5 className="font-bold text-gray-800 mb-1">Deposit Cash Flow</h5>
+                        <p className="text-gray-700 text-sm">
+                          Deposit your paycheck and extra cash flow directly into the HELOC. This immediately reduces the balance and stops interest from accruing on that amount.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-orange-50 rounded-lg p-4 border-l-4 border-[#F2994A]">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0 w-8 h-8 bg-[#F2994A] text-white rounded-full flex items-center justify-center font-bold">
+                        3
+                      </div>
+                      <div>
+                        <h5 className="font-bold text-gray-800 mb-1">Pay Bills from HELOC</h5>
+                        <p className="text-gray-700 text-sm">
+                          As bills come due, draw from your HELOC to pay them. Your cash flow sits in the HELOC reducing interest, only being used when needed.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-6">
+                <h4 className="font-bold text-gray-800 mb-3 text-lg">When HELOC Velocity Banking Makes Sense</h4>
+                <div className="bg-green-50 rounded-lg p-4">
+                  <ul className="space-y-2 text-gray-700 text-sm">
+                    <li className="flex items-start space-x-2">
+                      <span className="text-green-600 font-bold">✓</span>
+                      <span>You have high-interest debt (credit cards, personal loans at 15%+ APR)</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-green-600 font-bold">✓</span>
+                      <span>Your HELOC rate is significantly lower than your debt rates</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-green-600 font-bold">✓</span>
+                      <span>You have consistent monthly cash flow to pay down the HELOC</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-green-600 font-bold">✓</span>
+                      <span>You're disciplined and won't rack up new debt</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-6">
+                <h4 className="font-bold text-gray-800 mb-3 text-lg">Common Mistakes to Avoid</h4>
+                <div className="bg-red-50 rounded-lg p-4">
+                  <ul className="space-y-2 text-gray-700 text-sm">
+                    <li className="flex items-start space-x-2">
+                      <span className="text-red-600 font-bold">✗</span>
+                      <span>Using HELOC to pay off debt with LOWER interest rates than your HELOC</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-red-600 font-bold">✗</span>
+                      <span>Not depositing cash flow consistently into the HELOC</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-red-600 font-bold">✗</span>
+                      <span>Taking on new credit card debt after paying them off with HELOC</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-red-600 font-bold">✗</span>
+                      <span>Ignoring the HELOC balance and letting it grow unchecked</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-200 pt-6">
+                <h4 className="font-bold text-gray-800 mb-3 text-lg">Safety Rules</h4>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <ul className="space-y-2 text-gray-700 text-sm">
+                    <li className="flex items-start space-x-2">
+                      <span className="text-[#2D9CDB] font-bold">►</span>
+                      <span>Track every HELOC transaction in NOVO - never lose sight of your balance</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-[#2D9CDB] font-bold">►</span>
+                      <span>Set up automatic payments to ensure you're always paying down the HELOC</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-[#2D9CDB] font-bold">►</span>
+                      <span>Keep an emergency fund separate from your HELOC strategy</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="text-[#2D9CDB] font-bold">►</span>
+                      <span>Review your HELOC balance weekly to ensure you're on track</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </Accordion>
+
+          <Accordion
+            emoji="❓"
+            title="HELOC Tracker FAQ"
+            defaultOpen={false}
+          >
+            <div className="pt-4 space-y-6">
+              <div>
+                <h5 className="font-bold text-gray-800 mb-2">How do I record a HELOC transaction?</h5>
+                <p className="text-gray-700 text-sm">
+                  Use the quick action buttons above: "Record Draw" when you take money from your HELOC,
+                  "Record Payment" when you pay it down, and "Record Interest" to log monthly interest charges.
+                  All transactions will appear in the Transaction History section.
+                </p>
+              </div>
+
+              <div>
+                <h5 className="font-bold text-gray-800 mb-2">What's the difference between a draw and a payment?</h5>
+                <p className="text-gray-700 text-sm mb-2">
+                  A <strong>draw</strong> increases your HELOC balance (borrowing money), while a <strong>payment</strong>
+                  decreases it (paying money back). Interest charges also increase your balance.
+                </p>
+                <ul className="text-gray-700 text-sm space-y-1 ml-4">
+                  <li>• Draw: Use HELOC funds to pay off a credit card → HELOC balance goes up</li>
+                  <li>• Payment: Deposit paycheck into HELOC → HELOC balance goes down</li>
+                  <li>• Interest: Monthly interest charge → HELOC balance goes up</li>
+                </ul>
+              </div>
+
+              <div>
+                <h5 className="font-bold text-gray-800 mb-2">When should I record interest charges?</h5>
+                <p className="text-gray-700 text-sm">
+                  Record interest charges at the end of each month, typically the last day of the month or whenever your
+                  HELOC statement posts. NOVO can auto-calculate the interest based on your balance and rate, or you can
+                  enter the exact amount from your statement.
+                </p>
+              </div>
+
+              <div>
+                <h5 className="font-bold text-gray-800 mb-2">What does the balance chart show me?</h5>
+                <p className="text-gray-700 text-sm">
+                  The "HELOC Balance Over Time" chart visualizes how your HELOC balance changes month by month.
+                  You want to see this line trending downward over time, indicating you're paying down the HELOC faster than you're drawing from it.
+                </p>
+              </div>
+
+              <div>
+                <h5 className="font-bold text-gray-800 mb-2">Can I edit or delete a transaction?</h5>
+                <p className="text-gray-700 text-sm">
+                  Yes! In the Transaction History section, each transaction has Edit and Delete buttons.
+                  When you edit or delete a transaction, all subsequent balances are automatically recalculated to maintain accuracy.
+                </p>
+              </div>
+
+              <div>
+                <h5 className="font-bold text-gray-800 mb-2">What does "Payoff Projection" mean?</h5>
+                <p className="text-gray-700 text-sm">
+                  The payoff projection estimates when you'll pay off your HELOC based on your recent payment history.
+                  It analyzes your last 3 payments, calculates the average, and projects forward. If you increase your payments,
+                  the payoff date will move closer.
+                </p>
+              </div>
+
+              <div>
+                <h5 className="font-bold text-gray-800 mb-2">How do I export my transaction history?</h5>
+                <p className="text-gray-700 text-sm">
+                  In the Transaction History section, click the "Export CSV" button to download all your transactions as a spreadsheet.
+                  This is useful for tax purposes, sharing with a financial advisor, or keeping backup records.
+                </p>
+              </div>
+            </div>
+          </Accordion>
         </>
       )}
 
@@ -423,10 +633,9 @@ function TransactionLedger({
   );
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-bold text-gray-800">HELOC Transaction History</h3>
-        {transactions.length > 0 && (
+    <div>
+      {transactions.length > 0 && (
+        <div className="flex justify-end mb-4">
           <button
             onClick={exportCSV}
             className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors"
@@ -434,8 +643,8 @@ function TransactionLedger({
             <Download className="w-4 h-4" />
             <span>Export CSV</span>
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {transactions.length === 0 ? (
         <p className="text-gray-500 text-center py-8">
