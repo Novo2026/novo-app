@@ -3,6 +3,7 @@ import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import ChunkingRecommendation from './ChunkingRecommendation';
 import ChunkingScenarioComparison from './ChunkingScenarioComparison';
+import ChunkingPlanCalculator from './ChunkingPlanCalculator';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import type { StrategyResult } from '../types';
 
@@ -375,13 +376,21 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
 
             if (mortgageDebt && recommendedChunkSize >= 5000) {
               return (
-                <ChunkingScenarioComparison
-                  chunkAmount={recommendedChunkSize}
-                  mortgageBalance={mortgageDebt.currentBalance}
-                  mortgageRate={mortgageDebt.interestRate}
-                  helocRate={helocRate}
-                  monthlyCashFlow={cashFlow}
-                />
+                <>
+                  <ChunkingScenarioComparison
+                    chunkAmount={recommendedChunkSize}
+                    mortgageBalance={mortgageDebt.currentBalance}
+                    mortgageRate={mortgageDebt.interestRate}
+                    helocRate={helocRate}
+                    monthlyCashFlow={cashFlow}
+                  />
+                  <ChunkingPlanCalculator
+                    initialChunkAmount={recommendedChunkSize}
+                    monthlyCashFlow={cashFlow}
+                    helocRate={helocRate}
+                    currentHELOCBalance={helocBalance}
+                  />
+                </>
               );
             }
             return null;

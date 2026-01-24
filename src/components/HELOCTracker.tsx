@@ -6,6 +6,7 @@ import { CalculationService } from '../services/calculations';
 import { CheckingTracker } from './CheckingTracker';
 import ChunkingRecommendation from './ChunkingRecommendation';
 import ChunkingScenarioComparison from './ChunkingScenarioComparison';
+import ChunkingPlanCalculator from './ChunkingPlanCalculator';
 import type { Debt } from '../types';
 
 interface HELOCTransaction {
@@ -268,13 +269,21 @@ export function HELOCTracker() {
 
                 if (mortgageDebt && recommendedChunkSize >= 5000) {
                   return (
-                    <ChunkingScenarioComparison
-                      chunkAmount={recommendedChunkSize}
-                      mortgageBalance={mortgageDebt.currentBalance}
-                      mortgageRate={mortgageDebt.interestRate}
-                      helocRate={interestRate}
-                      monthlyCashFlow={cashFlow}
-                    />
+                    <>
+                      <ChunkingScenarioComparison
+                        chunkAmount={recommendedChunkSize}
+                        mortgageBalance={mortgageDebt.currentBalance}
+                        mortgageRate={mortgageDebt.interestRate}
+                        helocRate={interestRate}
+                        monthlyCashFlow={cashFlow}
+                      />
+                      <ChunkingPlanCalculator
+                        initialChunkAmount={recommendedChunkSize}
+                        monthlyCashFlow={cashFlow}
+                        helocRate={interestRate}
+                        currentHELOCBalance={currentBalance}
+                      />
+                    </>
                   );
                 }
                 return null;
