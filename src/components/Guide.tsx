@@ -206,40 +206,86 @@ function Guide() {
       )
     },
     {
-      id: 'heloc-velocity',
-      title: 'HELOC Velocity Banking Explained',
+      id: 'tracker',
+      title: 'Using the Tracker',
       icon: Repeat,
       color: 'bg-teal-500',
       content: (
         <div className="space-y-4">
           <div>
-            <h4 className="font-semibold text-gray-900 mb-2">What is HELOC Velocity Banking?</h4>
-            <p className="text-gray-700">
-              HELOC velocity banking is an advanced debt elimination strategy that uses your Home Equity Line of Credit as a financial tool to save on interest. It works by leveraging the lower interest rate on your HELOC (typically 8-10%) to pay off higher-interest debts (like credit cards at 20%+), then rapidly paying down the HELOC with your cash flow.
+            <h4 className="font-semibold text-gray-900 mb-2">What Can You Track?</h4>
+            <p className="text-gray-700 mb-3">
+              The Tracker tab is your flexible ledger for tracking cash flow accounts. Use the dropdown at the top to select what you want to track:
             </p>
+            <ul className="space-y-2 text-gray-700 ml-4">
+              <li><strong>HELOC Account:</strong> For velocity banking strategies using home equity</li>
+              <li><strong>Checking/Cash Flow Account:</strong> For tracking extra payments and windfalls</li>
+              <li><strong>Both:</strong> For advanced velocity banking with multiple accounts</li>
+            </ul>
           </div>
 
           <div className="bg-teal-50 border-l-4 border-teal-500 p-4 rounded-r">
-            <h4 className="font-semibold text-teal-900 mb-3">The 3-Step Cycle: Chunk → Paydown → Repeat</h4>
+            <h4 className="font-semibold text-teal-900 mb-2">When to Track Your HELOC</h4>
+            <p className="text-teal-700 mb-3">
+              Use HELOC tracking when you're implementing velocity banking. This advanced strategy uses your Home Equity Line of Credit to pay off high-interest debts, then rapidly pays down the HELOC with your cash flow.
+            </p>
+            <p className="text-teal-700 font-semibold mb-2">Best for:</p>
+            <ul className="space-y-1 text-teal-700 ml-4">
+              <li>• Homeowners with existing HELOC</li>
+              <li>• Those with strong monthly cash flow</li>
+              <li>• Multiple high-interest debts to consolidate</li>
+              <li>• Disciplined spenders who won't re-accumulate debt</li>
+            </ul>
+          </div>
 
-            <div className="space-y-3">
+          <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r">
+            <h4 className="font-semibold text-green-900 mb-2">When to Track Your Checking Account</h4>
+            <p className="text-green-700 mb-3">
+              Use checking account tracking to monitor extra payments, windfalls, and strategic cash flow management without using a HELOC.
+            </p>
+            <p className="text-green-700 font-semibold mb-2">Best for:</p>
+            <ul className="space-y-1 text-green-700 ml-4">
+              <li>• Renters or those without home equity</li>
+              <li>• Tracking bonuses, tax refunds, or side income</li>
+              <li>• Managing irregular extra payments to debts</li>
+              <li>• Building a debt payoff reserve fund</li>
+            </ul>
+          </div>
+
+          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r">
+            <h4 className="font-semibold text-blue-900 mb-2">When to Track Both</h4>
+            <p className="text-blue-700 mb-3">
+              Advanced users can track both HELOC and checking accounts simultaneously for maximum visibility into their cash flow strategy.
+            </p>
+            <p className="text-blue-700 font-semibold mb-2">Best for:</p>
+            <ul className="space-y-1 text-blue-700 ml-4">
+              <li>• Active velocity banking with supplemental strategies</li>
+              <li>• Separating HELOC chunking from regular extra payments</li>
+              <li>• Full financial visibility across multiple accounts</li>
+              <li>• Detailed record-keeping for tax or financial planning</li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">HELOC Velocity Banking: The 3-Step Cycle</h4>
+            <div className="space-y-3 ml-4">
               <div>
-                <p className="font-semibold text-teal-800">Step 1: Chunk a Debt</p>
-                <p className="text-teal-700 text-sm">
-                  Use your HELOC to completely pay off a high-interest debt (called "chunking"). This immediately stops the expensive interest on that debt.
+                <p className="font-semibold text-gray-800">Step 1: Draw from HELOC (Chunk a Debt)</p>
+                <p className="text-gray-700 text-sm">
+                  Use your HELOC to completely pay off a high-interest debt. This immediately stops expensive interest charges and transfers the balance to your lower-rate HELOC.
                 </p>
               </div>
 
               <div>
-                <p className="font-semibold text-teal-800">Step 2: Paydown the HELOC</p>
-                <p className="text-teal-700 text-sm">
-                  Direct your monthly cash flow (income minus expenses) toward paying down the HELOC balance. Since HELOCs typically have lower rates, you're saving money on interest every month.
+                <p className="font-semibold text-gray-800">Step 2: Pay Down the HELOC</p>
+                <p className="text-gray-700 text-sm">
+                  Direct your monthly cash flow (income minus expenses) toward paying down the HELOC balance. Since HELOCs typically have lower rates (8-10% vs 20%+ credit cards), you save money on interest every month.
                 </p>
               </div>
 
               <div>
-                <p className="font-semibold text-teal-800">Step 3: Repeat</p>
-                <p className="text-teal-700 text-sm">
+                <p className="font-semibold text-gray-800">Step 3: Repeat</p>
+                <p className="text-gray-700 text-sm">
                   Once you've paid down the HELOC enough to free up space, chunk the next high-interest debt and repeat the cycle. Each cycle builds momentum toward debt freedom.
                 </p>
               </div>
@@ -247,44 +293,22 @@ function Guide() {
           </div>
 
           <div>
-            <h4 className="font-semibold text-gray-900 mb-2">When to Chunk a Debt:</h4>
-            <p className="text-gray-700 mb-2">NOVO's HELOC tracker shows you when to chunk based on:</p>
+            <h4 className="font-semibold text-gray-900 mb-2">Recording Transactions:</h4>
+            <p className="text-gray-700 mb-2">Keep your tracker current by logging transactions as they happen:</p>
             <ul className="space-y-1 text-gray-700 ml-4">
-              <li>• Available HELOC space (limit minus current balance)</li>
-              <li>• Interest rate arbitrage (is the debt's rate higher than HELOC?)</li>
-              <li>• Your debt payoff order (chunk in avalanche sequence)</li>
+              <li><strong>HELOC:</strong> Record draws (when you pay off debts), payments (cash flow deposits), and monthly interest charges</li>
+              <li><strong>Checking:</strong> Record deposits (income, windfalls, bonuses) and withdrawals (debt payments, expenses)</li>
+              <li><strong>Both:</strong> Track all movements in both accounts for complete visibility</li>
             </ul>
-            <p className="text-gray-700 mt-2">
-              In the HELOC Tracker, click "Chunk" next to any debt when you have enough available space to pay it off completely.
-            </p>
-          </div>
-
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-2">How to Pay Down the HELOC:</h4>
-            <p className="text-gray-700 mb-2">
-              Log HELOC payments in the HELOC Tracker tab. Your strategy is to put as much cash flow as possible toward the HELOC each month:
-            </p>
-            <ul className="space-y-1 text-gray-700 ml-4">
-              <li>• Minimum payment (required by lender)</li>
-              <li>• Plus any extra cash flow you have</li>
-              <li>• Plus payments freed up from debts you've already paid off</li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-2">Why This Saves You Money:</h4>
-            <p className="text-gray-700">
-              <strong>Interest rate arbitrage:</strong> You're replacing expensive debt (e.g., 22% credit card) with cheaper debt (e.g., 8% HELOC). The difference in interest rates is pure savings. Plus, HELOCs calculate interest daily on the average daily balance, so every dollar you pay down immediately reduces your interest cost.
-            </p>
           </div>
 
           <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r">
             <h4 className="font-semibold text-red-900 mb-2">Common Mistakes to Avoid:</h4>
             <ul className="space-y-2 text-red-800">
-              <li><strong>1. Running up paid-off debts again:</strong> After chunking a credit card, don't use it! Close it or freeze it to avoid re-accumulating debt.</li>
-              <li><strong>2. Not paying down the HELOC aggressively:</strong> The strategy only works if you rapidly pay down the HELOC after chunking. Treat it like an emergency.</li>
-              <li><strong>3. Chunking too much at once:</strong> Leave yourself some breathing room on your HELOC for emergencies.</li>
-              <li><strong>4. Ignoring the HELOC minimum payment:</strong> Always pay at least the minimum required by your lender to avoid penalties.</li>
+              <li><strong>1. Running up paid-off debts again:</strong> After paying off a credit card, close it or freeze it to avoid re-accumulating debt.</li>
+              <li><strong>2. Not tracking regularly:</strong> Update your tracker monthly or as transactions occur to maintain accuracy.</li>
+              <li><strong>3. Chunking without cash flow:</strong> Only use HELOC velocity banking if you have consistent cash flow to pay it down rapidly.</li>
+              <li><strong>4. Forgetting to record interest:</strong> HELOC interest accrues monthly and must be tracked to keep balances accurate.</li>
             </ul>
           </div>
         </div>

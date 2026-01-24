@@ -208,7 +208,7 @@ function App() {
               }`}
             >
               <Wallet className="w-4 h-4" />
-              <span>HELOC Tracker</span>
+              <span>Tracker</span>
             </button>
             <button
               onClick={() => setCurrentSection('savings')}

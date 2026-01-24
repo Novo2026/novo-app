@@ -3,6 +3,7 @@ import { TrendingUp, Plus, Download, Edit2, X } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
+import { CheckingTracker } from './CheckingTracker';
 import type { Debt } from '../types';
 
 interface HELOCTransaction {
@@ -15,13 +16,24 @@ interface HELOCTransaction {
   balance: number;
 }
 
+type TrackingType = 'heloc' | 'checking' | 'both';
+
 export function HELOCTracker() {
+  const [trackingType, setTrackingType] = useState<TrackingType>(() => {
+    const saved = localStorage.getItem('novo_tracking_type');
+    return (saved as TrackingType) || 'heloc';
+  });
   const [showDrawModal, setShowDrawModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showInterestModal, setShowInterestModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<HELOCTransaction | null>(null);
 
   const homeEquity = StorageService.getHomeEquity();
+
+  const handleTrackingTypeChange = (type: TrackingType) => {
+    setTrackingType(type);
+    localStorage.setItem('novo_tracking_type', type);
+  };
   const hasHomeEquity = homeEquity.ownsHome && homeEquity.homeValue && homeEquity.mortgageBalance !== undefined;
 
   const transactions = useMemo(() => {
@@ -78,9 +90,32 @@ export function HELOCTracker() {
     return data;
   }, [transactions, homeEquity]);
 
-  if (!hasHomeEquity) {
-    return (
-      <div className="max-w-7xl mx-auto">
+  return (
+    <div className="max-w-7xl mx-auto space-y-6">
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex items-center space-x-4 mb-6">
+          <label className="text-sm font-semibold text-gray-700">What are you tracking?</label>
+          <select
+            value={trackingType}
+            onChange={(e) => handleTrackingTypeChange(e.target.value as TrackingType)}
+            className="flex-1 max-w-sm px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent bg-white text-gray-800 font-medium"
+          >
+            <option value="heloc">HELOC Account</option>
+            <option value="checking">Checking/Cash Flow Account</option>
+            <option value="both">Both</option>
+          </select>
+        </div>
+
+        <div className="bg-blue-50 border-l-4 border-[#2D9CDB] p-4 rounded-r-lg">
+          <p className="text-sm text-gray-700">
+            {trackingType === 'heloc' && 'Track your HELOC draws, payments, and interest for velocity banking.'}
+            {trackingType === 'checking' && 'Track your checking account deposits, withdrawals, and cash flow for strategic debt payments.'}
+            {trackingType === 'both' && 'Track both your HELOC and checking account for advanced velocity banking strategies.'}
+          </p>
+        </div>
+      </div>
+
+      {(trackingType === 'heloc' || trackingType === 'both') && !hasHomeEquity && (
         <div className="bg-white rounded-lg shadow-md p-8 text-center">
           <TrendingUp className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">No HELOC Configured</h2>
@@ -94,124 +129,128 @@ export function HELOCTracker() {
             Go to Payment Strategies
           </button>
         </div>
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div className="max-w-7xl mx-auto space-y-6">
-      <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2D5A8A] text-white rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold mb-6">HELOC Overview</h2>
+      {(trackingType === 'heloc' || trackingType === 'both') && hasHomeEquity && (
+        <>
+          <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2D5A8A] text-white rounded-lg shadow-lg p-6">
+            <h2 className="text-2xl font-bold mb-6">HELOC Overview</h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div>
-            <div className="text-sm opacity-90">Credit Limit</div>
-            <div className="text-2xl font-bold">{CalculationService.formatCurrency(helocLimit)}</div>
-          </div>
-          <div>
-            <div className="text-sm opacity-90">Current Balance</div>
-            <div className="text-2xl font-bold">{CalculationService.formatCurrency(currentBalance)}</div>
-          </div>
-          <div>
-            <div className="text-sm opacity-90">Available Credit</div>
-            <div className="text-2xl font-bold text-[#27AE60]">{CalculationService.formatCurrency(availableCredit)}</div>
-          </div>
-          <div>
-            <div className="text-sm opacity-90">Interest Rate</div>
-            <div className="text-2xl font-bold">{interestRate.toFixed(2)}% APR</div>
-          </div>
-        </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div>
+                <div className="text-sm opacity-90">Credit Limit</div>
+                <div className="text-2xl font-bold">{CalculationService.formatCurrency(helocLimit)}</div>
+              </div>
+              <div>
+                <div className="text-sm opacity-90">Current Balance</div>
+                <div className="text-2xl font-bold">{CalculationService.formatCurrency(currentBalance)}</div>
+              </div>
+              <div>
+                <div className="text-sm opacity-90">Available Credit</div>
+                <div className="text-2xl font-bold text-[#27AE60]">{CalculationService.formatCurrency(availableCredit)}</div>
+              </div>
+              <div>
+                <div className="text-sm opacity-90">Interest Rate</div>
+                <div className="text-2xl font-bold">{interestRate.toFixed(2)}% APR</div>
+              </div>
+            </div>
 
-        <div className="bg-white/10 rounded-lg p-4 mb-4">
-          <div className="text-sm mb-2">Monthly Interest Accruing: <span className="font-bold">{CalculationService.formatCurrency(monthlyInterest)}</span></div>
-          {monthsToPayoff > 0 && averagePayment > 0 && (
-            <div className="text-sm">
-              Payoff Projection: At <span className="font-bold">{CalculationService.formatCurrency(averagePayment)}</span>/month,
-              HELOC will be paid off in <span className="font-bold">{monthsToPayoff} months</span>
-              {payoffDate && <> ({payoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })})</>}
+            <div className="bg-white/10 rounded-lg p-4 mb-4">
+              <div className="text-sm mb-2">Monthly Interest Accruing: <span className="font-bold">{CalculationService.formatCurrency(monthlyInterest)}</span></div>
+              {monthsToPayoff > 0 && averagePayment > 0 && (
+                <div className="text-sm">
+                  Payoff Projection: At <span className="font-bold">{CalculationService.formatCurrency(averagePayment)}</span>/month,
+                  HELOC will be paid off in <span className="font-bold">{monthsToPayoff} months</span>
+                  {payoffDate && <> ({payoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })})</>}
+                </div>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <div className="flex justify-between text-sm mb-2">
+                <span>{CalculationService.formatCurrency(currentBalance)} used</span>
+                <span>{CalculationService.formatCurrency(helocLimit)} limit</span>
+              </div>
+              <div className="w-full bg-white/20 rounded-full h-3">
+                <div
+                  className="bg-[#F2C94C] h-3 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min((currentBalance / helocLimit) * 100, 100)}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => {
+                  setEditingTransaction(null);
+                  setShowDrawModal(true);
+                }}
+                className="flex items-center space-x-2 bg-white text-[#1E3A5F] hover:bg-gray-100 font-semibold py-2 px-4 rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Record Draw</span>
+              </button>
+              <button
+                onClick={() => {
+                  setEditingTransaction(null);
+                  setShowPaymentModal(true);
+                }}
+                className="flex items-center space-x-2 bg-[#27AE60] hover:bg-[#229954] font-semibold py-2 px-4 rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Record Payment</span>
+              </button>
+              <button
+                onClick={() => {
+                  setEditingTransaction(null);
+                  setShowInterestModal(true);
+                }}
+                className="flex items-center space-x-2 bg-[#F2994A] hover:bg-[#E67E22] font-semibold py-2 px-4 rounded-lg transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Record Interest</span>
+              </button>
+            </div>
+          </div>
+
+          <TransactionLedger
+            transactions={transactions}
+            onEdit={(transaction) => {
+              setEditingTransaction(transaction);
+              if (transaction.type === 'draw') setShowDrawModal(true);
+              else if (transaction.type === 'payment') setShowPaymentModal(true);
+              else setShowInterestModal(true);
+            }}
+            onDelete={(id) => {
+              if (confirm('Delete this transaction? All balances will be recalculated from this point forward.')) {
+                const filtered = transactions.filter(t => t.id !== id);
+                recalculateBalances(filtered);
+                localStorage.setItem('novo_heloc_transactions', JSON.stringify(filtered));
+                alert('Transaction deleted. Balances updated.');
+                window.location.reload();
+              }
+            }}
+          />
+
+          {chartData.length > 0 && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">HELOC Balance Over Time</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => CalculationService.formatCurrency(value as number)} />
+                  <Line type="monotone" dataKey="balance" stroke="#2D9CDB" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           )}
-        </div>
+        </>
+      )}
 
-        <div className="mb-4">
-          <div className="flex justify-between text-sm mb-2">
-            <span>{CalculationService.formatCurrency(currentBalance)} used</span>
-            <span>{CalculationService.formatCurrency(helocLimit)} limit</span>
-          </div>
-          <div className="w-full bg-white/20 rounded-full h-3">
-            <div
-              className="bg-[#F2C94C] h-3 rounded-full transition-all duration-500"
-              style={{ width: `${Math.min((currentBalance / helocLimit) * 100, 100)}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => {
-              setEditingTransaction(null);
-              setShowDrawModal(true);
-            }}
-            className="flex items-center space-x-2 bg-white text-[#1E3A5F] hover:bg-gray-100 font-semibold py-2 px-4 rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Record Draw</span>
-          </button>
-          <button
-            onClick={() => {
-              setEditingTransaction(null);
-              setShowPaymentModal(true);
-            }}
-            className="flex items-center space-x-2 bg-[#27AE60] hover:bg-[#229954] font-semibold py-2 px-4 rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Record Payment</span>
-          </button>
-          <button
-            onClick={() => {
-              setEditingTransaction(null);
-              setShowInterestModal(true);
-            }}
-            className="flex items-center space-x-2 bg-[#F2994A] hover:bg-[#E67E22] font-semibold py-2 px-4 rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Record Interest</span>
-          </button>
-        </div>
-      </div>
-
-      <TransactionLedger
-        transactions={transactions}
-        onEdit={(transaction) => {
-          setEditingTransaction(transaction);
-          if (transaction.type === 'draw') setShowDrawModal(true);
-          else if (transaction.type === 'payment') setShowPaymentModal(true);
-          else setShowInterestModal(true);
-        }}
-        onDelete={(id) => {
-          if (confirm('Delete this payment? All balances will be recalculated from this point forward.')) {
-            const filtered = transactions.filter(t => t.id !== id);
-            recalculateBalances(filtered);
-            localStorage.setItem('novo_heloc_transactions', JSON.stringify(filtered));
-            alert('Payment deleted. Balances updated.');
-            window.location.reload();
-          }
-        }}
-      />
-
-      {chartData.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">HELOC Balance Over Time</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip formatter={(value) => CalculationService.formatCurrency(value as number)} />
-              <Line type="monotone" dataKey="balance" stroke="#2D9CDB" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+      {(trackingType === 'checking' || trackingType === 'both') && (
+        <CheckingTracker />
       )}
 
       {showDrawModal && (
