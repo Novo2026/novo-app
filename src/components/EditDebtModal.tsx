@@ -27,7 +27,7 @@ export default function EditDebtModal({ debt, onClose, onSuccess }: EditDebtModa
   const [minimumPayment, setMinimumPayment] = useState(debt.minimumPayment.toString());
   const [originalAmount, setOriginalAmount] = useState(debt.originalAmount?.toString() || '');
   const [loanStartDate, setLoanStartDate] = useState(debt.loanStartDate || '');
-  const [loanTerm, setLoanTerm] = useState(debt.isAmortized ? '30' : '');
+  const [loanTerm, setLoanTerm] = useState(debt.loanTerm?.toString() || '30');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +52,7 @@ export default function EditDebtModal({ debt, onClose, onSuccess }: EditDebtModa
     if (category === 'Mortgage' && originalAmount && loanStartDate) {
       updatedDebt.originalAmount = parseFloat(originalAmount);
       updatedDebt.loanStartDate = loanStartDate;
+      updatedDebt.loanTerm = parseInt(loanTerm || '30');
       updatedDebt.isAmortized = true;
     }
 
@@ -199,14 +200,17 @@ export default function EditDebtModal({ debt, onClose, onSuccess }: EditDebtModa
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Loan Term (years)
                 </label>
-                <input
-                  type="number"
+                <select
                   value={loanTerm}
                   onChange={(e) => setLoanTerm(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
-                  placeholder="30"
-                  min="1"
-                />
+                >
+                  <option value="10">10 years</option>
+                  <option value="15">15 years</option>
+                  <option value="20">20 years</option>
+                  <option value="25">25 years</option>
+                  <option value="30">30 years</option>
+                </select>
               </div>
             </>
           )}

@@ -280,7 +280,54 @@ export const CalculationService = {
   },
 
   projectMinimumPaymentsOnly(debts: Debt[]): StrategyResult {
-    return this.projectDebtPayoff(debts, 0);
+    const debtsWithMortgageBaseline = debts.map(debt => {
+      if (debt.isAmortized && debt.loanStartDate && debt.loanTerm) {
+        const startDateParts = debt.loanStartDate.match(/^(\d{2})\/(\d{4})$/);
+        if (startDateParts) {
+          const month = parseInt(startDateParts[1]);
+          const year = parseInt(startDateParts[2]);
+          const loanStartDate = new Date(year, month - 1, 1);
+          const loanEndDate = new Date(loanStartDate);
+          loanEndDate.setFullYear(loanEndDate.getFullYear() + debt.loanTerm);
+
+          const today = new Date();
+          const monthsRemaining = Math.max(0, Math.round(
+            (loanEndDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30.44)
+          ));
+
+          if (monthsRemaining > 0 && debt.currentBalance > 0) {
+            const calculatedMinPayment = this.calculateMortgagePayment(
+              debt.currentBalance,
+              debt.interestRate,
+              monthsRemaining
+            );
+
+            return {
+              ...debt,
+              minimumPayment: Math.max(debt.minimumPayment, calculatedMinPayment)
+            };
+          }
+        }
+      }
+      return debt;
+    });
+
+    return this.projectDebtPayoff(debtsWithMortgageBaseline, 0);
+  },
+
+  calculateMortgagePayment(
+    principal: number,
+    annualRate: number,
+    months: number
+  ): number {
+    if (months === 0 || principal === 0) return 0;
+    if (annualRate === 0) return principal / months;
+
+    const monthlyRate = annualRate / 12 / 100;
+    const payment = principal * (monthlyRate * Math.pow(1 + monthlyRate, months)) /
+                    (Math.pow(1 + monthlyRate, months) - 1);
+
+    return Math.round(payment * 100) / 100;
   },
 
   formatCurrency(amount: number): string {

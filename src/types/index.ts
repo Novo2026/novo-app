@@ -20,6 +20,7 @@ export interface Debt {
   createdAt: string;
   originalAmount?: number;
   loanStartDate?: string;
+  loanTerm?: number;
   isAmortized?: boolean;
 }
 

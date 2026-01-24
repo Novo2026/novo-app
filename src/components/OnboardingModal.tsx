@@ -11,6 +11,7 @@ interface DebtInput {
   minPayment: string;
   originalAmount?: string;
   loanStartDate?: string;
+  loanTerm?: string;
 }
 
 interface OnboardingData {
@@ -136,7 +137,8 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
           if (d.type === 'Mortgage') {
             return basicValid &&
               parseCurrency(d.originalAmount || '0') > 0 &&
-              (d.loanStartDate || '').match(/^\d{2}\/\d{4}$/) !== null;
+              (d.loanStartDate || '').match(/^\d{2}\/\d{4}$/) !== null &&
+              (d.loanTerm || '') !== '';
           }
 
           return basicValid;
@@ -444,6 +446,22 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                     />
                   </div>
                 </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Loan Term (Years) <span className="text-red-500">*</span></label>
+                  <select
+                    value={debt.loanTerm || '30'}
+                    onChange={(e) => handleDebtChange(debt.id, 'loanTerm', e.target.value)}
+                    className="w-full px-2 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  >
+                    <option value="10">10 years</option>
+                    <option value="15">15 years</option>
+                    <option value="20">20 years</option>
+                    <option value="25">25 years</option>
+                    <option value="30">30 years</option>
+                  </select>
+                </div>
+
                 <p className="text-xs text-gray-500 italic">This enables accurate principal/interest tracking</p>
               </div>
             )}
