@@ -657,15 +657,15 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                 </div>
 
                 {!helocMakesSense && badDebts.length > 0 && (
-                  <div className="bg-red-500 border-2 border-red-300 rounded-lg p-4 mb-4 text-white">
+                  <div className="bg-amber-500 border-2 border-amber-300 rounded-lg p-4 mb-4 text-white">
                     <div className="flex items-start gap-3">
                       <AlertTriangle className="w-6 h-6 flex-shrink-0 mt-0.5" />
                       <div className="text-sm space-y-2">
-                        <p className="font-bold text-base">HELOC Velocity Banking Alert</p>
-                        <p>Your HELOC rate ({helocRate.toFixed(2)}%) is higher than or equal to some of your debt rates.</p>
-                        <p className="font-semibold">Using your HELOC to pay these debts would cost you MORE in interest, not less.</p>
+                        <p className="font-bold text-base">HELOC Strategy Guidance</p>
+                        <p>Your HELOC rate is {helocRate.toFixed(2)}%. Here's how to use it strategically:</p>
+
                         <div className="mt-3 bg-white/20 rounded p-3">
-                          <p className="font-semibold mb-2">Debts NOT suitable for HELOC:</p>
+                          <p className="font-semibold mb-2">⚠️ Not Recommended for HELOC:</p>
                           <ul className="space-y-1 text-xs">
                             {badDebts.map(({ debt }) => (
                               <li key={debt.id}>
@@ -673,14 +673,21 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                               </li>
                             ))}
                           </ul>
+                          <p className="text-xs mt-2 opacity-90">Using HELOC here typically costs more in interest</p>
                         </div>
+
                         <div className="mt-3 bg-white/20 rounded p-3">
-                          <p className="font-semibold">Recommendation:</p>
-                          <ul className="list-disc list-inside text-xs space-y-1 mt-1">
-                            <li>Keep making regular payments on lower-rate debts</li>
-                            <li>Use extra cash flow strategy instead</li>
-                            <li>Only use HELOC for debts with higher rates</li>
-                          </ul>
+                          <p className="font-semibold mb-2">💡 Advanced Strategy Note:</p>
+                          <p className="text-xs opacity-90">
+                            Some experienced users chunk lower-rate debt using HELOC as a cash flow tool, routing all income through HELOC to minimize daily interest. This requires discipline and understanding of velocity banking mechanics.
+                          </p>
+                        </div>
+
+                        <div className="mt-3 bg-white/20 rounded p-3">
+                          <p className="font-semibold mb-1">Smart Approach:</p>
+                          <p className="text-xs opacity-90">
+                            Use extra cash flow payments for lower-rate debts. Save HELOC velocity for high-interest debts where rate arbitrage works in your favor.
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -688,14 +695,15 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                 )}
 
                 {helocMakesSense && badDebts.length > 0 && (
-                  <div className="bg-amber-500 border-2 border-amber-300 rounded-lg p-4 mb-4 text-white">
+                  <div className="bg-blue-500 border-2 border-blue-300 rounded-lg p-4 mb-4 text-white">
                     <div className="flex items-start gap-3">
                       <AlertTriangle className="w-6 h-6 flex-shrink-0 mt-0.5" />
                       <div className="text-sm space-y-2">
-                        <p className="font-bold text-base">Partial HELOC Warning</p>
-                        <p>Some debts have rates lower than your HELOC ({helocRate.toFixed(2)}%).</p>
+                        <p className="font-bold text-base">Mixed Rate Portfolio</p>
+                        <p>You have both high-rate and low-rate debts compared to your HELOC ({helocRate.toFixed(2)}%).</p>
                         <div className="mt-2 bg-white/20 rounded p-3">
-                          <p className="font-semibold mb-2">Skip these debts with HELOC:</p>
+                          <p className="font-semibold mb-2">✅ Good for HELOC chunking: High-interest debts</p>
+                          <p className="font-semibold mb-2 mt-3">⚠️ Better with cash flow payments:</p>
                           <ul className="space-y-1 text-xs">
                             {badDebts.map(({ debt }) => (
                               <li key={debt.id}>
@@ -703,6 +711,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                               </li>
                             ))}
                           </ul>
+                          <p className="text-xs mt-2 opacity-90">For advanced users: HELOC chunking can still work if using it as a cash flow acceleration tool</p>
                         </div>
                       </div>
                     </div>
@@ -710,11 +719,11 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                 )}
 
                 <div className="bg-white rounded-lg p-4 mb-4 text-gray-800">
-                  <h5 className="font-semibold text-sm mb-3">Debt Suitability for HELOC:</h5>
+                  <h5 className="font-semibold text-sm mb-3">HELOC Suitability Analysis:</h5>
                   <div className="space-y-2">
                     {debtAnalysis.map(({ debt, rateDiff, suitability }) => {
-                      const bgColor = suitability === 'good' ? 'bg-[#27AE60]' : suitability === 'marginal' ? 'bg-[#F2C94C]' : 'bg-red-500';
-                      const textColor = suitability === 'bad' ? 'text-white' : 'text-gray-800';
+                      const bgColor = suitability === 'good' ? 'bg-[#27AE60]' : suitability === 'marginal' ? 'bg-[#F2C94C]' : 'bg-[#FF8C42]';
+                      const textColor = suitability === 'good' ? 'text-white' : 'text-gray-800';
 
                       return (
                         <div key={debt.id} className={`${bgColor} ${textColor} rounded p-3 text-sm`}>
@@ -724,13 +733,13 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                           </div>
                           <div className="text-xs mt-1 opacity-90">
                             {suitability === 'good' && (
-                              <span>Good match - saves {rateDiff.toFixed(2)}% interest</span>
+                              <span>✅ Good candidate - saves {rateDiff.toFixed(2)}% in interest</span>
                             )}
                             {suitability === 'marginal' && (
-                              <span>Marginal benefit - within 0.5% of HELOC rate</span>
+                              <span>⚠️ Marginal benefit - within 0.5% of HELOC rate</span>
                             )}
                             {suitability === 'bad' && (
-                              <span>DO NOT USE HELOC - Would cost {Math.abs(rateDiff).toFixed(2)}% MORE</span>
+                              <span>⚠️ Not recommended - rate is {Math.abs(rateDiff).toFixed(2)}% lower than HELOC (better with cash flow payments)</span>
                             )}
                           </div>
                         </div>
