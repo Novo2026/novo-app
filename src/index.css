@@ -1,3 +1,27 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  input[type="range"].slider {
+    @apply appearance-none bg-transparent cursor-pointer;
+  }
+
+  input[type="range"].slider::-webkit-slider-thumb {
+    @apply appearance-none w-6 h-6 rounded-full bg-blue-600 cursor-pointer hover:bg-blue-700 transition-colors;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  input[type="range"].slider::-moz-range-thumb {
+    @apply w-6 h-6 rounded-full bg-blue-600 cursor-pointer hover:bg-blue-700 transition-colors border-0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  input[type="range"].slider::-webkit-slider-runnable-track {
+    @apply w-full h-3 rounded-lg;
+  }
+
+  input[type="range"].slider::-moz-range-track {
+    @apply w-full h-3 rounded-lg;
+  }
+}

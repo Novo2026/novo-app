@@ -1,11 +1,13 @@
-import { RefreshCw, TrendingDown, Calendar, DollarSign } from 'lucide-react';
+import { RefreshCw, TrendingDown, Calendar, DollarSign, Zap, BookOpen, HelpCircle, BarChart3, Target, AlertTriangle } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
+import Accordion from './Accordion';
 import ChunkingRecommendation from './ChunkingRecommendation';
 import ChunkingScenarioComparison from './ChunkingScenarioComparison';
 import ChunkingPlanCalculator from './ChunkingPlanCalculator';
 import AdvancedVelocityBanking from './AdvancedVelocityBanking';
 import ChunkingRiskAssessment from './ChunkingRiskAssessment';
+import SmartChunkingCalculator from './SmartChunkingCalculator';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import type { StrategyResult } from '../types';
 
@@ -65,6 +67,9 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
     });
 
   const colors = ['#2D9CDB', '#27AE60', '#F2C94C', '#EB5757', '#9B51E0', '#FF6B35'];
+
+  const hasRateArbitrageWarnings = result.strategy.type === 'heloc-velocity' &&
+    allDebts.some(d => d.interestRate < helocRate && d.id !== 'HELOC_VIRTUAL');
 
   return (
     <div className="space-y-8">
@@ -354,18 +359,78 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
       </div>
 
       {result.strategy.type === 'heloc-velocity' && financialProfile && homeEquity && (
-        <>
-          <ChunkingRecommendation
-            monthlyCashFlow={
-              financialProfile.monthlyNetIncome -
-              financialProfile.monthlyEssentialExpenses -
-              financialProfile.monthlyDiscretionaryExpenses -
-              allDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
-            }
-            currentHELOCBalance={helocBalance}
-            helocLimit={homeEquity.helocLimit || 0}
-            helocRate={helocRate}
-          />
+        <div className="space-y-4">
+          <Accordion
+            title="HELOC Velocity Banking Overview"
+            icon={<Zap className="w-6 h-6 text-[#2D9CDB]" />}
+            defaultOpen={false}
+          >
+            <div className="pt-4">
+              <ChunkingRecommendation
+                monthlyCashFlow={
+                  financialProfile.monthlyNetIncome -
+                  financialProfile.monthlyEssentialExpenses -
+                  financialProfile.monthlyDiscretionaryExpenses -
+                  allDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
+                }
+                currentHELOCBalance={helocBalance}
+                helocLimit={homeEquity.helocLimit || 0}
+                helocRate={helocRate}
+              />
+            </div>
+          </Accordion>
+
+          {hasRateArbitrageWarnings && (
+            <Accordion
+              title="HELOC Strategy Guidance"
+              icon={<AlertTriangle className="w-6 h-6 text-amber-500" />}
+              defaultOpen={true}
+              badge="IMPORTANT"
+            >
+              <div className="pt-4">
+                <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r mb-4">
+                  <h4 className="font-bold text-amber-900 mb-2">Rate Arbitrage Warning</h4>
+                  <p className="text-amber-800 mb-3">
+                    Some of your debts have interest rates lower than your HELOC rate of {helocRate.toFixed(2)}%.
+                    Using HELOC to pay these debts would cost you more in interest.
+                  </p>
+                  <div className="space-y-2">
+                    {allDebts
+                      .filter(d => d.interestRate < helocRate && d.id !== 'HELOC_VIRTUAL')
+                      .map(debt => (
+                        <div key={debt.id} className="bg-white rounded p-3">
+                          <p className="font-semibold text-gray-800">{debt.accountName}</p>
+                          <p className="text-sm text-gray-600">
+                            Rate: {debt.interestRate.toFixed(2)}% (Lower than HELOC {helocRate.toFixed(2)}%)
+                          </p>
+                          <p className="text-sm font-semibold text-red-600">
+                            ✗ Do NOT use HELOC for this debt
+                          </p>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+                <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r">
+                  <h4 className="font-bold text-green-900 mb-2">Safe to Use HELOC For:</h4>
+                  <div className="space-y-2">
+                    {allDebts
+                      .filter(d => d.interestRate >= helocRate && d.id !== 'HELOC_VIRTUAL')
+                      .map(debt => (
+                        <div key={debt.id} className="bg-white rounded p-3">
+                          <p className="font-semibold text-gray-800">{debt.accountName}</p>
+                          <p className="text-sm text-gray-600">
+                            Rate: {debt.interestRate.toFixed(2)}% (Higher than HELOC {helocRate.toFixed(2)}%)
+                          </p>
+                          <p className="text-sm font-semibold text-green-600">
+                            ✓ Can use HELOC to save on interest
+                          </p>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            </Accordion>
+          )}
 
           {(() => {
             const mortgageDebt = allDebts.find(d => d.category === 'Mortgage');
@@ -374,42 +439,173 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
               financialProfile.monthlyDiscretionaryExpenses -
               allDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
 
-            const recommendedChunkSize = Math.floor((cashFlow * 2.5) / 1000) * 1000;
-
-            if (mortgageDebt && recommendedChunkSize >= 5000) {
+            if (mortgageDebt && homeEquity.helocLimit) {
               return (
-                <>
-                  <ChunkingScenarioComparison
-                    chunkAmount={recommendedChunkSize}
-                    mortgageBalance={mortgageDebt.currentBalance}
-                    mortgageRate={mortgageDebt.interestRate}
-                    helocRate={helocRate}
-                    monthlyCashFlow={cashFlow}
-                  />
-                  <ChunkingPlanCalculator
-                    initialChunkAmount={recommendedChunkSize}
-                    monthlyCashFlow={cashFlow}
-                    helocRate={helocRate}
-                    currentHELOCBalance={helocBalance}
-                  />
-                  <AdvancedVelocityBanking
-                    chunkAmount={recommendedChunkSize}
-                    biweeklyPaycheck={financialProfile.monthlyNetIncome / 2}
-                    monthlyBills={financialProfile.monthlyEssentialExpenses + financialProfile.monthlyDiscretionaryExpenses}
-                    helocRate={helocRate}
-                  />
-                  <ChunkingRiskAssessment />
-                </>
+                <Accordion
+                  title="Smart Chunking Calculator"
+                  icon={<Target className="w-6 h-6 text-purple-600" />}
+                  defaultOpen={false}
+                >
+                  <div className="pt-4">
+                    <SmartChunkingCalculator
+                      monthlyNetIncome={financialProfile.monthlyNetIncome}
+                      monthlyExpenses={
+                        financialProfile.monthlyEssentialExpenses +
+                        financialProfile.monthlyDiscretionaryExpenses
+                      }
+                      helocBalance={helocBalance}
+                      helocLimit={homeEquity.helocLimit}
+                      helocRate={helocRate}
+                      mortgageBalance={mortgageDebt.currentBalance}
+                      mortgageRate={mortgageDebt.interestRate}
+                    />
+                  </div>
+                </Accordion>
               );
             }
             return null;
           })()}
-        </>
+        </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">Debt Payoff Timeline</h3>
-        <div className="space-y-4">
+      <Accordion
+        title="Understanding Your Strategy"
+        icon={<BookOpen className="w-6 h-6 text-[#2D9CDB]" />}
+        defaultOpen={false}
+      >
+        <div className="pt-4 space-y-4">
+          <div>
+            <h4 className="font-bold text-gray-800 mb-3">Debt Avalanche Method</h4>
+            <p className="text-gray-700 mb-3">
+              Your strategy uses the "debt avalanche" approach, which targets the highest-interest debt first.
+              This is mathematically proven to save you the most money and get you debt-free faster.
+            </p>
+          </div>
+
+          <div className="bg-blue-50 rounded-lg p-4">
+            <h4 className="font-bold text-gray-800 mb-2">Why Highest Interest First?</h4>
+            <p className="text-gray-700 mb-3">
+              High-interest debt costs you the most money over time. By eliminating it first, you:
+            </p>
+            <ul className="space-y-1 text-gray-700">
+              <li>• Stop bleeding money on expensive interest charges</li>
+              <li>• Free up more cash flow as each debt is paid off</li>
+              <li>• Build momentum as payments "snowball" to the next debt</li>
+              <li>• Reach debt-free status in the shortest time possible</li>
+            </ul>
+          </div>
+
+          <div className="bg-green-50 rounded-lg p-4">
+            <h4 className="font-bold text-gray-800 mb-2">The Snowball Effect</h4>
+            <p className="text-gray-700 mb-2">
+              As you pay off each debt, that entire payment amount rolls into the next debt:
+            </p>
+            <div className="space-y-2 text-sm text-gray-700">
+              <p>
+                <strong>Month 1:</strong> Extra payment goes to Debt #1
+              </p>
+              <p>
+                <strong>Debt #1 paid off:</strong> Extra payment + Debt #1 minimum → Debt #2
+              </p>
+              <p>
+                <strong>Debt #2 paid off:</strong> Extra + Debt #1 + Debt #2 → Debt #3
+              </p>
+              <p className="font-semibold text-green-700">
+                Your payment power grows with each debt eliminated!
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-bold text-gray-800 mb-2">Staying on Track</h4>
+            <ul className="space-y-2 text-gray-700">
+              <li>• Set up automatic payments for your minimum amounts</li>
+              <li>• Log extra payments in NOVO as you make them</li>
+              <li>• Review your progress monthly</li>
+              <li>• Celebrate each debt payoff milestone</li>
+              <li>• Don't take on new debt during your payoff journey</li>
+            </ul>
+          </div>
+        </div>
+      </Accordion>
+
+      <Accordion
+        title="Frequently Asked Questions"
+        icon={<HelpCircle className="w-6 h-6 text-[#F2C94C]" />}
+        defaultOpen={false}
+      >
+        <div className="pt-4 space-y-6">
+          <div>
+            <h4 className="font-bold text-gray-800 mb-2">Why is NOVO recommending I pay this debt first?</h4>
+            <p className="text-gray-700">
+              NOVO prioritizes debts by interest rate. Your highest-rate debt ({allDebts[0]?.accountName} at {allDebts[0]?.interestRate.toFixed(2)}%)
+              costs you the most money every month, so paying it off first saves you the maximum amount in interest charges.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-bold text-gray-800 mb-2">Should I use my HELOC for this debt?</h4>
+            <p className="text-gray-700 mb-2">
+              Only use your HELOC to pay off debts with interest rates <strong>higher</strong> than your HELOC rate ({helocRate.toFixed(2)}%).
+              This is called "rate arbitrage" - you're swapping expensive debt for cheaper debt.
+            </p>
+            <p className="text-gray-700">
+              Never use HELOC for debts with lower rates, as you'll pay more interest overall.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-bold text-gray-800 mb-2">What happens when I pay off a debt?</h4>
+            <p className="text-gray-700 mb-2">
+              Celebrate! Then immediately redirect that entire payment amount to your next highest-rate debt.
+              This "snowball effect" accelerates your progress dramatically.
+            </p>
+            <p className="text-gray-700">
+              In NOVO, mark the debt as paid off so your strategy automatically updates to show the new payment allocation.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-bold text-gray-800 mb-2">How does the snowball effect work?</h4>
+            <p className="text-gray-700 mb-2">
+              Every time you eliminate a debt, you free up both the minimum payment and any extra payment you were making.
+              All of that money immediately rolls into the next debt on your list.
+            </p>
+            <p className="text-gray-700">
+              Example: If you're paying $500/month on Debt #1, when it's gone, you now pay $500 extra on Debt #2 on top of its minimum.
+              Your payment power compounds with each victory!
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-bold text-gray-800 mb-2">Can I change my strategy?</h4>
+            <p className="text-gray-700 mb-2">
+              Yes! Life changes, and so can your strategy. Click "Run New Strategy" at the top to:
+            </p>
+            <ul className="text-gray-700 space-y-1 ml-4">
+              <li>• Update your cash flow if income/expenses changed</li>
+              <li>• Switch between standard payoff and HELOC velocity banking</li>
+              <li>• Recalculate after adding or paying off debts</li>
+              <li>• Adjust your extra payment amount</li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 className="font-bold text-gray-800 mb-2">What if I can't make the extra payment this month?</h4>
+            <p className="text-gray-700">
+              Life happens! At minimum, always pay the required minimums on all debts to avoid late fees and credit damage.
+              If you can't make the extra payment one month, just get back on track next month. Progress, not perfection!
+            </p>
+          </div>
+        </div>
+      </Accordion>
+
+      <Accordion
+        title="Debt Payoff Timeline"
+        icon={<Calendar className="w-6 h-6 text-[#27AE60]" />}
+        defaultOpen={false}
+      >
+        <div className="pt-4 space-y-4">
           {result.payoffTimeline.map((item, index) => (
             <div key={item.debtId} className="flex items-center space-x-4">
               <div className="flex-shrink-0 w-12 h-12 bg-[#27AE60] text-white rounded-full flex items-center justify-center font-bold">
@@ -428,37 +624,45 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
             </div>
           ))}
         </div>
-      </div>
+      </Accordion>
 
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">Payoff Projection Chart</h3>
-        <ResponsiveContainer width="100%" height={400}>
-          <AreaChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-            <Tooltip
-              formatter={(value: number) => CalculationService.formatCurrency(value)}
-              labelStyle={{ color: '#000' }}
-            />
-            <Legend />
-            {allDebts.map((debt, index) => (
-              <Area
-                key={debt.id}
-                type="monotone"
-                dataKey={debt.accountName}
-                stackId="1"
-                stroke={colors[index % colors.length]}
-                fill={colors[index % colors.length]}
+      <Accordion
+        title="Payoff Projection Chart"
+        icon={<BarChart3 className="w-6 h-6 text-[#2D9CDB]" />}
+        defaultOpen={false}
+      >
+        <div className="pt-4">
+          <ResponsiveContainer width="100%" height={400}>
+            <AreaChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+              <Tooltip
+                formatter={(value: number) => CalculationService.formatCurrency(value)}
+                labelStyle={{ color: '#000' }}
               />
-            ))}
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
+              <Legend />
+              {allDebts.map((debt, index) => (
+                <Area
+                  key={debt.id}
+                  type="monotone"
+                  dataKey={debt.accountName}
+                  stackId="1"
+                  stroke={colors[index % colors.length]}
+                  fill={colors[index % colors.length]}
+                />
+              ))}
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </Accordion>
 
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">Strategy Details</h3>
-        <div className="space-y-2">
+      <Accordion
+        title="Strategy Details"
+        icon={<DollarSign className="w-6 h-6 text-gray-600" />}
+        defaultOpen={false}
+      >
+        <div className="pt-4 space-y-2">
           <div className="flex justify-between">
             <span className="text-gray-600">Extra Monthly Payment:</span>
             <span className="font-semibold">
@@ -484,7 +688,7 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
             </span>
           </div>
         </div>
-      </div>
+      </Accordion>
     </div>
   );
 }
