@@ -8,6 +8,7 @@ import ChunkingRecommendation from './ChunkingRecommendation';
 import ChunkingScenarioComparison from './ChunkingScenarioComparison';
 import ChunkingPlanCalculator from './ChunkingPlanCalculator';
 import AdvancedVelocityBanking from './AdvancedVelocityBanking';
+import ChunkingRiskAssessment from './ChunkingRiskAssessment';
 import type { Debt } from '../types';
 
 interface HELOCTransaction {
@@ -290,6 +291,7 @@ export function HELOCTracker() {
                         monthlyBills={financialProfile.monthlyEssentialExpenses + financialProfile.monthlyDiscretionaryExpenses}
                         helocRate={interestRate}
                       />
+                      <ChunkingRiskAssessment />
                     </>
                   );
                 }

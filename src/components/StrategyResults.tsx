@@ -5,6 +5,7 @@ import ChunkingRecommendation from './ChunkingRecommendation';
 import ChunkingScenarioComparison from './ChunkingScenarioComparison';
 import ChunkingPlanCalculator from './ChunkingPlanCalculator';
 import AdvancedVelocityBanking from './AdvancedVelocityBanking';
+import ChunkingRiskAssessment from './ChunkingRiskAssessment';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import type { StrategyResult } from '../types';
 
@@ -397,6 +398,7 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
                     monthlyBills={financialProfile.monthlyEssentialExpenses + financialProfile.monthlyDiscretionaryExpenses}
                     helocRate={helocRate}
                   />
+                  <ChunkingRiskAssessment />
                 </>
               );
             }
