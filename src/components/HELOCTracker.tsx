@@ -5,6 +5,7 @@ import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import { CheckingTracker } from './CheckingTracker';
 import ChunkingRecommendation from './ChunkingRecommendation';
+import ChunkingScenarioComparison from './ChunkingScenarioComparison';
 import type { Debt } from '../types';
 
 interface HELOCTransaction {
@@ -243,17 +244,42 @@ export function HELOCTracker() {
           </div>
 
           {financialProfile && (
-            <ChunkingRecommendation
-              monthlyCashFlow={
-                financialProfile.monthlyNetIncome -
-                financialProfile.monthlyEssentialExpenses -
-                financialProfile.monthlyDiscretionaryExpenses -
-                totalMinimumPayments
-              }
-              currentHELOCBalance={currentBalance}
-              helocLimit={helocLimit}
-              helocRate={interestRate}
-            />
+            <>
+              <ChunkingRecommendation
+                monthlyCashFlow={
+                  financialProfile.monthlyNetIncome -
+                  financialProfile.monthlyEssentialExpenses -
+                  financialProfile.monthlyDiscretionaryExpenses -
+                  totalMinimumPayments
+                }
+                currentHELOCBalance={currentBalance}
+                helocLimit={helocLimit}
+                helocRate={interestRate}
+              />
+
+              {(() => {
+                const mortgageDebt = debts.find(d => d.category === 'Mortgage');
+                const cashFlow = financialProfile.monthlyNetIncome -
+                  financialProfile.monthlyEssentialExpenses -
+                  financialProfile.monthlyDiscretionaryExpenses -
+                  totalMinimumPayments;
+
+                const recommendedChunkSize = Math.floor((cashFlow * 2.5) / 1000) * 1000;
+
+                if (mortgageDebt && recommendedChunkSize >= 5000) {
+                  return (
+                    <ChunkingScenarioComparison
+                      chunkAmount={recommendedChunkSize}
+                      mortgageBalance={mortgageDebt.currentBalance}
+                      mortgageRate={mortgageDebt.interestRate}
+                      helocRate={interestRate}
+                      monthlyCashFlow={cashFlow}
+                    />
+                  );
+                }
+                return null;
+              })()}
+            </>
           )}
 
           <TransactionLedger

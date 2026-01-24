@@ -2,6 +2,7 @@ import { RefreshCw, TrendingDown, Calendar, DollarSign } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import ChunkingRecommendation from './ChunkingRecommendation';
+import ChunkingScenarioComparison from './ChunkingScenarioComparison';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import type { StrategyResult } from '../types';
 
@@ -350,17 +351,42 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
       </div>
 
       {result.strategy.type === 'heloc-velocity' && financialProfile && homeEquity && (
-        <ChunkingRecommendation
-          monthlyCashFlow={
-            financialProfile.monthlyNetIncome -
-            financialProfile.monthlyEssentialExpenses -
-            financialProfile.monthlyDiscretionaryExpenses -
-            allDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
-          }
-          currentHELOCBalance={helocBalance}
-          helocLimit={homeEquity.helocLimit || 0}
-          helocRate={helocRate}
-        />
+        <>
+          <ChunkingRecommendation
+            monthlyCashFlow={
+              financialProfile.monthlyNetIncome -
+              financialProfile.monthlyEssentialExpenses -
+              financialProfile.monthlyDiscretionaryExpenses -
+              allDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
+            }
+            currentHELOCBalance={helocBalance}
+            helocLimit={homeEquity.helocLimit || 0}
+            helocRate={helocRate}
+          />
+
+          {(() => {
+            const mortgageDebt = allDebts.find(d => d.category === 'Mortgage');
+            const cashFlow = financialProfile.monthlyNetIncome -
+              financialProfile.monthlyEssentialExpenses -
+              financialProfile.monthlyDiscretionaryExpenses -
+              allDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
+
+            const recommendedChunkSize = Math.floor((cashFlow * 2.5) / 1000) * 1000;
+
+            if (mortgageDebt && recommendedChunkSize >= 5000) {
+              return (
+                <ChunkingScenarioComparison
+                  chunkAmount={recommendedChunkSize}
+                  mortgageBalance={mortgageDebt.currentBalance}
+                  mortgageRate={mortgageDebt.interestRate}
+                  helocRate={helocRate}
+                  monthlyCashFlow={cashFlow}
+                />
+              );
+            }
+            return null;
+          })()}
+        </>
       )}
 
       <div className="bg-white rounded-lg shadow-md p-6">
