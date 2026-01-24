@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trash2, Download, AlertTriangle, CheckCircle, User, DollarSign } from 'lucide-react';
+import { Trash2, Download, AlertTriangle, CheckCircle, User, DollarSign, RefreshCw } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import type { FinancialProfile } from '../types';
 
@@ -14,6 +14,8 @@ export default function Settings({ onDataUpdate }: SettingsProps) {
   const [userName, setUserName] = useState(localStorage.getItem('userName') || '');
   const [showProfileSuccess, setShowProfileSuccess] = useState(false);
   const [showFinancialSuccess, setShowFinancialSuccess] = useState(false);
+  const [quizStatus, setQuizStatus] = useState<'passed' | 'failed' | 'not-taken'>('not-taken');
+  const [showQuizResetSuccess, setShowQuizResetSuccess] = useState(false);
   const [financialProfile, setFinancialProfile] = useState<FinancialProfile>({
     monthlyGrossIncome: 0,
     monthlyNetIncome: 0,
@@ -25,6 +27,16 @@ export default function Settings({ onDataUpdate }: SettingsProps) {
     const profile = StorageService.getFinancialProfile();
     if (profile) {
       setFinancialProfile(profile);
+    }
+
+    // Load quiz status
+    const stored = localStorage.getItem('chunkingQuizPassed');
+    if (stored === 'true') {
+      setQuizStatus('passed');
+    } else if (stored === 'false') {
+      setQuizStatus('failed');
+    } else {
+      setQuizStatus('not-taken');
     }
   }, []);
 
@@ -116,12 +128,21 @@ export default function Settings({ onDataUpdate }: SettingsProps) {
     localStorage.removeItem('userName');
     localStorage.removeItem('lastVisit');
     localStorage.removeItem('userAddress');
+    localStorage.removeItem('chunkingQuizPassed');
     setShowDeleteConfirm(false);
     setShowSuccess(true);
+    setQuizStatus('not-taken');
 
     setTimeout(() => {
       window.location.href = '/';
     }, 2000);
+  };
+
+  const handleResetQuiz = () => {
+    localStorage.removeItem('chunkingQuizPassed');
+    setQuizStatus('not-taken');
+    setShowQuizResetSuccess(true);
+    setTimeout(() => setShowQuizResetSuccess(false), 3000);
   };
 
   if (showSuccess) {
@@ -332,6 +353,56 @@ export default function Settings({ onDataUpdate }: SettingsProps) {
             <Download className="w-5 h-5" />
           </button>
         </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h3 className="text-xl font-bold text-gray-800 mb-4">HELOC Chunking Readiness</h3>
+        <p className="text-gray-600 mb-6">
+          Manage your HELOC velocity banking readiness assessment status.
+        </p>
+
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-gray-800 mb-1">Quiz Status:</p>
+              <p className="text-sm text-gray-600">
+                {quizStatus === 'passed' && (
+                  <span className="text-green-600 font-medium">✅ Passed - You're ready for HELOC chunking</span>
+                )}
+                {quizStatus === 'failed' && (
+                  <span className="text-amber-600 font-medium">⚠️ Not recommended - Build financial foundation first</span>
+                )}
+                {quizStatus === 'not-taken' && (
+                  <span className="text-gray-500 font-medium">📋 Not yet taken</span>
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {showQuizResetSuccess && (
+          <div className="mb-4 bg-green-50 border border-green-300 rounded-lg p-4 flex items-center space-x-2">
+            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+            <p className="text-green-800 font-medium">Quiz status reset successfully!</p>
+          </div>
+        )}
+
+        {quizStatus !== 'not-taken' && (
+          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r mb-4">
+            <p className="text-blue-800 text-sm">
+              <strong>Note:</strong> You can retake the assessment anytime from the Strategy Wizard when selecting HELOC velocity banking, or reset it here to start fresh.
+            </p>
+          </div>
+        )}
+
+        <button
+          onClick={handleResetQuiz}
+          disabled={quizStatus === 'not-taken'}
+          className="w-full flex items-center justify-center space-x-2 bg-[#2D9CDB] hover:bg-[#1E8BBD] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+        >
+          <RefreshCw className="w-5 h-5" />
+          <span>Reset Quiz Status</span>
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow-md border-2 border-red-200 p-6">

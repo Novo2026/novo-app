@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, Calculator, AlertTriangle } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
+import ChunkingReadinessQuiz from './ChunkingReadinessQuiz';
 import type { FinancialProfile, HomeEquity, StrategyResult } from '../types';
 
 interface StrategyWizardProps {
@@ -12,6 +13,8 @@ interface StrategyWizardProps {
 export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardProps) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [quizPassed, setQuizPassed] = useState<boolean | null>(null);
 
   const existingProfile = StorageService.getFinancialProfile();
   const [profile, setProfile] = useState<FinancialProfile>(
@@ -38,6 +41,32 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
 
   const [extraPayment, setExtraPayment] = useState('');
   const [selectedStrategy, setSelectedStrategy] = useState<'extra-payment' | 'heloc-velocity' | null>(null);
+
+  // Load quiz result from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('chunkingQuizPassed');
+    if (stored !== null) {
+      setQuizPassed(stored === 'true');
+    }
+  }, []);
+
+  const handleQuizComplete = (passed: boolean) => {
+    setQuizPassed(passed);
+    localStorage.setItem('chunkingQuizPassed', passed.toString());
+    setShowQuiz(false);
+
+    if (passed) {
+      setSelectedStrategy('heloc-velocity');
+    }
+  };
+
+  const handleHELOCStrategyClick = () => {
+    if (quizPassed === true) {
+      setSelectedStrategy('heloc-velocity');
+    } else {
+      setShowQuiz(true);
+    }
+  };
 
   const debts = StorageService.getDebts().filter(d => !d.isPaidOff);
   const totalMinimumPayments = debts.reduce((sum, d) => sum + d.minimumPayment, 0);
@@ -630,12 +659,26 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                 className={`bg-gradient-to-br from-[#27AE60] to-[#1E8449] text-white rounded-lg p-6 border-4 transition-all cursor-pointer ${
                   selectedStrategy === 'heloc-velocity' ? 'border-[#F2C94C] shadow-lg' : 'border-transparent'
                 }`}
-                onClick={() => setSelectedStrategy('heloc-velocity')}
+                onClick={handleHELOCStrategyClick}
               >
-                <h4 className="font-bold text-lg mb-3">HELOC Velocity Banking</h4>
+                <h4 className="font-bold text-lg mb-3">
+                  HELOC Velocity Banking
+                  {quizPassed === null && (
+                    <span className="ml-2 text-xs bg-white/20 px-2 py-1 rounded">Requires Readiness Quiz</span>
+                  )}
+                </h4>
                 <p className="text-sm mb-4 opacity-90">
                   Use your Home Equity Line of Credit to pay off high-interest debts in chunks, then pay down the HELOC with all available cash flow. Repeat until debt-free.
                 </p>
+
+                {quizPassed === null && (
+                  <div className="bg-blue-500 border-2 border-blue-300 rounded-lg p-3 mb-4 text-white text-sm">
+                    <p className="font-semibold mb-1">📋 First Time Using HELOC Velocity Banking?</p>
+                    <p className="text-xs opacity-90">
+                      Complete a quick 5-question readiness assessment to ensure you're financially prepared. Click this card to begin.
+                    </p>
+                  </div>
+                )}
 
                 <div className="bg-white/10 rounded-lg p-4 space-y-3 mb-4">
                   <div className="flex justify-between text-sm">
@@ -761,17 +804,36 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                 </div>
 
                 {selectedStrategy === 'heloc-velocity' && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCalculate();
-                    }}
-                    disabled={loading}
-                    className="w-full bg-[#F2C94C] hover:bg-[#F0B429] disabled:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-lg transition-colors inline-flex items-center justify-center space-x-2"
-                  >
-                    <Calculator className="w-5 h-5" />
-                    <span>{loading ? 'Calculating...' : 'Calculate Results'}</span>
-                  </button>
+                  <>
+                    {quizPassed && (
+                      <div className="bg-white/20 rounded-lg p-3 mb-3 text-sm">
+                        <p className="font-semibold mb-1">✅ Chunking Readiness: Passed</p>
+                        <p className="text-xs opacity-90">
+                          You've completed the readiness assessment.{' '}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowQuiz(true);
+                            }}
+                            className="underline hover:opacity-80"
+                          >
+                            Retake quiz
+                          </button>
+                        </p>
+                      </div>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCalculate();
+                      }}
+                      disabled={loading}
+                      className="w-full bg-[#F2C94C] hover:bg-[#F0B429] disabled:bg-gray-400 text-gray-800 font-bold py-3 px-6 rounded-lg transition-colors inline-flex items-center justify-center space-x-2"
+                    >
+                      <Calculator className="w-5 h-5" />
+                      <span>{loading ? 'Calculating...' : 'Calculate Results'}</span>
+                    </button>
+                  </>
                 )}
               </div>
             </>
@@ -792,6 +854,13 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
             )}
           </div>
         </div>
+      )}
+
+      {showQuiz && (
+        <ChunkingReadinessQuiz
+          onComplete={handleQuizComplete}
+          onClose={() => setShowQuiz(false)}
+        />
       )}
     </div>
   );
