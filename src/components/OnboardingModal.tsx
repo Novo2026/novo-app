@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, DollarSign, CreditCard, CheckCircle, ChevronLeft, Plus, X, Info } from 'lucide-react';
+import { DollarSign, CreditCard, CheckCircle, ChevronLeft, Plus, X, Info } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
 
 interface DebtInput {
@@ -190,8 +190,12 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const renderStep1 = () => (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full mb-4">
-          <Sparkles className="w-8 h-8 text-white" />
+        <div className="flex justify-center mb-4">
+          <img
+            src="/NOVO_Primary.png"
+            alt="NOVO Logo"
+            className="w-32 h-auto"
+          />
         </div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to NOVO!</h1>
         <p className="text-lg text-gray-600">Let's start your debt freedom journey. What should I call you?</p>
