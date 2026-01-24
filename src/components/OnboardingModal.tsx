@@ -192,9 +192,10 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       <div className="text-center mb-6">
         <div className="flex justify-center mb-4">
           <img
-            src="/NOVO_Primary.png"
+            src="/novo_primary.png"
             alt="NOVO Logo"
-            className="w-32 h-auto"
+            className="h-auto"
+            style={{ width: '120px' }}
           />
         </div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to NOVO!</h1>
