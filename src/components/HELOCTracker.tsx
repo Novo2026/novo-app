@@ -7,6 +7,7 @@ import { CheckingTracker } from './CheckingTracker';
 import ChunkingRecommendation from './ChunkingRecommendation';
 import ChunkingScenarioComparison from './ChunkingScenarioComparison';
 import ChunkingPlanCalculator from './ChunkingPlanCalculator';
+import AdvancedVelocityBanking from './AdvancedVelocityBanking';
 import type { Debt } from '../types';
 
 interface HELOCTransaction {
@@ -282,6 +283,12 @@ export function HELOCTracker() {
                         monthlyCashFlow={cashFlow}
                         helocRate={interestRate}
                         currentHELOCBalance={currentBalance}
+                      />
+                      <AdvancedVelocityBanking
+                        chunkAmount={recommendedChunkSize}
+                        biweeklyPaycheck={financialProfile.monthlyNetIncome / 2}
+                        monthlyBills={financialProfile.monthlyEssentialExpenses + financialProfile.monthlyDiscretionaryExpenses}
+                        helocRate={interestRate}
                       />
                     </>
                   );
