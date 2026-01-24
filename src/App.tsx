@@ -39,6 +39,8 @@ function App() {
       return parseFloat(num) || 0;
     };
 
+    StorageService.clearAllData();
+
     localStorage.setItem('userName', data.userName);
     localStorage.setItem('lastVisit', new Date().toISOString());
 
