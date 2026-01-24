@@ -10,7 +10,9 @@ interface StrategyResultsProps {
 }
 
 export default function StrategyResults({ result, onRunNew }: StrategyResultsProps) {
-  const debts = StorageService.getDebts().filter(d => !d.isPaidOff);
+  const allStoredDebts = StorageService.getDebts();
+  const debts = allStoredDebts.filter(d => !d.isPaidOff);
+  const paidOffDebts = allStoredDebts.filter(d => d.isPaidOff);
 
   // Get HELOC balance to display if exists
   const helocTransactions = JSON.parse(localStorage.getItem('novo_heloc_transactions') || '[]');
@@ -153,17 +155,39 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
           <div className="bg-gradient-to-r from-[#2D9CDB]/10 to-[#27AE60]/10 rounded-lg p-5 border-l-4 border-[#2D9CDB]">
             <div className="flex items-center space-x-2 mb-3">
               <DollarSign className="w-6 h-6 text-[#2D9CDB]" />
-              <h4 className="font-bold text-gray-800 text-lg">Your Total Monthly Payment</h4>
+              <h4 className="font-bold text-gray-800 text-lg">Your Monthly Cash Flow</h4>
             </div>
             <p className="text-3xl font-bold text-gray-800 mb-2">
-              {CalculationService.formatCurrency(
-                allDebts.reduce((sum, d) => sum + d.minimumPayment, 0) + (result.strategy.extraMonthlyPayment || 0)
+              {CalculationService.formatCurrency(result.strategy.extraMonthlyPayment || 0)}
+            </p>
+            <div className="mt-3 space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Base cash flow:</span>
+                <span className="font-semibold text-gray-700">
+                  {CalculationService.formatCurrency(
+                    (result.strategy.extraMonthlyPayment || 0) -
+                    paidOffDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
+                  )}
+                </span>
+              </div>
+              {paidOffDebts.length > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Freed from paid-off debts:</span>
+                  <span className="font-semibold text-[#27AE60]">
+                    +{CalculationService.formatCurrency(
+                      paidOffDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
+                    )}
+                  </span>
+                </div>
               )}
-            </p>
-            <p className="text-sm text-gray-600">
-              (Minimums: {CalculationService.formatCurrency(allDebts.reduce((sum, d) => sum + d.minimumPayment, 0))} +
-              Extra: {CalculationService.formatCurrency(result.strategy.extraMonthlyPayment || 0)})
-            </p>
+              <div className="pt-2 mt-2 border-t border-gray-300">
+                <p className="text-gray-600">
+                  Total monthly payment: {CalculationService.formatCurrency(
+                    allDebts.reduce((sum, d) => sum + d.minimumPayment, 0) + (result.strategy.extraMonthlyPayment || 0)
+                  )}
+                </p>
+              </div>
+            </div>
           </div>
 
           <div>

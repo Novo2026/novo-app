@@ -33,6 +33,7 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
     isPaidOff: boolean;
     freedPayment: number;
     totalDebtEliminated: number;
+    previousCashFlow?: number;
   } | null>(null);
 
   const debts = StorageService.getDebts().filter(d => !d.isPaidOff && d.category !== 'HELOC');
@@ -125,6 +126,19 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
     const progress = (paidOff / debt.startingBalance) * 100;
     const isPaidOff = calculation.newBalance === 0;
 
+    let previousCashFlow: number | undefined;
+    if (isPaidOff) {
+      const profile = StorageService.getFinancialProfile();
+      if (profile) {
+        const allDebts = StorageService.getDebts();
+        const activeDebts = allDebts.filter(d => !d.isPaidOff && d.id !== selectedDebtId);
+        previousCashFlow = profile.monthlyNetIncome -
+          profile.monthlyEssentialExpenses -
+          profile.monthlyDiscretionaryExpenses -
+          activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
+      }
+    }
+
     setCalculationResult({
       debtName: debt.accountName,
       previousBalance: debt.currentBalance,
@@ -136,14 +150,15 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
       isPaidOff,
       freedPayment: debt.minimumPayment,
       totalDebtEliminated: debt.startingBalance,
+      previousCashFlow,
     });
 
     if (isPaidOff) {
       const milestone: Milestone = {
         id: `milestone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type: 'debt_payoff',
-        title: `Paid off ${debt.accountName}`,
-        description: `Successfully eliminated ${CalculationService.formatCurrency(debt.startingBalance)} in debt`,
+        title: `Paid off ${debt.accountName} - freed ${CalculationService.formatCurrency(debt.minimumPayment)}/month`,
+        description: `Successfully eliminated ${CalculationService.formatCurrency(debt.startingBalance)} in debt. Your ${CalculationService.formatCurrency(debt.minimumPayment)} monthly payment is now freed up for other debts or savings!`,
         date: paymentDate,
         debtId: selectedDebtId,
         debtName: debt.accountName,
@@ -190,6 +205,7 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
         debtName={calculationResult.debtName}
         debtAmount={calculationResult.totalDebtEliminated}
         freedPayment={calculationResult.freedPayment}
+        previousCashFlow={calculationResult.previousCashFlow}
         onViewPlan={handleClose}
       />
     );

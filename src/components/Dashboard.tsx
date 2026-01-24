@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, Edit2, Pencil, Trash2 } from 'lucide-react';
+import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, Edit2, Pencil, Trash2, TrendingUp } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import LogPaymentModal from './LogPaymentModal';
@@ -26,6 +26,7 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
   const transactions = StorageService.getTransactions();
   const strategyResult = StorageService.getStrategyResult();
   const savingsAccounts = StorageService.getSavingsAccounts();
+  const financialProfile = StorageService.getFinancialProfile();
 
   const metrics = CalculationService.calculateTotalDebtMetrics(debts, transactions);
   const savingsMetrics = CalculationService.calculateSavingsMetrics(savingsAccounts);
@@ -203,6 +204,45 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
           <span className="text-lg">Log Payment</span>
         </button>
       </div>
+
+      {financialProfile && (
+        <div className="bg-gradient-to-br from-[#2D9CDB] to-[#1E8BBD] text-white rounded-xl shadow-lg p-6">
+          <div className="flex items-center space-x-3 mb-4">
+            <TrendingUp className="w-8 h-8" />
+            <h3 className="text-xl font-bold">Monthly Cash Flow</h3>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm opacity-90 mb-1">Available Cash Flow</p>
+              <p className="text-3xl font-bold">
+                {CalculationService.formatCurrency(
+                  financialProfile.monthlyNetIncome -
+                  financialProfile.monthlyEssentialExpenses -
+                  financialProfile.monthlyDiscretionaryExpenses -
+                  metrics.activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
+                )}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm opacity-90 mb-1">Freed from Paid-Off Debts</p>
+              <p className="text-3xl font-bold text-[#27AE60]">
+                {CalculationService.formatCurrency(
+                  metrics.paidOffDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
+                )}
+              </p>
+            </div>
+          </div>
+          {metrics.paidOffDebts.length > 0 && (
+            <div className="mt-4 bg-white/10 rounded-lg p-3">
+              <p className="text-sm">
+                <span className="font-semibold">{CalculationService.formatCurrency(
+                  metrics.paidOffDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
+                )}</span> in monthly payments freed by paying off {metrics.paidOffDebts.length} debt{metrics.paidOffDebts.length !== 1 ? 's' : ''}!
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {savingsAccounts.length > 0 && (
         <div className="bg-gradient-to-br from-[#27AE60] to-[#229954] text-white rounded-xl shadow-lg p-6">

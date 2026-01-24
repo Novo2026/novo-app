@@ -5,6 +5,7 @@ interface CelebrationModalProps {
   debtName: string;
   debtAmount: number;
   freedPayment: number;
+  previousCashFlow?: number;
   onViewPlan: () => void;
 }
 
@@ -12,6 +13,7 @@ export default function CelebrationModal({
   debtName,
   debtAmount,
   freedPayment,
+  previousCashFlow,
   onViewPlan,
 }: CelebrationModalProps) {
   return (
@@ -47,6 +49,26 @@ export default function CelebrationModal({
                 </p>
               </div>
             </div>
+
+            {previousCashFlow !== undefined && (
+              <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-4 border-2 border-blue-200">
+                <p className="text-sm text-gray-700 font-semibold text-center mb-3">Cash Flow Impact</p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Previous cash flow:</span>
+                    <span className="font-semibold text-gray-800">{CalculationService.formatCurrency(previousCashFlow)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Freed payment:</span>
+                    <span className="font-semibold text-[#27AE60]">+{CalculationService.formatCurrency(freedPayment)}</span>
+                  </div>
+                  <div className="pt-2 border-t-2 border-blue-200 flex justify-between">
+                    <span className="text-gray-700 font-bold">New cash flow:</span>
+                    <span className="font-bold text-[#2D9CDB] text-lg">{CalculationService.formatCurrency(previousCashFlow + freedPayment)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="bg-gradient-to-r from-[#2D9CDB]/10 to-[#27AE60]/10 rounded-lg p-4 text-center">
               <p className="text-sm text-gray-700 font-semibold">
