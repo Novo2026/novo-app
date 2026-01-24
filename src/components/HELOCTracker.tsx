@@ -54,6 +54,8 @@ export function HELOCTracker() {
   const availableCredit = helocLimit - currentBalance;
   const interestRate = homeEquity.hasHELOC && homeEquity.helocRate ? homeEquity.helocRate : 8.5;
   const monthlyInterest = currentBalance * (interestRate / 12 / 100);
+  const dailyInterest = (currentBalance * interestRate / 100) / 365;
+  const monthlyProjection = dailyInterest * 30;
 
   const recentPayments = transactions
     .filter(t => t.type === 'payment')
@@ -178,6 +180,29 @@ export function HELOCTracker() {
                 />
               </div>
             </div>
+
+            {currentBalance > 0 && (
+              <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 border border-orange-300/30 rounded-lg p-4 mb-4">
+                <h3 className="text-lg font-bold mb-3 flex items-center">
+                  <span className="text-orange-200">Daily Interest Accrual</span>
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-white/90">Today's interest charge:</span>
+                    <span className="text-xl font-bold text-orange-200">{CalculationService.formatCurrency(dailyInterest)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-white/80">Monthly projection (if balance stays constant):</span>
+                    <span className="text-lg font-semibold text-white">{CalculationService.formatCurrency(monthlyProjection)}</span>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-white/20">
+                  <p className="text-xs text-white/80 leading-relaxed">
+                    💡 Every dollar you pay down today stops accruing interest immediately. The faster you pay down your HELOC, the more you save.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-3">
               <button
