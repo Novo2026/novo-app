@@ -176,7 +176,32 @@ export const CalculationService = {
     extraMonthlyPayment: number,
     maxMonths: number = 600
   ): StrategyResult {
-    const sortedDebts = [...debts]
+    // Get HELOC balance from localStorage
+    const helocTransactions = JSON.parse(localStorage.getItem('novo_heloc_transactions') || '[]');
+    const homeEquity = JSON.parse(localStorage.getItem('novo_home_equity') || '{}');
+    const helocBalance = helocTransactions.length > 0
+      ? helocTransactions[helocTransactions.length - 1].balance
+      : (homeEquity.hasHELOC && homeEquity.helocBalance !== undefined ? homeEquity.helocBalance : 0);
+    const helocRate = homeEquity.hasHELOC && homeEquity.helocRate ? homeEquity.helocRate : 0;
+
+    // Create virtual HELOC debt if balance exists
+    const helocDebt: Debt | null = helocBalance > 0 && helocRate > 0 ? {
+      id: 'HELOC_VIRTUAL',
+      accountName: 'HELOC',
+      category: 'HELOC',
+      startingBalance: helocBalance,
+      currentBalance: helocBalance,
+      interestRate: helocRate,
+      minimumPayment: 0,
+      isPaidOff: false,
+      createdAt: new Date().toISOString(),
+      isAmortized: false,
+    } : null;
+
+    // Include HELOC in debts if it has a balance
+    const allDebts = helocDebt ? [...debts, helocDebt] : debts;
+
+    const sortedDebts = [...allDebts]
       .filter(d => !d.isPaidOff)
       .sort((a, b) => b.interestRate - a.interestRate);
 
@@ -189,6 +214,7 @@ export const CalculationService = {
       paidOff: false,
       payoffMonth: 0,
       debt: d,
+      isHELOC: d.id === 'HELOC_VIRTUAL',
     }));
 
     const monthlyProjections: StrategyResult['monthlyProjections'] = [];

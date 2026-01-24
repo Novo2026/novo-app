@@ -11,6 +11,31 @@ interface StrategyResultsProps {
 
 export default function StrategyResults({ result, onRunNew }: StrategyResultsProps) {
   const debts = StorageService.getDebts().filter(d => !d.isPaidOff);
+
+  // Get HELOC balance to display if exists
+  const helocTransactions = JSON.parse(localStorage.getItem('novo_heloc_transactions') || '[]');
+  const homeEquity = JSON.parse(localStorage.getItem('novo_home_equity') || '{}');
+  const helocBalance = helocTransactions.length > 0
+    ? helocTransactions[helocTransactions.length - 1].balance
+    : (homeEquity.hasHELOC && homeEquity.helocBalance !== undefined ? homeEquity.helocBalance : 0);
+  const helocRate = homeEquity.hasHELOC && homeEquity.helocRate ? homeEquity.helocRate : 0;
+
+  // Create virtual HELOC debt for display purposes
+  const helocDebt = helocBalance > 0 && helocRate > 0 ? {
+    id: 'HELOC_VIRTUAL',
+    accountName: 'HELOC',
+    category: 'HELOC' as const,
+    startingBalance: helocBalance,
+    currentBalance: helocBalance,
+    interestRate: helocRate,
+    minimumPayment: 0,
+    isPaidOff: false,
+    createdAt: new Date().toISOString(),
+  } : null;
+
+  // Include HELOC in debt list for display
+  const allDebts = helocDebt ? [...debts, helocDebt] : debts;
+
   const minimumOnly = CalculationService.projectMinimumPaymentsOnly(debts);
 
   const chartData = result.monthlyProjections
@@ -22,7 +47,7 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
       };
 
       proj.debts.forEach(d => {
-        const debt = debts.find(debt => debt.id === d.debtId);
+        const debt = allDebts.find(debt => debt.id === d.debtId);
         if (debt) {
           dataPoint[debt.accountName] = d.balance;
         }
@@ -132,11 +157,11 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
             </div>
             <p className="text-3xl font-bold text-gray-800 mb-2">
               {CalculationService.formatCurrency(
-                debts.reduce((sum, d) => sum + d.minimumPayment, 0) + (result.strategy.extraMonthlyPayment || 0)
+                allDebts.reduce((sum, d) => sum + d.minimumPayment, 0) + (result.strategy.extraMonthlyPayment || 0)
               )}
             </p>
             <p className="text-sm text-gray-600">
-              (Minimums: {CalculationService.formatCurrency(debts.reduce((sum, d) => sum + d.minimumPayment, 0))} +
+              (Minimums: {CalculationService.formatCurrency(allDebts.reduce((sum, d) => sum + d.minimumPayment, 0))} +
               Extra: {CalculationService.formatCurrency(result.strategy.extraMonthlyPayment || 0)})
             </p>
           </div>
@@ -144,11 +169,12 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
           <div>
             <h4 className="font-semibold text-gray-800 mb-3">Payment Breakdown This Month:</h4>
             <div className="space-y-2">
-              {debts
+              {allDebts
                 .sort((a, b) => b.interestRate - a.interestRate)
                 .map((debt, index) => {
                   const isTargetDebt = index === 0;
                   const paymentAmount = debt.minimumPayment + (isTargetDebt ? (result.strategy.extraMonthlyPayment || 0) : 0);
+                  const isHELOC = debt.id === 'HELOC_VIRTUAL';
 
                   return (
                     <div
@@ -161,9 +187,19 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
                         <span className="font-medium text-gray-800">{debt.accountName}:</span>
                         {isTargetDebt ? (
                           <span className="ml-2 text-gray-700">
-                            {CalculationService.formatCurrency(debt.minimumPayment)} +
-                            {CalculationService.formatCurrency(result.strategy.extraMonthlyPayment || 0)} =
-                            <span className="font-bold text-[#27AE60]"> {CalculationService.formatCurrency(paymentAmount)}</span>
+                            {isHELOC ? (
+                              <>
+                                {CalculationService.formatCurrency(0)} (no minimum) +{' '}
+                                {CalculationService.formatCurrency(result.strategy.extraMonthlyPayment || 0)} ={' '}
+                                <span className="font-bold text-[#27AE60]">{CalculationService.formatCurrency(paymentAmount)}</span>
+                              </>
+                            ) : (
+                              <>
+                                {CalculationService.formatCurrency(debt.minimumPayment)} +{' '}
+                                {CalculationService.formatCurrency(result.strategy.extraMonthlyPayment || 0)} ={' '}
+                                <span className="font-bold text-[#27AE60]">{CalculationService.formatCurrency(paymentAmount)}</span>
+                              </>
+                            )}
                           </span>
                         ) : (
                           <span className="ml-2 text-gray-700">
@@ -180,6 +216,14 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
                   );
                 })}
             </div>
+            {helocDebt && allDebts[0].id === 'HELOC_VIRTUAL' && (
+              <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-gray-700">
+                  <span className="font-semibold">Pay down your HELOC balance first</span> - it has the highest interest rate at {helocRate.toFixed(2)}%.
+                  Once HELOC reaches $0, extra payments will automatically move to your next highest-rate debt.
+                </p>
+              </div>
+            )}
           </div>
 
           <div>
@@ -189,8 +233,9 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
             </p>
             <div className="space-y-2">
               {result.payoffTimeline.map((item, index) => {
-                const debt = debts.find(d => d.id === item.debtId);
+                const debt = allDebts.find(d => d.id === item.debtId);
                 const startMonth = index === 0 ? 1 : result.payoffTimeline[index - 1].payoffMonth + 1;
+                const isHELOC = item.debtId === 'HELOC_VIRTUAL';
 
                 return (
                   <div key={item.debtId} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
@@ -207,6 +252,11 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
                       {debt && (
                         <span className="ml-2 text-sm text-gray-600">
                           ({debt.interestRate.toFixed(2)}% interest)
+                        </span>
+                      )}
+                      {isHELOC && index === 0 && (
+                        <span className="ml-2 text-sm font-semibold text-blue-600">
+                          ← Pay HELOC balance of {CalculationService.formatCurrency(helocBalance)} first
                         </span>
                       )}
                     </div>
@@ -231,6 +281,11 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
                 </span>
                 <span>
                   Add the extra {CalculationService.formatCurrency(result.strategy.extraMonthlyPayment || 0)} to the debt with highest interest
+                  {helocDebt && allDebts[0].id === 'HELOC_VIRTUAL' && (
+                    <span className="block mt-1 text-blue-600 font-semibold">
+                      (Start with HELOC - eliminate your {CalculationService.formatCurrency(helocBalance)} balance first)
+                    </span>
+                  )}
                 </span>
               </li>
               <li className="flex items-start space-x-3">
@@ -288,7 +343,7 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
               labelStyle={{ color: '#000' }}
             />
             <Legend />
-            {debts.map((debt, index) => (
+            {allDebts.map((debt, index) => (
               <Area
                 key={debt.id}
                 type="monotone"
@@ -315,13 +370,13 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
             <span className="text-gray-600">Starting Debt:</span>
             <span className="font-semibold">
               {CalculationService.formatCurrency(
-                debts.reduce((sum, d) => sum + d.currentBalance, 0)
+                allDebts.reduce((sum, d) => sum + d.currentBalance, 0)
               )}
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Number of Debts:</span>
-            <span className="font-semibold">{debts.length}</span>
+            <span className="font-semibold">{allDebts.length}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Strategy Calculated:</span>
