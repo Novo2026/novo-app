@@ -1,4 +1,4 @@
-import { RefreshCw, TrendingDown, Calendar, DollarSign, Zap, BookOpen, HelpCircle, BarChart3, Target, AlertTriangle } from 'lucide-react';
+import { RefreshCw, TrendingDown, Calendar, DollarSign, BarChart3 } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import Accordion from './Accordion';
@@ -361,8 +361,8 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
       {result.strategy.type === 'heloc-velocity' && financialProfile && homeEquity && (
         <div className="space-y-4">
           <Accordion
+            emoji="📊"
             title="HELOC Velocity Banking Overview"
-            icon={<Zap className="w-6 h-6 text-[#2D9CDB]" />}
             defaultOpen={false}
           >
             <div className="pt-4">
@@ -380,14 +380,14 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
             </div>
           </Accordion>
 
-          {hasRateArbitrageWarnings && (
-            <Accordion
-              title="HELOC Strategy Guidance"
-              icon={<AlertTriangle className="w-6 h-6 text-amber-500" />}
-              defaultOpen={true}
-              badge="IMPORTANT"
-            >
-              <div className="pt-4">
+          <Accordion
+            emoji="⚠️"
+            title="HELOC Strategy Guidance & Warnings"
+            defaultOpen={hasRateArbitrageWarnings}
+            badge={hasRateArbitrageWarnings ? "IMPORTANT" : undefined}
+          >
+            <div className="pt-4">
+              {hasRateArbitrageWarnings && (
                 <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r mb-4">
                   <h4 className="font-bold text-amber-900 mb-2">Rate Arbitrage Warning</h4>
                   <p className="text-amber-800 mb-3">
@@ -410,27 +410,35 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
                       ))}
                   </div>
                 </div>
-                <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r">
-                  <h4 className="font-bold text-green-900 mb-2">Safe to Use HELOC For:</h4>
-                  <div className="space-y-2">
-                    {allDebts
-                      .filter(d => d.interestRate >= helocRate && d.id !== 'HELOC_VIRTUAL')
-                      .map(debt => (
-                        <div key={debt.id} className="bg-white rounded p-3">
-                          <p className="font-semibold text-gray-800">{debt.accountName}</p>
-                          <p className="text-sm text-gray-600">
-                            Rate: {debt.interestRate.toFixed(2)}% (Higher than HELOC {helocRate.toFixed(2)}%)
-                          </p>
-                          <p className="text-sm font-semibold text-green-600">
-                            ✓ Can use HELOC to save on interest
-                          </p>
-                        </div>
-                      ))}
-                  </div>
+              )}
+              <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r">
+                <h4 className="font-bold text-green-900 mb-2">
+                  {hasRateArbitrageWarnings ? 'Safe to Use HELOC For:' : 'HELOC Rate Arbitrage Guide'}
+                </h4>
+                {!hasRateArbitrageWarnings && (
+                  <p className="text-green-800 mb-3">
+                    All your debts have interest rates higher than or equal to your HELOC rate of {helocRate.toFixed(2)}%,
+                    making them good candidates for HELOC velocity banking.
+                  </p>
+                )}
+                <div className="space-y-2">
+                  {allDebts
+                    .filter(d => d.interestRate >= helocRate && d.id !== 'HELOC_VIRTUAL')
+                    .map(debt => (
+                      <div key={debt.id} className="bg-white rounded p-3">
+                        <p className="font-semibold text-gray-800">{debt.accountName}</p>
+                        <p className="text-sm text-gray-600">
+                          Rate: {debt.interestRate.toFixed(2)}% (Higher than HELOC {helocRate.toFixed(2)}%)
+                        </p>
+                        <p className="text-sm font-semibold text-green-600">
+                          ✓ Can use HELOC to save on interest
+                        </p>
+                      </div>
+                    ))}
                 </div>
               </div>
-            </Accordion>
-          )}
+            </div>
+          </Accordion>
 
           {(() => {
             const mortgageDebt = allDebts.find(d => d.category === 'Mortgage');
@@ -442,8 +450,8 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
             if (mortgageDebt && homeEquity.helocLimit) {
               return (
                 <Accordion
-                  title="Smart Chunking Calculator"
-                  icon={<Target className="w-6 h-6 text-purple-600" />}
+                  emoji="🎯"
+                  title="Smart Chunking Calculator (Advanced)"
                   defaultOpen={false}
                 >
                   <div className="pt-4">
@@ -469,74 +477,75 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
       )}
 
       <Accordion
-        title="Understanding Your Strategy"
-        icon={<BookOpen className="w-6 h-6 text-[#2D9CDB]" />}
-        defaultOpen={false}
-      >
-        <div className="pt-4 space-y-4">
-          <div>
-            <h4 className="font-bold text-gray-800 mb-3">Debt Avalanche Method</h4>
-            <p className="text-gray-700 mb-3">
-              Your strategy uses the "debt avalanche" approach, which targets the highest-interest debt first.
-              This is mathematically proven to save you the most money and get you debt-free faster.
-            </p>
-          </div>
-
-          <div className="bg-blue-50 rounded-lg p-4">
-            <h4 className="font-bold text-gray-800 mb-2">Why Highest Interest First?</h4>
-            <p className="text-gray-700 mb-3">
-              High-interest debt costs you the most money over time. By eliminating it first, you:
-            </p>
-            <ul className="space-y-1 text-gray-700">
-              <li>• Stop bleeding money on expensive interest charges</li>
-              <li>• Free up more cash flow as each debt is paid off</li>
-              <li>• Build momentum as payments "snowball" to the next debt</li>
-              <li>• Reach debt-free status in the shortest time possible</li>
-            </ul>
-          </div>
-
-          <div className="bg-green-50 rounded-lg p-4">
-            <h4 className="font-bold text-gray-800 mb-2">The Snowball Effect</h4>
-            <p className="text-gray-700 mb-2">
-              As you pay off each debt, that entire payment amount rolls into the next debt:
-            </p>
-            <div className="space-y-2 text-sm text-gray-700">
-              <p>
-                <strong>Month 1:</strong> Extra payment goes to Debt #1
-              </p>
-              <p>
-                <strong>Debt #1 paid off:</strong> Extra payment + Debt #1 minimum → Debt #2
-              </p>
-              <p>
-                <strong>Debt #2 paid off:</strong> Extra + Debt #1 + Debt #2 → Debt #3
-              </p>
-              <p className="font-semibold text-green-700">
-                Your payment power grows with each debt eliminated!
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h4 className="font-bold text-gray-800 mb-2">Staying on Track</h4>
-            <ul className="space-y-2 text-gray-700">
-              <li>• Set up automatic payments for your minimum amounts</li>
-              <li>• Log extra payments in NOVO as you make them</li>
-              <li>• Review your progress monthly</li>
-              <li>• Celebrate each debt payoff milestone</li>
-              <li>• Don't take on new debt during your payoff journey</li>
-            </ul>
-          </div>
-        </div>
-      </Accordion>
-
-      <Accordion
-        title="Frequently Asked Questions"
-        icon={<HelpCircle className="w-6 h-6 text-[#F2C94C]" />}
+        emoji="❓"
+        title="Understanding Your Strategy & FAQ"
         defaultOpen={false}
       >
         <div className="pt-4 space-y-6">
           <div>
-            <h4 className="font-bold text-gray-800 mb-2">Why is NOVO recommending I pay this debt first?</h4>
+            <h4 className="font-bold text-gray-800 mb-3 text-xl">Understanding Your Strategy</h4>
+            <div className="space-y-4">
+              <div>
+                <h5 className="font-bold text-gray-800 mb-2">Debt Avalanche Method</h5>
+                <p className="text-gray-700 mb-3">
+                  Your strategy uses the "debt avalanche" approach, which targets the highest-interest debt first.
+                  This is mathematically proven to save you the most money and get you debt-free faster.
+                </p>
+              </div>
+
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h5 className="font-bold text-gray-800 mb-2">Why Highest Interest First?</h5>
+                <p className="text-gray-700 mb-3">
+                  High-interest debt costs you the most money over time. By eliminating it first, you:
+                </p>
+                <ul className="space-y-1 text-gray-700">
+                  <li>• Stop bleeding money on expensive interest charges</li>
+                  <li>• Free up more cash flow as each debt is paid off</li>
+                  <li>• Build momentum as payments "snowball" to the next debt</li>
+                  <li>• Reach debt-free status in the shortest time possible</li>
+                </ul>
+              </div>
+
+              <div className="bg-green-50 rounded-lg p-4">
+                <h5 className="font-bold text-gray-800 mb-2">The Snowball Effect</h5>
+                <p className="text-gray-700 mb-2">
+                  As you pay off each debt, that entire payment amount rolls into the next debt:
+                </p>
+                <div className="space-y-2 text-sm text-gray-700">
+                  <p>
+                    <strong>Month 1:</strong> Extra payment goes to Debt #1
+                  </p>
+                  <p>
+                    <strong>Debt #1 paid off:</strong> Extra payment + Debt #1 minimum → Debt #2
+                  </p>
+                  <p>
+                    <strong>Debt #2 paid off:</strong> Extra + Debt #1 + Debt #2 → Debt #3
+                  </p>
+                  <p className="font-semibold text-green-700">
+                    Your payment power grows with each debt eliminated!
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h5 className="font-bold text-gray-800 mb-2">Staying on Track</h5>
+                <ul className="space-y-2 text-gray-700">
+                  <li>• Set up automatic payments for your minimum amounts</li>
+                  <li>• Log extra payments in NOVO as you make them</li>
+                  <li>• Review your progress monthly</li>
+                  <li>• Celebrate each debt payoff milestone</li>
+                  <li>• Don't take on new debt during your payoff journey</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-200 pt-6">
+            <h4 className="font-bold text-gray-800 mb-4 text-xl">Frequently Asked Questions</h4>
+          </div>
+
+          <div>
+            <h5 className="font-bold text-gray-800 mb-2">Why is NOVO recommending I pay this debt first?</h5>
             <p className="text-gray-700">
               NOVO prioritizes debts by interest rate. Your highest-rate debt ({allDebts[0]?.accountName} at {allDebts[0]?.interestRate.toFixed(2)}%)
               costs you the most money every month, so paying it off first saves you the maximum amount in interest charges.
@@ -544,7 +553,7 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
           </div>
 
           <div>
-            <h4 className="font-bold text-gray-800 mb-2">Should I use my HELOC for this debt?</h4>
+            <h5 className="font-bold text-gray-800 mb-2">Should I use my HELOC for this debt?</h5>
             <p className="text-gray-700 mb-2">
               Only use your HELOC to pay off debts with interest rates <strong>higher</strong> than your HELOC rate ({helocRate.toFixed(2)}%).
               This is called "rate arbitrage" - you're swapping expensive debt for cheaper debt.
@@ -555,7 +564,7 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
           </div>
 
           <div>
-            <h4 className="font-bold text-gray-800 mb-2">What happens when I pay off a debt?</h4>
+            <h5 className="font-bold text-gray-800 mb-2">What happens when I pay off a debt?</h5>
             <p className="text-gray-700 mb-2">
               Celebrate! Then immediately redirect that entire payment amount to your next highest-rate debt.
               This "snowball effect" accelerates your progress dramatically.
@@ -566,7 +575,7 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
           </div>
 
           <div>
-            <h4 className="font-bold text-gray-800 mb-2">How does the snowball effect work?</h4>
+            <h5 className="font-bold text-gray-800 mb-2">How does the snowball effect work?</h5>
             <p className="text-gray-700 mb-2">
               Every time you eliminate a debt, you free up both the minimum payment and any extra payment you were making.
               All of that money immediately rolls into the next debt on your list.
@@ -578,7 +587,7 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
           </div>
 
           <div>
-            <h4 className="font-bold text-gray-800 mb-2">Can I change my strategy?</h4>
+            <h5 className="font-bold text-gray-800 mb-2">Can I change my strategy?</h5>
             <p className="text-gray-700 mb-2">
               Yes! Life changes, and so can your strategy. Click "Run New Strategy" at the top to:
             </p>
@@ -591,7 +600,7 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
           </div>
 
           <div>
-            <h4 className="font-bold text-gray-800 mb-2">What if I can't make the extra payment this month?</h4>
+            <h5 className="font-bold text-gray-800 mb-2">What if I can't make the extra payment this month?</h5>
             <p className="text-gray-700">
               Life happens! At minimum, always pay the required minimums on all debts to avoid late fees and credit damage.
               If you can't make the extra payment one month, just get back on track next month. Progress, not perfection!
@@ -601,8 +610,8 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
       </Accordion>
 
       <Accordion
+        emoji="📅"
         title="Debt Payoff Timeline"
-        icon={<Calendar className="w-6 h-6 text-[#27AE60]" />}
         defaultOpen={false}
       >
         <div className="pt-4 space-y-4">
@@ -627,8 +636,8 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
       </Accordion>
 
       <Accordion
+        emoji="📊"
         title="Payoff Projection Chart"
-        icon={<BarChart3 className="w-6 h-6 text-[#2D9CDB]" />}
         defaultOpen={false}
       >
         <div className="pt-4">
@@ -658,8 +667,8 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
       </Accordion>
 
       <Accordion
+        emoji="📋"
         title="Strategy Details"
-        icon={<DollarSign className="w-6 h-6 text-gray-600" />}
         defaultOpen={false}
       >
         <div className="pt-4 space-y-2">
