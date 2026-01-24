@@ -4,6 +4,7 @@ import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import StrategyWizard from './StrategyWizard';
 import StrategyResults from './StrategyResults';
+import SmartChunkingCalculator from './SmartChunkingCalculator';
 import type { StrategyResult } from '../types';
 
 interface PaymentStrategiesProps {
@@ -124,6 +125,30 @@ export default function PaymentStrategies({ onDataUpdate }: PaymentStrategiesPro
               </p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Smart Chunking Calculator */}
+      {financialProfile &&
+       financialProfile.homeValue &&
+       financialProfile.mortgageBalance &&
+       financialProfile.helocLimit &&
+       financialProfile.helocBalance !== undefined && (
+        <div className="mt-12">
+          <SmartChunkingCalculator
+            monthlyNetIncome={financialProfile.monthlyNetIncome}
+            monthlyExpenses={
+              financialProfile.monthlyEssentialExpenses +
+              financialProfile.monthlyDiscretionaryExpenses
+            }
+            helocBalance={financialProfile.helocBalance}
+            helocLimit={financialProfile.helocLimit}
+            helocRate={financialProfile.helocInterestRate || 8}
+            mortgageBalance={financialProfile.mortgageBalance}
+            mortgageRate={
+              debts.find((d) => d.type === 'mortgage')?.interestRate || 6
+            }
+          />
         </div>
       )}
     </div>
