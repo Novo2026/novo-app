@@ -13,6 +13,7 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
   const allStoredDebts = StorageService.getDebts();
   const debts = allStoredDebts.filter(d => !d.isPaidOff);
   const paidOffDebts = allStoredDebts.filter(d => d.isPaidOff);
+  const financialProfile = StorageService.getFinancialProfile();
 
   // Get HELOC balance to display if exists
   const helocTransactions = JSON.parse(localStorage.getItem('novo_heloc_transactions') || '[]');
@@ -157,39 +158,52 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
               <DollarSign className="w-6 h-6 text-[#2D9CDB]" />
               <h4 className="font-bold text-gray-800 text-lg">Your Total Monthly Cash Flow</h4>
             </div>
-            <p className="text-3xl font-bold text-gray-800 mb-2">
-              {CalculationService.formatCurrency(
-                allDebts.reduce((sum, d) => sum + d.minimumPayment, 0) + (result.strategy.extraMonthlyPayment || 0)
-              )}
-            </p>
-            <div className="mt-3 space-y-2 text-sm bg-gray-50 rounded-lg p-3">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Minimum payments:</span>
-                <span className="font-semibold text-gray-800">
+            {financialProfile ? (
+              <>
+                <p className="text-3xl font-bold text-gray-800 mb-2">
                   {CalculationService.formatCurrency(
-                    allDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
+                    financialProfile.monthlyNetIncome -
+                    financialProfile.monthlyEssentialExpenses -
+                    financialProfile.monthlyDiscretionaryExpenses
                   )}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Extra for debt payoff:</span>
-                <span className="font-semibold text-gray-800">
-                  {CalculationService.formatCurrency(result.strategy.extraMonthlyPayment || 0)}
-                </span>
-              </div>
-              {paidOffDebts.length > 0 && (
-                <div className="pt-2 mt-2 border-t border-gray-200">
-                  <div className="flex items-start gap-2">
-                    <span className="text-[#27AE60] font-semibold">✓</span>
-                    <p className="text-gray-700 flex-1">
-                      <span className="font-semibold text-[#27AE60]">
-                        {CalculationService.formatCurrency(paidOffDebts.reduce((sum, d) => sum + d.minimumPayment, 0))}
-                      </span> freed from paid-off debts is included in your extra payment!
-                    </p>
+                </p>
+                <div className="mt-3 space-y-2 text-sm bg-gray-50 rounded-lg p-3">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Minimum payments:</span>
+                    <span className="font-semibold text-gray-800">
+                      {CalculationService.formatCurrency(
+                        allDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
+                      )}
+                    </span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Extra for debt payoff:</span>
+                    <span className="font-semibold text-gray-800">
+                      {CalculationService.formatCurrency(
+                        financialProfile.monthlyNetIncome -
+                        financialProfile.monthlyEssentialExpenses -
+                        financialProfile.monthlyDiscretionaryExpenses -
+                        allDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
+                      )}
+                    </span>
+                  </div>
+                  {paidOffDebts.length > 0 && (
+                    <div className="pt-2 mt-2 border-t border-gray-200">
+                      <div className="flex items-start gap-2">
+                        <span className="text-[#27AE60] font-semibold">✓</span>
+                        <p className="text-gray-700 flex-1">
+                          <span className="font-semibold text-[#27AE60]">
+                            {CalculationService.formatCurrency(paidOffDebts.reduce((sum, d) => sum + d.minimumPayment, 0))}
+                          </span> freed from paid-off debts is included in your extra payment!
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            ) : (
+              <p className="text-gray-600">Set up your financial profile to see cash flow details.</p>
+            )}
           </div>
 
           <div>
