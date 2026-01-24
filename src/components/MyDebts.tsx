@@ -135,6 +135,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
             <div
               key={debt.id}
               className={`bg-white rounded-lg shadow-md border-2 transition-all hover:shadow-lg ${
+                debt.isPaidOff && debt.transferredToHELOC ? 'border-[#F2994A]' :
                 debt.isPaidOff ? 'border-[#27AE60]' : 'border-gray-200'
               }`}
             >
@@ -146,8 +147,10 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                   </div>
                   <div className="flex items-center space-x-2">
                     {debt.isPaidOff ? (
-                      <span className="bg-[#27AE60] text-white text-xs font-bold px-3 py-1 rounded-full">
-                        PAID OFF
+                      <span className={`text-white text-xs font-bold px-3 py-1 rounded-full ${
+                        debt.transferredToHELOC ? 'bg-[#F2994A]' : 'bg-[#27AE60]'
+                      }`}>
+                        {debt.transferredToHELOC ? 'TRANSFERRED' : 'PAID OFF'}
                       </span>
                     ) : (
                       <span className="bg-red-100 text-red-700 text-xs font-semibold px-2 py-1 rounded">
@@ -173,12 +176,20 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
 
                 <div className="mb-4">
                   <p className="text-sm text-gray-600 mb-1">Current Balance</p>
-                  <p className={`text-3xl font-bold ${debt.isPaidOff ? 'text-[#27AE60]' : 'text-[#1E3A5F]'}`}>
+                  <p className={`text-3xl font-bold ${
+                    debt.isPaidOff && debt.transferredToHELOC ? 'text-[#F2994A]' :
+                    debt.isPaidOff ? 'text-[#27AE60]' : 'text-[#1E3A5F]'
+                  }`}>
                     {CalculationService.formatCurrency(debt.currentBalance)}
                   </p>
                   <p className="text-sm text-gray-500 mt-1">
                     Started at {CalculationService.formatCurrency(debt.startingBalance)}
                   </p>
+                  {debt.transferredToHELOC && (
+                    <p className="text-xs text-[#F2994A] font-semibold mt-2">
+                      Transferred to HELOC
+                    </p>
+                  )}
                 </div>
 
                 <div className="mb-4">
@@ -189,6 +200,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                   <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${
+                        debt.isPaidOff && debt.transferredToHELOC ? 'bg-[#F2994A]' :
                         debt.isPaidOff ? 'bg-[#27AE60]' : 'bg-[#2D9CDB]'
                       }`}
                       style={{ width: `${Math.min(progress, 100)}%` }}

@@ -22,6 +22,7 @@ export interface Debt {
   loanStartDate?: string;
   loanTerm?: number;
   isAmortized?: boolean;
+  transferredToHELOC?: boolean;
 }
 
 export type TransactionType = 'payment' | 'charge';
@@ -39,6 +40,8 @@ export interface Transaction {
   newBalance: number;
   isExtraPayment?: boolean;
   notes?: string;
+  paidWithHELOC?: boolean;
+  transferredToHELOC?: boolean;
 }
 
 export type SavingsAccountType =

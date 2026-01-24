@@ -432,12 +432,38 @@ function RecordDrawModal({
 
     if (selectedDebt && purpose === 'Pay Off Debt') {
       const debt = debts.find(d => d.id === selectedDebt);
-      if (debt && Math.abs(debt.currentBalance - drawAmount) < 10) {
+      if (debt) {
+        // Mark debt as transferred to HELOC
         debt.isPaidOff = true;
+        debt.transferredToHELOC = true;
+        debt.paidOffDate = date;
+        const previousBalance = debt.currentBalance;
         debt.currentBalance = 0;
+
         const allDebts = StorageService.getDebts();
         const updated = allDebts.map(d => d.id === selectedDebt ? debt : d);
         localStorage.setItem('novo_debts', JSON.stringify(updated));
+
+        // Create a transaction record for the HELOC transfer
+        const allTransactions = JSON.parse(localStorage.getItem('novo_transactions') || '[]');
+        const transferTransaction = {
+          id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          debtId: selectedDebt,
+          debtName: debt.accountName,
+          date,
+          type: 'payment',
+          amount: previousBalance,
+          previousBalance: previousBalance,
+          interestCharged: 0,
+          principalPaid: previousBalance,
+          newBalance: 0,
+          isExtraPayment: false,
+          notes: 'Transferred to HELOC',
+          paidWithHELOC: true,
+          transferredToHELOC: true,
+        };
+        allTransactions.push(transferTransaction);
+        localStorage.setItem('novo_transactions', JSON.stringify(allTransactions));
       }
     }
 

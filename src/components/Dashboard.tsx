@@ -185,7 +185,7 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
           <span className="font-bold">{CalculationService.formatCurrency(metrics.totalStartingBalance)}</span> starting
         </p>
         <p className="text-xl font-bold text-[#27AE60]">
-          You've paid off {CalculationService.formatCurrency(metrics.totalPaidOff)}!
+          You've paid off {CalculationService.formatCurrency(metrics.actualDebtEliminated)} from cash flow!
         </p>
         {strategyResult && (
           <p className="mt-4 text-sm opacity-90">
@@ -313,16 +313,27 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
             {metrics.paidOffDebts.map(debt => (
               <div
                 key={debt.id}
-                className="bg-gradient-to-br from-[#27AE60] to-[#229954] text-white rounded-lg shadow-md p-6"
+                className={`${
+                  debt.transferredToHELOC
+                    ? 'bg-gradient-to-br from-[#F2994A] to-[#E67E22]'
+                    : 'bg-gradient-to-br from-[#27AE60] to-[#229954]'
+                } text-white rounded-lg shadow-md p-6`}
               >
                 <div className="flex items-start justify-between mb-2">
                   <h4 className="font-bold text-lg">{debt.accountName}</h4>
                   <CheckCircle className="w-6 h-6" />
                 </div>
-                <p className="text-2xl font-bold mb-1">PAID OFF!</p>
+                <p className="text-2xl font-bold mb-1">
+                  {debt.transferredToHELOC ? 'Transferred to HELOC' : 'PAID OFF!'}
+                </p>
                 <p className="text-sm opacity-90">
                   {debt.paidOffDate && CalculationService.formatMonthYear(debt.paidOffDate)}
                 </p>
+                {debt.transferredToHELOC && (
+                  <p className="text-xs opacity-80 mt-2">
+                    This debt was moved to your HELOC for lower interest
+                  </p>
+                )}
               </div>
             ))}
           </div>

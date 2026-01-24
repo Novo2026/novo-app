@@ -107,8 +107,23 @@ export const CalculationService = {
   },
 
   calculateTotalDebtMetrics(debts: Debt[], transactions: Transaction[]) {
+    // Get HELOC balance from localStorage
+    const helocTransactions = JSON.parse(localStorage.getItem('novo_heloc_transactions') || '[]');
+    const homeEquity = JSON.parse(localStorage.getItem('novo_home_equity') || '{}');
+    const helocBalance = helocTransactions.length > 0
+      ? helocTransactions[helocTransactions.length - 1].balance
+      : (homeEquity.hasHELOC && homeEquity.helocBalance !== undefined ? homeEquity.helocBalance : 0);
+
+    // Calculate total debt including HELOC
     const totalStartingBalance = debts.reduce((sum, debt) => sum + debt.startingBalance, 0);
-    const totalCurrentBalance = debts.reduce((sum, debt) => sum + debt.currentBalance, 0);
+    const totalCurrentBalance = debts.reduce((sum, debt) => sum + debt.currentBalance, 0) + helocBalance;
+
+    // Calculate actual debt eliminated (only from cash flow payments, not HELOC transfers)
+    const actualDebtEliminated = transactions
+      .filter(t => t.type === 'payment' && !t.paidWithHELOC)
+      .reduce((sum, t) => sum + t.principalPaid, 0);
+
+    // For progress calculation, use actual eliminated vs total starting
     const totalPaidOff = totalStartingBalance - totalCurrentBalance;
     const progressPercentage = totalStartingBalance > 0
       ? (totalPaidOff / totalStartingBalance) * 100
@@ -121,6 +136,8 @@ export const CalculationService = {
       totalStartingBalance,
       totalCurrentBalance,
       totalPaidOff,
+      actualDebtEliminated,
+      helocBalance,
       progressPercentage,
       activeDebts,
       paidOffDebts,
