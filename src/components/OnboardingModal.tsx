@@ -289,7 +289,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
             className="w-full pl-8 pr-4 py-3 text-lg border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
           />
         </div>
-        <p className="text-xs text-gray-600 mt-2 italic">Examples: Mortgage/rent, utilities, groceries, insurance, minimum debt payments, childcare, transportation (gas/car payment)</p>
+        <p className="text-xs text-gray-600 mt-2 italic">Examples: Rent (if renting), utilities, groceries, insurance, childcare, transportation</p>
       </div>
 
       <div>
