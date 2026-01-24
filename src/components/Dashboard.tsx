@@ -209,35 +209,43 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
         <div className="bg-gradient-to-br from-[#2D9CDB] to-[#1E8BBD] text-white rounded-xl shadow-lg p-6">
           <div className="flex items-center space-x-3 mb-4">
             <TrendingUp className="w-8 h-8" />
-            <h3 className="text-xl font-bold">Monthly Cash Flow</h3>
+            <h3 className="text-xl font-bold">Total Monthly Cash Flow</h3>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm opacity-90 mb-1">Available Cash Flow</p>
-              <p className="text-3xl font-bold">
+          <p className="text-4xl font-bold mb-4">
+            {CalculationService.formatCurrency(
+              financialProfile.monthlyNetIncome -
+              financialProfile.monthlyEssentialExpenses -
+              financialProfile.monthlyDiscretionaryExpenses
+            )}
+          </p>
+          <div className="space-y-2 text-sm bg-white/10 rounded-lg p-4 mb-4">
+            <p className="font-semibold mb-2">Breakdown:</p>
+            <div className="flex justify-between">
+              <span className="opacity-90">Minimum debt payments:</span>
+              <span className="font-semibold">
+                {CalculationService.formatCurrency(
+                  metrics.activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
+                )}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="opacity-90">Extra for debt payoff:</span>
+              <span className="font-semibold">
                 {CalculationService.formatCurrency(
                   financialProfile.monthlyNetIncome -
                   financialProfile.monthlyEssentialExpenses -
                   financialProfile.monthlyDiscretionaryExpenses -
                   metrics.activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
                 )}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm opacity-90 mb-1">Freed from Paid-Off Debts</p>
-              <p className="text-3xl font-bold text-[#27AE60]">
-                {CalculationService.formatCurrency(
-                  metrics.paidOffDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
-                )}
-              </p>
+              </span>
             </div>
           </div>
           {metrics.paidOffDebts.length > 0 && (
-            <div className="mt-4 bg-white/10 rounded-lg p-3">
-              <p className="text-sm">
-                <span className="font-semibold">{CalculationService.formatCurrency(
+            <div className="bg-[#27AE60]/20 border-2 border-[#27AE60] rounded-lg p-3">
+              <p className="text-sm font-semibold">
+                {CalculationService.formatCurrency(
                   metrics.paidOffDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
-                )}</span> in monthly payments freed by paying off {metrics.paidOffDebts.length} debt{metrics.paidOffDebts.length !== 1 ? 's' : ''}!
+                )} freed from {metrics.paidOffDebts.length} paid-off debt{metrics.paidOffDebts.length !== 1 ? 's' : ''} now accelerating payoff!
               </p>
             </div>
           )}
