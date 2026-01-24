@@ -18,7 +18,8 @@ interface OnboardingData {
   userName: string;
   grossIncome: string;
   monthlyIncome: string;
-  monthlyExpenses: string;
+  essentialExpenses: string;
+  discretionaryExpenses: string;
   address: string;
   debts: DebtInput[];
   hasHELOC: boolean;
@@ -38,7 +39,8 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
     userName: '',
     grossIncome: '',
     monthlyIncome: '',
-    monthlyExpenses: '',
+    essentialExpenses: '',
+    discretionaryExpenses: '',
     address: '',
     debts: [{ id: '1', name: '', type: 'Credit Card', balance: '', interestRate: '', minPayment: '' }],
     hasHELOC: false,
@@ -93,8 +95,9 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
   const getCashFlow = (): number => {
     const income = parseCurrency(data.monthlyIncome);
-    const expenses = parseCurrency(data.monthlyExpenses);
-    return Math.max(0, income - expenses);
+    const essential = parseCurrency(data.essentialExpenses);
+    const discretionary = parseCurrency(data.discretionaryExpenses);
+    return Math.max(0, income - essential - discretionary);
   };
 
   const getTotalDebt = (): number => {
@@ -126,7 +129,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       case 1:
         return data.userName.trim() !== '';
       case 2:
-        return parseCurrency(data.grossIncome) > 0 && parseCurrency(data.monthlyIncome) > 0 && parseCurrency(data.monthlyExpenses) >= 0;
+        return parseCurrency(data.grossIncome) > 0 && parseCurrency(data.monthlyIncome) > 0 && parseCurrency(data.essentialExpenses) >= 0 && parseCurrency(data.discretionaryExpenses) >= 0;
       case 3:
         const hasValidDebts = data.debts.some(d => {
           const basicValid = d.name.trim() !== '' &&
@@ -260,22 +263,73 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         </div>
       </div>
 
+      <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4">
+        <div className="flex items-start gap-2">
+          <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-blue-900">
+            <p className="font-bold mb-2">Understanding Your Spending</p>
+            <p className="mb-2">Breaking down your expenses helps you find extra cash flow to eliminate debt faster. Be honest with yourself - most people can reduce discretionary spending by 20-30% when motivated.</p>
+            <p className="font-bold text-red-600">IMPORTANT: Do NOT include debt payments here - we'll add those separately in the next step.</p>
+          </div>
+        </div>
+      </div>
+
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">
-          Monthly Expenses <span className="text-red-500">*</span>
+          Essential Monthly Expenses <span className="text-red-500">*</span>
         </label>
-        <p className="text-xs text-gray-500 mb-2">Housing, utilities, food, transportation, etc. (excluding debt payments)</p>
+        <p className="text-xs text-gray-500 mb-2">Fixed costs you cannot easily reduce</p>
         <div className="relative">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg">$</span>
           <input
             type="text"
-            value={data.monthlyExpenses}
-            onChange={(e) => handleCurrencyChange('monthlyExpenses', e.target.value)}
-            placeholder="3,000"
+            value={data.essentialExpenses}
+            onChange={(e) => handleCurrencyChange('essentialExpenses', e.target.value)}
+            placeholder="Enter amount"
             className="w-full pl-8 pr-4 py-3 text-lg border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
           />
         </div>
+        <p className="text-xs text-gray-600 mt-2 italic">Examples: Mortgage/rent, utilities, groceries, insurance, minimum debt payments, childcare, transportation (gas/car payment)</p>
       </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-2">
+          Discretionary Monthly Expenses <span className="text-red-500">*</span>
+        </label>
+        <p className="text-xs text-gray-500 mb-2">Flexible spending you could reduce if needed</p>
+        <div className="relative">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg">$</span>
+          <input
+            type="text"
+            value={data.discretionaryExpenses}
+            onChange={(e) => handleCurrencyChange('discretionaryExpenses', e.target.value)}
+            placeholder="Enter amount"
+            className="w-full pl-8 pr-4 py-3 text-lg border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+          />
+        </div>
+        <p className="text-xs text-gray-600 mt-2 italic">Examples: Dining out, entertainment, subscriptions, hobbies, shopping, travel, luxury items</p>
+      </div>
+
+      {parseCurrency(data.essentialExpenses) > 0 && parseCurrency(data.discretionaryExpenses) >= 0 && (
+        <div className="bg-gray-50 border-2 border-gray-300 rounded-lg p-4">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-semibold text-gray-700">Total Monthly Expenses:</span>
+            <span className="text-lg font-bold text-gray-900">
+              {CalculationService.formatCurrency(parseCurrency(data.essentialExpenses) + parseCurrency(data.discretionaryExpenses))}
+            </span>
+          </div>
+          <div className="text-xs text-gray-600 space-y-1">
+            <div className="flex justify-between">
+              <span>Essential:</span>
+              <span>{CalculationService.formatCurrency(parseCurrency(data.essentialExpenses))}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Discretionary:</span>
+              <span>{CalculationService.formatCurrency(parseCurrency(data.discretionaryExpenses))}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">Address (optional)</label>
@@ -288,11 +342,14 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         />
       </div>
 
-      {parseCurrency(data.monthlyIncome) > 0 && (
+      {parseCurrency(data.monthlyIncome) > 0 && parseCurrency(data.essentialExpenses) >= 0 && parseCurrency(data.discretionaryExpenses) >= 0 && (
         <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-lg p-4">
-          <p className="text-sm font-semibold text-emerald-900 mb-1">Available Monthly Cash Flow</p>
+          <p className="text-sm font-semibold text-emerald-900 mb-1">Your Available Monthly Cash Flow</p>
           <p className="text-3xl font-bold text-emerald-700">
             {CalculationService.formatCurrency(getCashFlow())}
+          </p>
+          <p className="text-xs text-emerald-800 mt-2">
+            Net Income - Essential Expenses - Discretionary Expenses
           </p>
         </div>
       )}

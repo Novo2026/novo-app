@@ -80,8 +80,8 @@ function App() {
     const financialProfile = {
       monthlyGrossIncome: parseCurrency(data.grossIncome),
       monthlyNetIncome: parseCurrency(data.monthlyIncome),
-      monthlyEssentialExpenses: parseCurrency(data.monthlyExpenses),
-      monthlyDiscretionaryExpenses: 0,
+      monthlyEssentialExpenses: parseCurrency(data.essentialExpenses),
+      monthlyDiscretionaryExpenses: parseCurrency(data.discretionaryExpenses),
     };
     StorageService.saveFinancialProfile(financialProfile);
 
