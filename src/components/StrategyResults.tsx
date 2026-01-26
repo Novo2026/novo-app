@@ -1,4 +1,4 @@
-import { RefreshCw, TrendingDown, Calendar, DollarSign, BarChart3 } from 'lucide-react';
+import { RefreshCw, TrendingDown, Calendar, DollarSign, BarChart3, AlertTriangle, Mail, Phone } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import Accordion from './Accordion';
@@ -89,6 +89,17 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
   const hasRateArbitrageWarnings = result.strategy.type === 'heloc-velocity' &&
     allDebts.some(d => d.interestRate < helocRate && d.id !== 'HELOC_VIRTUAL');
 
+  // Calculate cash flow after debt minimums
+  const totalMinimumPayments = allDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
+  const cashFlowAfterMinimums = financialProfile
+    ? financialProfile.monthlyNetIncome -
+      financialProfile.monthlyEssentialExpenses -
+      financialProfile.monthlyDiscretionaryExpenses -
+      totalMinimumPayments
+    : result.strategy.extraMonthlyPayment || 0;
+
+  const hasLowCashFlow = cashFlowAfterMinimums < 200;
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
@@ -102,99 +113,224 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-gradient-to-br from-[#27AE60] to-[#229954] text-white rounded-lg shadow-lg p-6">
-          <h3 className="text-sm font-semibold mb-2 opacity-90">Your Strategy (Optimized)</h3>
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3">
-              <Calendar className="w-8 h-8" />
-              <div>
-                <p className="text-2xl font-bold">
-                  {Math.floor(result.totalMonths / 12)} years, {result.totalMonths % 12} months
-                </p>
-                <p className="text-sm opacity-90">Debt-Free: {CalculationService.formatMonthYear(result.debtFreeDate)}</p>
-              </div>
-            </div>
-            <div className="pt-3 border-t border-white/20">
-              <p className="text-sm opacity-90">Total Interest</p>
-              <p className="text-xl font-bold">{CalculationService.formatCurrency(result.totalInterest)}</p>
-            </div>
-            <div className="pt-2">
-              <p className="text-sm opacity-90">Total Paid</p>
-              <p className="text-xl font-bold">{CalculationService.formatCurrency(result.totalPaid)}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white border-2 border-gray-300 rounded-lg shadow-md p-6">
-          <h3 className="text-sm font-semibold mb-2 text-gray-600">Minimum Payments Only (Baseline)</h3>
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3">
-              <Calendar className="w-8 h-8 text-gray-400" />
-              <div>
-                <p className="text-2xl font-bold text-gray-800">
-                  {Math.floor(minimumOnly.totalMonths / 12)} years, {minimumOnly.totalMonths % 12} months
-                </p>
-                <p className="text-sm text-gray-600">
-                  Debt-Free: {CalculationService.formatMonthYear(minimumOnly.debtFreeDate)}
-                </p>
-              </div>
-            </div>
-            <div className="pt-3 border-t border-gray-200">
-              <p className="text-sm text-gray-600">Total Interest</p>
-              <p className="text-xl font-bold text-gray-800">
-                {CalculationService.formatCurrency(minimumOnly.totalInterest)}
-              </p>
-            </div>
-            <div className="pt-2">
-              <p className="text-sm text-gray-600">Total Paid</p>
-              <p className="text-xl font-bold text-gray-800">
-                {CalculationService.formatCurrency(minimumOnly.totalPaid)}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {isValidComparison ? (
-        <div className="bg-gradient-to-br from-[#2D9CDB] to-[#1E8BBD] text-white rounded-lg shadow-lg p-6">
-          <div className="flex items-start space-x-4">
-            <div className="bg-white/20 p-3 rounded-lg">
-              <TrendingDown className="w-8 h-8" />
+{hasLowCashFlow ? (
+        <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-400 rounded-xl shadow-lg p-8">
+          <div className="flex items-start gap-4 mb-6">
+            <div className="flex-shrink-0 w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
+              <AlertTriangle className="w-8 h-8 text-amber-600" />
             </div>
             <div className="flex-1">
-              <h3 className="text-2xl font-bold mb-2">
-                YOU'LL SAVE {CalculationService.formatCurrency(interestSaved)}!
-              </h3>
-              <p className="text-lg opacity-90">
-                And be debt-free{' '}
-                <span className="font-bold">
-                  {Math.floor(monthsSaved / 12)} years,{' '}
-                  {monthsSaved % 12} months
-                </span>{' '}
-                sooner!
+              <h2 className="text-3xl font-bold text-gray-900 mb-3">Strategy Optimization Not Available Yet</h2>
+              <div className="bg-white/60 rounded-lg p-4 mb-4">
+                <p className="text-sm text-gray-700 mb-1">Your current cash flow after debt payments:</p>
+                <p className={`text-3xl font-bold ${cashFlowAfterMinimums < 0 ? 'text-red-600' : 'text-amber-700'}`}>
+                  {CalculationService.formatCurrency(cashFlowAfterMinimums)}/month
+                </p>
+              </div>
+              <p className="text-lg text-gray-800 mb-4">
+                To unlock NOVO's debt acceleration strategies, you need positive cash flow of at least $200-500/month.
               </p>
             </div>
+          </div>
+
+          <div className="bg-white rounded-lg p-6 mb-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">How to improve your cash flow:</h3>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <span className="text-emerald-600 text-xl flex-shrink-0">✅</span>
+                <div>
+                  <p className="font-semibold text-gray-900">Reduce discretionary expenses</p>
+                  <p className="text-sm text-gray-600">Cut back on dining out, shopping, entertainment, and subscriptions</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-emerald-600 text-xl flex-shrink-0">✅</span>
+                <div>
+                  <p className="font-semibold text-gray-900">Increase income</p>
+                  <p className="text-sm text-gray-600">Side hustle, overtime hours, or ask for a raise</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-emerald-600 text-xl flex-shrink-0">✅</span>
+                <div>
+                  <p className="font-semibold text-gray-900">Pay off one small debt</p>
+                  <p className="text-sm text-gray-600">Free up its minimum payment to increase cash flow</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-emerald-600 text-xl flex-shrink-0">✅</span>
+                <div>
+                  <p className="font-semibold text-gray-900">Consider debt consolidation</p>
+                  <p className="text-sm text-gray-600">Lower monthly payments through refinancing or consolidation</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-6 mb-6">
+            <h3 className="text-xl font-bold text-blue-900 mb-3">Current Action Plan:</h3>
+            <ul className="space-y-2 text-blue-900">
+              <li className="flex items-start gap-2">
+                <span className="flex-shrink-0">•</span>
+                <span>Focus on making all minimum payments on time</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="flex-shrink-0">•</span>
+                <span>Track spending to find areas to cut</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="flex-shrink-0">•</span>
+                <span>Build $1,000 emergency fund</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="flex-shrink-0">•</span>
+                <span>Once cash flow improves, return here for optimized strategy</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-lg p-6 mb-6">
+            <p className="text-lg font-semibold text-emerald-900 mb-3">Need personalized guidance?</p>
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 text-emerald-800">
+                <Mail className="w-5 h-5 flex-shrink-0" />
+                <a href="mailto:ben@windmillmortgage.com" className="hover:underline font-medium text-lg">
+                  ben@windmillmortgage.com
+                </a>
+              </div>
+              <div className="flex items-center gap-3 text-emerald-800">
+                <Phone className="w-5 h-5 flex-shrink-0" />
+                <a href="tel:614-327-2213" className="hover:underline font-medium text-lg">
+                  614-327-2213
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button
+              onClick={() => window.location.href = '/settings'}
+              className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold py-3 px-6 rounded-lg transition-all"
+            >
+              Update My Budget
+            </button>
+            <button
+              onClick={() => {
+                const message = encodeURIComponent('I want to reduce my expenses and increase my cash flow. Can you help me identify areas where I can cut back?');
+                window.location.href = `mailto:ben@windmillmortgage.com?subject=NOVO%20Expense%20Reduction%20Help&body=${message}`;
+              }}
+              className="bg-white hover:bg-gray-50 text-gray-800 font-semibold py-3 px-6 rounded-lg border-2 border-gray-300 transition-all"
+            >
+              Reduce Expenses
+            </button>
+            <button
+              onClick={() => {
+                const message = encodeURIComponent('I want to explore ways to increase my income. What side hustles or opportunities would you recommend?');
+                window.location.href = `mailto:ben@windmillmortgage.com?subject=NOVO%20Income%20Increase%20Help&body=${message}`;
+              }}
+              className="bg-white hover:bg-gray-50 text-gray-800 font-semibold py-3 px-6 rounded-lg border-2 border-gray-300 transition-all"
+            >
+              Add Income Source
+            </button>
           </div>
         </div>
       ) : (
-        <div className="bg-amber-50 border-2 border-amber-500 rounded-lg shadow-lg p-6">
-          <div className="flex items-start space-x-4">
-            <div className="bg-amber-500/20 p-3 rounded-lg">
-              <TrendingDown className="w-8 h-8 text-amber-700" />
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-gradient-to-br from-[#27AE60] to-[#229954] text-white rounded-lg shadow-lg p-6">
+              <h3 className="text-sm font-semibold mb-2 opacity-90">Your Strategy (Optimized)</h3>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <Calendar className="w-8 h-8" />
+                  <div>
+                    <p className="text-2xl font-bold">
+                      {Math.floor(result.totalMonths / 12)} years, {result.totalMonths % 12} months
+                    </p>
+                    <p className="text-sm opacity-90">Debt-Free: {CalculationService.formatMonthYear(result.debtFreeDate)}</p>
+                  </div>
+                </div>
+                <div className="pt-3 border-t border-white/20">
+                  <p className="text-sm opacity-90">Total Interest</p>
+                  <p className="text-xl font-bold">{CalculationService.formatCurrency(result.totalInterest)}</p>
+                </div>
+                <div className="pt-2">
+                  <p className="text-sm opacity-90">Total Paid</p>
+                  <p className="text-xl font-bold">{CalculationService.formatCurrency(result.totalPaid)}</p>
+                </div>
+              </div>
             </div>
-            <div className="flex-1">
-              <h3 className="text-xl font-bold mb-2 text-amber-900">
-                Strategy Comparison Unavailable
-              </h3>
-              <p className="text-amber-800">
-                Unable to calculate accurate baseline comparison. Please verify all debt information is correct,
-                especially minimum payments and interest rates. If you have a mortgage, ensure the P&I payment
-                matches your actual monthly payment.
-              </p>
+
+            <div className="bg-white border-2 border-gray-300 rounded-lg shadow-md p-6">
+              <h3 className="text-sm font-semibold mb-2 text-gray-600">Minimum Payments Only (Baseline)</h3>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <Calendar className="w-8 h-8 text-gray-400" />
+                  <div>
+                    <p className="text-2xl font-bold text-gray-800">
+                      {Math.floor(minimumOnly.totalMonths / 12)} years, {minimumOnly.totalMonths % 12} months
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Debt-Free: {CalculationService.formatMonthYear(minimumOnly.debtFreeDate)}
+                    </p>
+                  </div>
+                </div>
+                <div className="pt-3 border-t border-gray-200">
+                  <p className="text-sm text-gray-600">Total Interest</p>
+                  <p className="text-xl font-bold text-gray-800">
+                    {CalculationService.formatCurrency(minimumOnly.totalInterest)}
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <p className="text-sm text-gray-600">Total Paid</p>
+                  <p className="text-xl font-bold text-gray-800">
+                    {CalculationService.formatCurrency(minimumOnly.totalPaid)}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+
+          {isValidComparison ? (
+            <div className="bg-gradient-to-br from-[#2D9CDB] to-[#1E8BBD] text-white rounded-lg shadow-lg p-6">
+              <div className="flex items-start space-x-4">
+                <div className="bg-white/20 p-3 rounded-lg">
+                  <TrendingDown className="w-8 h-8" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold mb-2">
+                    YOU'LL SAVE {CalculationService.formatCurrency(interestSaved)}!
+                  </h3>
+                  <p className="text-lg opacity-90">
+                    And be debt-free{' '}
+                    <span className="font-bold">
+                      {Math.floor(monthsSaved / 12)} years,{' '}
+                      {monthsSaved % 12} months
+                    </span>{' '}
+                    sooner!
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-amber-50 border-2 border-amber-500 rounded-lg shadow-lg p-6">
+              <div className="flex items-start space-x-4">
+                <div className="bg-amber-500/20 p-3 rounded-lg">
+                  <TrendingDown className="w-8 h-8 text-amber-700" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold mb-2 text-amber-900">
+                    Strategy Comparison Unavailable
+                  </h3>
+                  <p className="text-amber-800">
+                    Unable to calculate accurate baseline comparison. Please verify all debt information is correct,
+                    especially minimum payments and interest rates. If you have a mortgage, ensure the P&I payment
+                    matches your actual monthly payment.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <div className="bg-white rounded-lg shadow-md p-6">
