@@ -53,6 +53,19 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
   const monthsSaved = minimumOnly.totalMonths - result.totalMonths;
   const isValidComparison = interestSaved >= 0 && monthsSaved >= 0;
 
+  console.log('💰 STRATEGY COMPARISON:');
+  console.log('  Baseline (minimums only):');
+  console.log('    - Months:', minimumOnly.totalMonths);
+  console.log('    - Interest:', minimumOnly.totalInterest);
+  console.log('  Optimized (with extra payments):');
+  console.log('    - Months:', result.totalMonths);
+  console.log('    - Interest:', result.totalInterest);
+  console.log('    - Extra payment:', result.strategy.extraMonthlyPayment);
+  console.log('  SAVINGS:');
+  console.log('    - Interest saved:', interestSaved);
+  console.log('    - Months saved:', monthsSaved);
+  console.log('    - Valid comparison?', isValidComparison);
+
   const chartData = result.monthlyProjections
     .filter((_, i) => i % 3 === 0 || i === result.monthlyProjections.length - 1)
     .map((proj, index) => {

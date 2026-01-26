@@ -176,6 +176,9 @@ export const CalculationService = {
     extraMonthlyPayment: number,
     maxMonths: number = 600
   ): StrategyResult {
+    console.log('🔥 OPTIMIZED CALCULATION START');
+    console.log('Extra monthly payment:', extraMonthlyPayment);
+
     // Get HELOC balance from localStorage
     const helocTransactions = JSON.parse(localStorage.getItem('novo_heloc_transactions') || '[]');
     const homeEquity = JSON.parse(localStorage.getItem('novo_home_equity') || '{}');
@@ -205,6 +208,9 @@ export const CalculationService = {
       .filter(d => !d.isPaidOff)
       .sort((a, b) => b.interestRate - a.interestRate);
 
+    console.log('Debts sorted by rate (highest first):');
+    sortedDebts.forEach(d => console.log(`  ${d.accountName}: ${d.interestRate}% - $${d.currentBalance}`));
+
     const debtBalances = sortedDebts.map(d => ({
       debtId: d.id,
       debtName: d.accountName,
@@ -220,6 +226,7 @@ export const CalculationService = {
     const monthlyProjections: StrategyResult['monthlyProjections'] = [];
     let month = 0;
     let totalInterestPaid = 0;
+    let totalMinPayments = sortedDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
 
     while (month < maxMonths && debtBalances.some(d => !d.paidOff)) {
       month++;
@@ -228,6 +235,11 @@ export const CalculationService = {
 
       const monthDebts: StrategyResult['monthlyProjections'][0]['debts'] = [];
       let extraPaymentRemaining = extraMonthlyPayment;
+
+      // Find the highest-rate unpaid debt
+      const highestRateDebt = debtBalances
+        .filter(d => !d.paidOff)
+        .sort((a, b) => b.rate - a.rate)[0];
 
       for (const debt of debtBalances) {
         if (debt.paidOff) {
@@ -241,10 +253,11 @@ export const CalculationService = {
           continue;
         }
 
+        // Start with minimum payment
         let payment = debt.minPayment;
 
-        if (debtBalances.filter(d => !d.paidOff).length === 1 ||
-            debt === debtBalances.find(d => !d.paidOff && d.rate === Math.max(...debtBalances.filter(d => !d.paidOff).map(d => d.rate)))) {
+        // Add ALL extra payment to the highest-interest debt
+        if (debt === highestRateDebt && extraPaymentRemaining > 0) {
           payment += extraPaymentRemaining;
           extraPaymentRemaining = 0;
         }
@@ -258,12 +271,12 @@ export const CalculationService = {
         const newBalance = calculation.newBalance;
 
         totalInterestPaid += interest;
-
         debt.balance = newBalance;
 
         if (newBalance === 0 && !debt.paidOff) {
           debt.paidOff = true;
           debt.payoffMonth = month;
+          console.log(`✅ ${debt.debtName} PAID OFF in month ${month}!`);
         }
 
         monthDebts.push({
@@ -287,8 +300,7 @@ export const CalculationService = {
       if (totalBalance === 0) break;
     }
 
-    const totalMinimumPayments = sortedDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
-    const totalPaid = (totalMinimumPayments + extraMonthlyPayment) * month;
+    const totalPaid = (totalMinPayments + extraMonthlyPayment) * month;
 
     const payoffTimeline = debtBalances
       .filter(d => d.paidOff)
@@ -307,6 +319,11 @@ export const CalculationService = {
     const debtFreeDate = new Date();
     debtFreeDate.setMonth(debtFreeDate.getMonth() + month);
 
+    console.log('🎯 OPTIMIZED RESULTS:');
+    console.log('  Total months:', month);
+    console.log('  Total interest:', totalInterestPaid);
+    console.log('  Debt-free date:', debtFreeDate.toISOString().split('T')[0]);
+
     return {
       strategy: {
         type: 'extra-payment',
@@ -323,9 +340,14 @@ export const CalculationService = {
   },
 
   projectMinimumPaymentsOnly(debts: Debt[]): StrategyResult {
+    console.log('📊 BASELINE CALCULATION START (minimum payments only)');
+
     // CRITICAL: For baseline, use ONLY the debts without HELOC virtual debt
     // This represents what would happen if user just paid minimums on actual debts
     const activeDebts = debts.filter(d => !d.isPaidOff);
+
+    console.log('Active debts for baseline:');
+    activeDebts.forEach(d => console.log(`  ${d.accountName}: ${d.interestRate}% - $${d.currentBalance} (min: $${d.minimumPayment})`));
 
     if (activeDebts.length === 0) {
       return {
@@ -441,6 +463,11 @@ export const CalculationService = {
 
     const debtFreeDate = new Date();
     debtFreeDate.setMonth(debtFreeDate.getMonth() + month);
+
+    console.log('📈 BASELINE RESULTS:');
+    console.log('  Total months:', month);
+    console.log('  Total interest:', totalInterestPaid);
+    console.log('  Debt-free date:', debtFreeDate.toISOString().split('T')[0]);
 
     return {
       strategy: {
