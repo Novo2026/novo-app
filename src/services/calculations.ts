@@ -323,39 +323,138 @@ export const CalculationService = {
   },
 
   projectMinimumPaymentsOnly(debts: Debt[]): StrategyResult {
-    const debtsWithMortgageBaseline = debts.map(debt => {
-      if (debt.isAmortized && debt.loanStartDate && debt.loanTerm) {
-        const startDateParts = debt.loanStartDate.match(/^(\d{2})\/(\d{4})$/);
-        if (startDateParts) {
-          const month = parseInt(startDateParts[1]);
-          const year = parseInt(startDateParts[2]);
-          const loanStartDate = new Date(year, month - 1, 1);
-          const loanEndDate = new Date(loanStartDate);
-          loanEndDate.setFullYear(loanEndDate.getFullYear() + debt.loanTerm);
+    // CRITICAL: For baseline, use ONLY the debts without HELOC virtual debt
+    // This represents what would happen if user just paid minimums on actual debts
+    const activeDebts = debts.filter(d => !d.isPaidOff);
 
-          const today = new Date();
-          const monthsRemaining = Math.max(0, Math.round(
-            (loanEndDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24 * 30.44)
-          ));
+    if (activeDebts.length === 0) {
+      return {
+        strategy: {
+          type: 'extra-payment',
+          extraMonthlyPayment: 0,
+          calculatedAt: new Date().toISOString(),
+        },
+        debtFreeDate: new Date().toISOString().split('T')[0],
+        totalMonths: 0,
+        totalInterest: 0,
+        totalPaid: 0,
+        payoffTimeline: [],
+        monthlyProjections: [],
+      };
+    }
 
-          if (monthsRemaining > 0 && debt.currentBalance > 0) {
-            const calculatedMinPayment = this.calculateMortgagePayment(
-              debt.currentBalance,
-              debt.interestRate,
-              monthsRemaining
-            );
+    // Sort by interest rate (highest first) for avalanche method
+    const sortedDebts = [...activeDebts].sort((a, b) => b.interestRate - a.interestRate);
 
-            return {
-              ...debt,
-              minimumPayment: Math.max(debt.minimumPayment, calculatedMinPayment)
-            };
-          }
+    const debtBalances = sortedDebts.map(d => ({
+      debtId: d.id,
+      debtName: d.accountName,
+      balance: d.currentBalance,
+      rate: d.interestRate,
+      minPayment: d.minimumPayment,
+      paidOff: false,
+      payoffMonth: 0,
+      debt: d,
+    }));
+
+    const monthlyProjections: StrategyResult['monthlyProjections'] = [];
+    let month = 0;
+    let totalInterestPaid = 0;
+    const maxMonths = 600; // 50 years max
+
+    // Simulate minimum payments only
+    while (month < maxMonths && debtBalances.some(d => !d.paidOff)) {
+      month++;
+      const currentDate = new Date();
+      currentDate.setMonth(currentDate.getMonth() + month);
+
+      const monthDebts: StrategyResult['monthlyProjections'][0]['debts'] = [];
+
+      for (const debt of debtBalances) {
+        if (debt.paidOff) {
+          monthDebts.push({
+            debtId: debt.debtId,
+            balance: 0,
+            payment: 0,
+            interest: 0,
+            principal: 0,
+          });
+          continue;
         }
-      }
-      return debt;
-    });
 
-    return this.projectDebtPayoff(debtsWithMortgageBaseline, 0);
+        // Use ONLY minimum payment for baseline
+        const payment = debt.minPayment;
+
+        const calculation = debt.debt.isAmortized
+          ? this.calculateAmortizedPayment({ ...debt.debt, currentBalance: debt.balance }, payment)
+          : this.calculatePayment(debt.balance, debt.rate, payment);
+
+        const interest = calculation.interestCharged;
+        const principal = calculation.principalPaid;
+        const newBalance = calculation.newBalance;
+
+        totalInterestPaid += interest;
+        debt.balance = newBalance;
+
+        if (newBalance === 0 && !debt.paidOff) {
+          debt.paidOff = true;
+          debt.payoffMonth = month;
+        }
+
+        monthDebts.push({
+          debtId: debt.debtId,
+          balance: newBalance,
+          payment,
+          interest,
+          principal,
+        });
+      }
+
+      const totalBalance = debtBalances.reduce((sum, d) => sum + d.balance, 0);
+
+      monthlyProjections.push({
+        month,
+        date: currentDate.toISOString().split('T')[0],
+        debts: monthDebts,
+        totalBalance,
+      });
+
+      if (totalBalance === 0) break;
+    }
+
+    const totalMinimumPayments = sortedDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
+    const totalPaid = totalMinimumPayments * month;
+
+    const payoffTimeline = debtBalances
+      .filter(d => d.paidOff)
+      .map(d => {
+        const payoffDate = new Date();
+        payoffDate.setMonth(payoffDate.getMonth() + d.payoffMonth);
+        return {
+          debtId: d.debtId,
+          debtName: d.debtName,
+          payoffMonth: d.payoffMonth,
+          payoffDate: payoffDate.toISOString().split('T')[0],
+        };
+      })
+      .sort((a, b) => a.payoffMonth - b.payoffMonth);
+
+    const debtFreeDate = new Date();
+    debtFreeDate.setMonth(debtFreeDate.getMonth() + month);
+
+    return {
+      strategy: {
+        type: 'extra-payment',
+        extraMonthlyPayment: 0,
+        calculatedAt: new Date().toISOString(),
+      },
+      debtFreeDate: debtFreeDate.toISOString().split('T')[0],
+      totalMonths: month,
+      totalInterest: Math.round(totalInterestPaid * 100) / 100,
+      totalPaid: Math.round(totalPaid * 100) / 100,
+      payoffTimeline,
+      monthlyProjections,
+    };
   },
 
   calculateMortgagePayment(

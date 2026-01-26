@@ -48,6 +48,11 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
 
   const minimumOnly = CalculationService.projectMinimumPaymentsOnly(debts);
 
+  // Validate strategy comparison
+  const interestSaved = minimumOnly.totalInterest - result.totalInterest;
+  const monthsSaved = minimumOnly.totalMonths - result.totalMonths;
+  const isValidComparison = interestSaved >= 0 && monthsSaved >= 0;
+
   const chartData = result.monthlyProjections
     .filter((_, i) => i % 3 === 0 || i === result.monthlyProjections.length - 1)
     .map((proj, index) => {
@@ -138,26 +143,46 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-[#2D9CDB] to-[#1E8BBD] text-white rounded-lg shadow-lg p-6">
-        <div className="flex items-start space-x-4">
-          <div className="bg-white/20 p-3 rounded-lg">
-            <TrendingDown className="w-8 h-8" />
-          </div>
-          <div className="flex-1">
-            <h3 className="text-2xl font-bold mb-2">
-              YOU'LL SAVE {CalculationService.formatCurrency(minimumOnly.totalInterest - result.totalInterest)}!
-            </h3>
-            <p className="text-lg opacity-90">
-              And be debt-free{' '}
-              <span className="font-bold">
-                {Math.floor((minimumOnly.totalMonths - result.totalMonths) / 12)} years,{' '}
-                {(minimumOnly.totalMonths - result.totalMonths) % 12} months
-              </span>{' '}
-              sooner!
-            </p>
+      {isValidComparison ? (
+        <div className="bg-gradient-to-br from-[#2D9CDB] to-[#1E8BBD] text-white rounded-lg shadow-lg p-6">
+          <div className="flex items-start space-x-4">
+            <div className="bg-white/20 p-3 rounded-lg">
+              <TrendingDown className="w-8 h-8" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-2xl font-bold mb-2">
+                YOU'LL SAVE {CalculationService.formatCurrency(interestSaved)}!
+              </h3>
+              <p className="text-lg opacity-90">
+                And be debt-free{' '}
+                <span className="font-bold">
+                  {Math.floor(monthsSaved / 12)} years,{' '}
+                  {monthsSaved % 12} months
+                </span>{' '}
+                sooner!
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-amber-50 border-2 border-amber-500 rounded-lg shadow-lg p-6">
+          <div className="flex items-start space-x-4">
+            <div className="bg-amber-500/20 p-3 rounded-lg">
+              <TrendingDown className="w-8 h-8 text-amber-700" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold mb-2 text-amber-900">
+                Strategy Comparison Unavailable
+              </h3>
+              <p className="text-amber-800">
+                Unable to calculate accurate baseline comparison. Please verify all debt information is correct,
+                especially minimum payments and interest rates. If you have a mortgage, ensure the P&I payment
+                matches your actual monthly payment.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow-md p-6">
         <h3 className="text-xl font-bold text-gray-800 mb-6">How to Execute Your Strategy</h3>
