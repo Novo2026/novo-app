@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { DollarSign, CreditCard, CheckCircle, ChevronLeft, Plus, X, Info } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
+import CashFlowWarningModal from './CashFlowWarningModal';
 
 interface DebtInput {
   id: string;
@@ -35,6 +36,7 @@ interface OnboardingModalProps {
 
 export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const [step, setStep] = useState(1);
+  const [showCashFlowWarning, setShowCashFlowWarning] = useState(false);
   const [data, setData] = useState<OnboardingData>({
     userName: '',
     grossIncome: '',
@@ -165,10 +167,33 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
     if (canProceed()) {
       if (step === 4) {
         onComplete(data);
+      } else if (step === 2) {
+        // Check cash flow after step 2 before proceeding
+        const cashFlow = getCashFlow();
+        if (cashFlow < 500) {
+          setShowCashFlowWarning(true);
+        } else {
+          setStep(step + 1);
+        }
       } else {
         setStep(step + 1);
       }
     }
+  };
+
+  const handleCashFlowContinue = () => {
+    setShowCashFlowWarning(false);
+    setStep(step + 1);
+  };
+
+  const handleCashFlowReview = () => {
+    setShowCashFlowWarning(false);
+    // Stay on step 2 so they can adjust their expenses
+  };
+
+  const handleCashFlowContactCoach = () => {
+    // Open email client
+    window.location.href = 'mailto:ben@windmillmortgage.com?subject=NOVO%20Cash%20Flow%20Consultation&body=Hi%20Ben%2C%0A%0AI%27m%20working%20through%20the%20NOVO%20debt%20payoff%20calculator%20and%20would%20like%20some%20guidance%20on%20my%20cash%20flow%20situation.%0A%0AThank%20you%21';
   };
 
   const handleBack = () => {
@@ -683,41 +708,52 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" />
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" />
 
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 my-8 animate-in fade-in zoom-in duration-300">
-        {renderProgressBar()}
+        <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 my-8 animate-in fade-in zoom-in duration-300">
+          {renderProgressBar()}
 
-        <div className="mb-8">
-          {step === 1 && renderStep1()}
-          {step === 2 && renderStep2()}
-          {step === 3 && renderStep3()}
-          {step === 4 && renderStep4()}
-        </div>
+          <div className="mb-8">
+            {step === 1 && renderStep1()}
+            {step === 2 && renderStep2()}
+            {step === 3 && renderStep3()}
+            {step === 4 && renderStep4()}
+          </div>
 
-        <div className="flex items-center justify-between space-x-4">
-          {step > 1 && (
+          <div className="flex items-center justify-between space-x-4">
+            {step > 1 && (
+              <button
+                onClick={handleBack}
+                className="flex items-center space-x-2 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5" />
+                <span>Back</span>
+              </button>
+            )}
+
             <button
-              onClick={handleBack}
-              className="flex items-center space-x-2 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors"
+              onClick={handleNext}
+              disabled={!canProceed()}
+              className={`flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold py-3 px-6 rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] ${
+                step === 1 ? 'w-full' : ''
+              }`}
             >
-              <ChevronLeft className="w-5 h-5" />
-              <span>Back</span>
+              {step === 4 ? 'Start My Journey' : 'Next'}
             </button>
-          )}
-
-          <button
-            onClick={handleNext}
-            disabled={!canProceed()}
-            className={`flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold py-3 px-6 rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] ${
-              step === 1 ? 'w-full' : ''
-            }`}
-          >
-            {step === 4 ? 'Start My Journey' : 'Next'}
-          </button>
+          </div>
         </div>
       </div>
-    </div>
+
+      {showCashFlowWarning && (
+        <CashFlowWarningModal
+          cashFlow={getCashFlow()}
+          onContinue={handleCashFlowContinue}
+          onReviewExpenses={handleCashFlowReview}
+          onContactCoach={handleCashFlowContactCoach}
+        />
+      )}
+    </>
   );
 }
