@@ -24,6 +24,12 @@ interface HELOCTransaction {
 
 type TrackingType = 'heloc' | 'checking' | 'both';
 
+interface SuccessBanner {
+  type: 'draw' | 'payment' | 'interest';
+  amount: number;
+  newBalance: number;
+}
+
 export function HELOCTracker() {
   const [trackingType, setTrackingType] = useState<TrackingType>(() => {
     const saved = localStorage.getItem('novo_tracking_type');
@@ -34,6 +40,8 @@ export function HELOCTracker() {
   const [showInterestModal, setShowInterestModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<HELOCTransaction | null>(null);
   const [transactionJustLogged, setTransactionJustLogged] = useState(false);
+  const [successBanner, setSuccessBanner] = useState<SuccessBanner | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const homeEquity = StorageService.getHomeEquity();
   const financialProfile = StorageService.getFinancialProfile();
@@ -49,7 +57,16 @@ export function HELOCTracker() {
   const transactions = useMemo(() => {
     const stored = localStorage.getItem('novo_heloc_transactions');
     return stored ? JSON.parse(stored) as HELOCTransaction[] : [];
-  }, [showDrawModal, showPaymentModal, showInterestModal]);
+  }, [refreshTrigger]);
+
+  useEffect(() => {
+    if (successBanner) {
+      const timer = setTimeout(() => {
+        setSuccessBanner(null);
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [successBanner]);
 
   const helocLimit = homeEquity.hasHELOC && homeEquity.helocLimit
     ? homeEquity.helocLimit
@@ -126,6 +143,68 @@ export function HELOCTracker() {
           </p>
         </div>
       </div>
+
+      {successBanner && (
+        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-500 rounded-lg shadow-lg p-6 animate-slide-down">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center">
+              <span className="text-white text-2xl font-bold">✓</span>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-emerald-900 mb-2">
+                {successBanner.type === 'payment' && 'Payment Recorded!'}
+                {successBanner.type === 'draw' && 'Draw Recorded!'}
+                {successBanner.type === 'interest' && 'Interest Recorded!'}
+              </h3>
+              <p className="text-gray-800 mb-4">
+                New HELOC balance: <span className="font-bold text-2xl">{CalculationService.formatCurrency(successBanner.newBalance)}</span>
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => {
+                    setSuccessBanner(null);
+                    setEditingTransaction(null);
+                    setShowPaymentModal(true);
+                  }}
+                  className="flex items-center space-x-2 bg-[#27AE60] hover:bg-[#229954] text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Record Another Payment</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setSuccessBanner(null);
+                    setEditingTransaction(null);
+                    setShowDrawModal(true);
+                  }}
+                  className="flex items-center space-x-2 bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 rounded-lg border-2 border-gray-300 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Record Draw</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setSuccessBanner(null);
+                    setEditingTransaction(null);
+                    setShowInterestModal(true);
+                  }}
+                  className="flex items-center space-x-2 bg-white hover:bg-gray-100 text-gray-800 font-semibold py-2 px-4 rounded-lg border-2 border-gray-300 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Record Interest</span>
+                </button>
+                <button
+                  onClick={() => setSuccessBanner(null)}
+                  className="flex items-center space-x-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                  <span>Done</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {(trackingType === 'heloc' || trackingType === 'both') && !hasHomeEquity && (
         <div className="bg-white rounded-lg shadow-md p-8 text-center">
@@ -267,8 +346,7 @@ export function HELOCTracker() {
                     const filtered = transactions.filter(t => t.id !== id);
                     recalculateBalances(filtered);
                     localStorage.setItem('novo_heloc_transactions', JSON.stringify(filtered));
-                    alert('Transaction deleted. Balances updated.');
-                    window.location.reload();
+                    setRefreshTrigger(prev => prev + 1);
                   }
                 }}
               />
@@ -556,6 +634,13 @@ export function HELOCTracker() {
             setShowDrawModal(false);
             setEditingTransaction(null);
           }}
+          onSuccess={(amount, newBalance) => {
+            setShowDrawModal(false);
+            setEditingTransaction(null);
+            setSuccessBanner({ type: 'draw', amount, newBalance });
+            setRefreshTrigger(prev => prev + 1);
+            setTransactionJustLogged(true);
+          }}
           currentBalance={currentBalance}
           editTransaction={editingTransaction}
         />
@@ -567,6 +652,13 @@ export function HELOCTracker() {
             setShowPaymentModal(false);
             setEditingTransaction(null);
           }}
+          onSuccess={(amount, newBalance) => {
+            setShowPaymentModal(false);
+            setEditingTransaction(null);
+            setSuccessBanner({ type: 'payment', amount, newBalance });
+            setRefreshTrigger(prev => prev + 1);
+            setTransactionJustLogged(true);
+          }}
           currentBalance={currentBalance}
           editTransaction={editingTransaction}
         />
@@ -577,6 +669,13 @@ export function HELOCTracker() {
           onClose={() => {
             setShowInterestModal(false);
             setEditingTransaction(null);
+          }}
+          onSuccess={(amount, newBalance) => {
+            setShowInterestModal(false);
+            setEditingTransaction(null);
+            setSuccessBanner({ type: 'interest', amount, newBalance });
+            setRefreshTrigger(prev => prev + 1);
+            setTransactionJustLogged(true);
           }}
           currentBalance={currentBalance}
           interestRate={interestRate}
@@ -717,10 +816,12 @@ function TransactionLedger({
 
 function RecordDrawModal({
   onClose,
+  onSuccess,
   currentBalance,
   editTransaction
 }: {
   onClose: () => void;
+  onSuccess: (amount: number, newBalance: number) => void;
   currentBalance: number;
   editTransaction: HELOCTransaction | null;
 }) {
@@ -802,9 +903,8 @@ function RecordDrawModal({
       }
     }
 
-    alert(`✓ Draw recorded: +${CalculationService.formatCurrency(drawAmount)}. New HELOC balance: ${CalculationService.formatCurrency(currentBalance + drawAmount)}`);
-    onClose();
-    window.location.reload();
+    const newBalance = currentBalance + drawAmount;
+    onSuccess(drawAmount, newBalance);
   };
 
   return (
@@ -905,10 +1005,12 @@ function RecordDrawModal({
 
 function RecordPaymentModal({
   onClose,
+  onSuccess,
   currentBalance,
   editTransaction
 }: {
   onClose: () => void;
+  onSuccess: (amount: number, newBalance: number) => void;
   currentBalance: number;
   editTransaction: HELOCTransaction | null;
 }) {
@@ -950,9 +1052,7 @@ function RecordPaymentModal({
 
     localStorage.setItem('novo_heloc_transactions', JSON.stringify(transactions));
 
-    alert(`✓ Payment recorded: -${CalculationService.formatCurrency(paymentAmount)}. New HELOC balance: ${CalculationService.formatCurrency(newBalance)}`);
-    onClose();
-    window.location.reload();
+    onSuccess(paymentAmount, newBalance);
   };
 
   return (
@@ -1038,11 +1138,13 @@ function RecordPaymentModal({
 
 function RecordInterestModal({
   onClose,
+  onSuccess,
   currentBalance,
   interestRate,
   editTransaction
 }: {
   onClose: () => void;
+  onSuccess: (amount: number, newBalance: number) => void;
   currentBalance: number;
   interestRate: number;
   editTransaction: HELOCTransaction | null;
@@ -1091,9 +1193,8 @@ function RecordInterestModal({
 
     localStorage.setItem('novo_heloc_transactions', JSON.stringify(transactions));
 
-    alert(`✓ Interest recorded: +${CalculationService.formatCurrency(interestAmount)}. New HELOC balance: ${CalculationService.formatCurrency(currentBalance + interestAmount)}`);
-    onClose();
-    window.location.reload();
+    const newBalance = currentBalance + interestAmount;
+    onSuccess(interestAmount, newBalance);
   };
 
   return (
