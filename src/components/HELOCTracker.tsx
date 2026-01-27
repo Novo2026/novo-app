@@ -964,21 +964,6 @@ function RecordDrawModal({
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Draw Amount</label>
-            <div className="relative">
-              <span className="absolute left-3 top-2 text-gray-600">$</span>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
-                placeholder="0.00"
-                step="0.01"
-              />
-            </div>
-          </div>
-
-          <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Date</label>
             <input
               type="date"
@@ -1021,36 +1006,34 @@ function RecordDrawModal({
               </div>
 
               {selectedDebt && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    How much do you want to pay?
-                  </label>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Type</label>
                   <div className="space-y-2">
                     {debts.find(d => d.id === selectedDebt) && (
                       <>
-                        <label className="flex items-start cursor-pointer group">
+                        <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-gray-50 has-[:checked]:border-[#2D9CDB] has-[:checked]:bg-blue-50">
                           <input
                             type="radio"
                             name="paymentType"
                             checked={paymentType === 'minimum'}
                             onChange={() => handlePaymentTypeChange('minimum')}
-                            className="mt-1 mr-3 h-4 w-4 text-[#2D9CDB] focus:ring-[#2D9CDB]"
+                            className="mr-3 h-4 w-4 text-[#2D9CDB] focus:ring-[#2D9CDB]"
                           />
                           <div className="flex-1">
-                            <div className="font-semibold text-gray-800">Minimum payment only</div>
+                            <div className="font-semibold text-gray-800">Pay minimum payment</div>
                             <div className="text-sm text-gray-600">
                               {CalculationService.formatCurrency(debts.find(d => d.id === selectedDebt)!.minimumPayment)}
                             </div>
                           </div>
                         </label>
 
-                        <label className="flex items-start cursor-pointer group">
+                        <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-gray-50 has-[:checked]:border-[#2D9CDB] has-[:checked]:bg-blue-50">
                           <input
                             type="radio"
                             name="paymentType"
                             checked={paymentType === 'full'}
                             onChange={() => handlePaymentTypeChange('full')}
-                            className="mt-1 mr-3 h-4 w-4 text-[#2D9CDB] focus:ring-[#2D9CDB]"
+                            className="mr-3 h-4 w-4 text-[#2D9CDB] focus:ring-[#2D9CDB]"
                           />
                           <div className="flex-1">
                             <div className="font-semibold text-gray-800">Pay off in full</div>
@@ -1060,17 +1043,17 @@ function RecordDrawModal({
                           </div>
                         </label>
 
-                        <label className="flex items-start cursor-pointer group">
+                        <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-gray-50 has-[:checked]:border-[#2D9CDB] has-[:checked]:bg-blue-50">
                           <input
                             type="radio"
                             name="paymentType"
                             checked={paymentType === 'custom'}
                             onChange={() => handlePaymentTypeChange('custom')}
-                            className="mt-1 mr-3 h-4 w-4 text-[#2D9CDB] focus:ring-[#2D9CDB]"
+                            className="mr-3 h-4 w-4 text-[#2D9CDB] focus:ring-[#2D9CDB]"
                           />
                           <div className="flex-1">
-                            <div className="font-semibold text-gray-800">Custom amount</div>
-                            <div className="text-sm text-gray-600">Enter your own amount below</div>
+                            <div className="font-semibold text-gray-800">Enter custom amount</div>
+                            <div className="text-sm text-gray-600">Specify your own payment amount</div>
                           </div>
                         </label>
                       </>
@@ -1080,6 +1063,25 @@ function RecordDrawModal({
               )}
             </>
           )}
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Draw Amount</label>
+            <div className="relative">
+              <span className="absolute left-3 top-2 text-gray-600">$</span>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                placeholder="0.00"
+                step="0.01"
+                disabled={purpose === 'Pay Off Debt' && selectedDebt && paymentType !== 'custom'}
+              />
+            </div>
+            {purpose === 'Pay Off Debt' && selectedDebt && paymentType !== 'custom' && (
+              <p className="text-xs text-gray-500 mt-1">Amount auto-filled based on payment type selected above</p>
+            )}
+          </div>
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Description (optional)</label>
