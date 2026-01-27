@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trash2, Download, AlertTriangle, CheckCircle, User, DollarSign, RefreshCw } from 'lucide-react';
+import { Trash2, Download, AlertTriangle, CheckCircle, User, DollarSign, RefreshCw, Target, Mail, Phone } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import type { FinancialProfile } from '../types';
 
@@ -21,6 +21,12 @@ export default function Settings({ onDataUpdate }: SettingsProps) {
     monthlyNetIncome: 0,
     monthlyEssentialExpenses: 0,
     monthlyDiscretionaryExpenses: 0,
+  });
+
+  // Strategy Readiness Assessment state
+  const [readinessAnswers, setReadinessAnswers] = useState<Record<number, boolean>>(() => {
+    const saved = localStorage.getItem('strategy_readiness_answers');
+    return saved ? JSON.parse(saved) : {};
   });
 
   useEffect(() => {
@@ -144,6 +150,61 @@ export default function Settings({ onDataUpdate }: SettingsProps) {
     setShowQuizResetSuccess(true);
     setTimeout(() => setShowQuizResetSuccess(false), 3000);
   };
+
+  const handleReadinessToggle = (questionNumber: number) => {
+    const newAnswers = {
+      ...readinessAnswers,
+      [questionNumber]: !readinessAnswers[questionNumber],
+    };
+    setReadinessAnswers(newAnswers);
+    localStorage.setItem('strategy_readiness_answers', JSON.stringify(newAnswers));
+  };
+
+  const calculateReadinessScore = () => {
+    return Object.values(readinessAnswers).filter(answer => answer === true).length;
+  };
+
+  const getReadinessMessage = (score: number) => {
+    if (score === 7) {
+      return {
+        emoji: '✅',
+        title: "You're ready for NOVO's advanced strategies!",
+        color: 'emerald',
+        description: "You have all the key elements in place for successful velocity banking and advanced debt payoff strategies.",
+      };
+    } else if (score >= 5) {
+      return {
+        emoji: '⚠️',
+        title: "You're close - work on the areas you marked 'No' first",
+        color: 'amber',
+        description: "You're on the right track but need to strengthen a few areas before diving into advanced strategies.",
+      };
+    } else if (score >= 3) {
+      return {
+        emoji: '💡',
+        title: "Focus on building financial stability before velocity banking",
+        color: 'blue',
+        description: "Build your financial foundation first. Get these fundamentals solid before attempting advanced strategies.",
+      };
+    } else {
+      return {
+        emoji: '🚨',
+        title: "Consider basic budgeting and credit counseling first",
+        color: 'red',
+        description: "It's important to establish financial stability before attempting aggressive payoff strategies. Consider working with a financial coach.",
+      };
+    }
+  };
+
+  const readinessQuestions = [
+    { id: 1, text: "I have at least $500/month in positive cash flow (after all expenses and debt minimums)" },
+    { id: 2, text: "I have at least $1,000 in emergency savings" },
+    { id: 3, text: "My income has been stable for the last 3 months" },
+    { id: 4, text: "I haven't missed any debt payments in the last 6 months" },
+    { id: 5, text: "I'm willing to track my finances daily/weekly" },
+    { id: 6, text: "I can commit to not using credit cards for new purchases" },
+    { id: 7, text: "I'm ready to reduce discretionary spending if needed" },
+  ];
 
   if (showSuccess) {
     return (
@@ -320,6 +381,201 @@ export default function Settings({ onDataUpdate }: SettingsProps) {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex items-center space-x-2 mb-4">
+          <Target className="w-6 h-6 text-[#1E3A5F]" />
+          <h3 className="text-xl font-bold text-gray-800">Strategy Readiness Assessment</h3>
+        </div>
+        <p className="text-gray-600 mb-6">
+          Take this quick assessment to determine if you're ready for NOVO's advanced debt acceleration strategies.
+        </p>
+
+        <div className="space-y-3 mb-6">
+          {readinessQuestions.map((question) => (
+            <div
+              key={question.id}
+              className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              <button
+                onClick={() => handleReadinessToggle(question.id)}
+                className={`flex-shrink-0 w-12 h-12 rounded-lg border-2 transition-all flex items-center justify-center ${
+                  readinessAnswers[question.id]
+                    ? 'bg-emerald-500 border-emerald-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-400'
+                }`}
+              >
+                {readinessAnswers[question.id] ? (
+                  <CheckCircle className="w-6 h-6" />
+                ) : (
+                  <span className="text-2xl font-light">?</span>
+                )}
+              </button>
+              <div className="flex-1">
+                <p className="text-gray-800 font-medium leading-relaxed">{question.text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {Object.keys(readinessAnswers).length > 0 && (
+          <>
+            <div className={`rounded-xl p-6 mb-6 border-2 ${
+              getReadinessMessage(calculateReadinessScore()).color === 'emerald'
+                ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-300'
+                : getReadinessMessage(calculateReadinessScore()).color === 'amber'
+                ? 'bg-gradient-to-br from-amber-50 to-orange-50 border-amber-300'
+                : getReadinessMessage(calculateReadinessScore()).color === 'blue'
+                ? 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-300'
+                : 'bg-gradient-to-br from-red-50 to-rose-50 border-red-300'
+            }`}>
+              <div className="flex items-start gap-4">
+                <div className="text-5xl">{getReadinessMessage(calculateReadinessScore()).emoji}</div>
+                <div className="flex-1">
+                  <div className="mb-3">
+                    <p className="text-sm font-semibold text-gray-600 mb-1">
+                      Your Score: {calculateReadinessScore()} out of 7
+                    </p>
+                    <h4 className="text-2xl font-bold text-gray-900 mb-2">
+                      {getReadinessMessage(calculateReadinessScore()).title}
+                    </h4>
+                    <p className="text-gray-700">
+                      {getReadinessMessage(calculateReadinessScore()).description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-2 border-blue-300 rounded-lg p-6 mb-6">
+              <h4 className="font-bold text-blue-900 mb-4 text-lg">Tailored Recommendations:</h4>
+
+              {calculateReadinessScore() === 7 ? (
+                <div className="space-y-3">
+                  <div className="bg-white rounded-lg p-4">
+                    <p className="font-semibold text-gray-900 mb-2">✨ You're ready to explore:</p>
+                    <ul className="space-y-2 text-gray-700 ml-4">
+                      <li className="flex items-start gap-2">
+                        <span className="flex-shrink-0">•</span>
+                        <span><strong>Smart Chunking Calculator</strong> - Calculate optimal HELOC chunk amounts for mortgage payoff</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="flex-shrink-0">•</span>
+                        <span><strong>HELOC Velocity Banking</strong> - Use your HELOC strategically to accelerate debt payoff</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="flex-shrink-0">•</span>
+                        <span><strong>Advanced Payment Strategies</strong> - Run scenarios with extra payments and debt avalanche</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              ) : calculateReadinessScore() >= 5 ? (
+                <div className="space-y-3">
+                  <div className="bg-white rounded-lg p-4">
+                    <p className="font-semibold text-gray-900 mb-2">🎯 Next Steps:</p>
+                    <ul className="space-y-2 text-gray-700 ml-4">
+                      <li className="flex items-start gap-2">
+                        <span className="flex-shrink-0">•</span>
+                        <span>Address the areas you marked "No" before starting advanced strategies</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="flex-shrink-0">•</span>
+                        <span>Start with basic debt avalanche (extra payments to highest rate debt)</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="flex-shrink-0">•</span>
+                        <span>Build your emergency fund to at least $1,000</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="flex-shrink-0">•</span>
+                        <span>Once all items are "Yes", revisit HELOC strategies</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              ) : calculateReadinessScore() >= 3 ? (
+                <div className="space-y-3">
+                  <div className="bg-white rounded-lg p-4">
+                    <p className="font-semibold text-gray-900 mb-2">💪 Build Your Foundation:</p>
+                    <ul className="space-y-2 text-gray-700 ml-4">
+                      <li className="flex items-start gap-2">
+                        <span className="flex-shrink-0">•</span>
+                        <span>Focus on making all minimum payments on time</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="flex-shrink-0">•</span>
+                        <span>Build $1,000 emergency fund before aggressive debt payoff</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="flex-shrink-0">•</span>
+                        <span>Track every dollar in and out for 30 days</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="flex-shrink-0">•</span>
+                        <span>Cut discretionary spending by 20-30%</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="flex-shrink-0">•</span>
+                        <span>Work on stabilizing income before attempting velocity banking</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="bg-white rounded-lg p-4">
+                    <p className="font-semibold text-gray-900 mb-2">🆘 Start Here:</p>
+                    <ul className="space-y-2 text-gray-700 ml-4">
+                      <li className="flex items-start gap-2">
+                        <span className="flex-shrink-0">•</span>
+                        <span>Work with a financial coach to create a basic budget</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="flex-shrink-0">•</span>
+                        <span>Consider credit counseling if you've missed payments recently</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="flex-shrink-0">•</span>
+                        <span>Focus on making ALL minimum payments first</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="flex-shrink-0">•</span>
+                        <span>Build a small emergency fund ($500-1000) before debt acceleration</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="flex-shrink-0">•</span>
+                        <span>HELOC velocity banking is NOT recommended at this time</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-lg p-6">
+              <p className="text-lg font-semibold text-emerald-900 mb-3">Need personalized coaching?</p>
+              <p className="text-gray-700 mb-4">
+                Ben Hulshof specializes in helping clients achieve financial freedom through strategic debt elimination.
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 text-emerald-800">
+                  <Mail className="w-5 h-5 flex-shrink-0" />
+                  <a href="mailto:ben@windmillmortgage.com" className="hover:underline font-medium text-lg">
+                    ben@windmillmortgage.com
+                  </a>
+                </div>
+                <div className="flex items-center gap-3 text-emerald-800">
+                  <Phone className="w-5 h-5 flex-shrink-0" />
+                  <a href="tel:614-327-2213" className="hover:underline font-medium text-lg">
+                    614-327-2213
+                  </a>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6">
