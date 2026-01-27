@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { TrendingUp, Plus, Download, Edit2, X } from 'lucide-react';
+import { TrendingUp, Plus, Download, Edit2, X, CreditCard, Wallet, PenLine } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
@@ -1006,54 +1006,80 @@ function RecordDrawModal({
               </div>
 
               {selectedDebt && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Type</label>
-                  <div className="space-y-2">
+                <div className="mt-6 pt-6 border-t-2 border-gray-200">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Wallet className="w-6 h-6 text-[#2D9CDB]" />
+                      <h3 className="text-xl font-bold text-gray-900">
+                        How much do you want to pay on {debts.find(d => d.id === selectedDebt)?.accountName}?
+                      </h3>
+                    </div>
+                    <p className="text-sm text-gray-600 ml-8">
+                      Select one of the options below:
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
                     {debts.find(d => d.id === selectedDebt) && (
                       <>
-                        <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-gray-50 has-[:checked]:border-[#2D9CDB] has-[:checked]:bg-blue-50">
+                        <label className="flex items-center cursor-pointer p-4 border-2 rounded-xl transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-[#2D9CDB] has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
                           <input
                             type="radio"
                             name="paymentType"
                             checked={paymentType === 'minimum'}
                             onChange={() => handlePaymentTypeChange('minimum')}
-                            className="mr-3 h-4 w-4 text-[#2D9CDB] focus:ring-[#2D9CDB]"
+                            className="mr-4 h-5 w-5 text-[#2D9CDB] focus:ring-[#2D9CDB] focus:ring-2"
                           />
-                          <div className="flex-1">
-                            <div className="font-semibold text-gray-800">Pay minimum payment</div>
-                            <div className="text-sm text-gray-600">
-                              {CalculationService.formatCurrency(debts.find(d => d.id === selectedDebt)!.minimumPayment)}
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-has-[:checked]:bg-[#2D9CDB]">
+                              <CreditCard className="w-5 h-5 text-[#2D9CDB] group-has-[:checked]:text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-bold text-gray-900 text-base">Pay minimum payment</div>
+                              <div className="text-base text-gray-700 font-semibold mt-0.5">
+                                {CalculationService.formatCurrency(debts.find(d => d.id === selectedDebt)!.minimumPayment)}
+                              </div>
                             </div>
                           </div>
                         </label>
 
-                        <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-gray-50 has-[:checked]:border-[#2D9CDB] has-[:checked]:bg-blue-50">
+                        <label className="flex items-center cursor-pointer p-4 border-2 rounded-xl transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-[#2D9CDB] has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
                           <input
                             type="radio"
                             name="paymentType"
                             checked={paymentType === 'full'}
                             onChange={() => handlePaymentTypeChange('full')}
-                            className="mr-3 h-4 w-4 text-[#2D9CDB] focus:ring-[#2D9CDB]"
+                            className="mr-4 h-5 w-5 text-[#2D9CDB] focus:ring-[#2D9CDB] focus:ring-2"
                           />
-                          <div className="flex-1">
-                            <div className="font-semibold text-gray-800">Pay off in full</div>
-                            <div className="text-sm text-gray-600">
-                              {CalculationService.formatCurrency(debts.find(d => d.id === selectedDebt)!.currentBalance)}
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center group-has-[:checked]:bg-green-600">
+                              <Wallet className="w-5 h-5 text-green-600 group-has-[:checked]:text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-bold text-gray-900 text-base">Pay off in full</div>
+                              <div className="text-base text-gray-700 font-semibold mt-0.5">
+                                {CalculationService.formatCurrency(debts.find(d => d.id === selectedDebt)!.currentBalance)}
+                              </div>
                             </div>
                           </div>
                         </label>
 
-                        <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-gray-50 has-[:checked]:border-[#2D9CDB] has-[:checked]:bg-blue-50">
+                        <label className="flex items-center cursor-pointer p-4 border-2 rounded-xl transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-[#2D9CDB] has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
                           <input
                             type="radio"
                             name="paymentType"
                             checked={paymentType === 'custom'}
                             onChange={() => handlePaymentTypeChange('custom')}
-                            className="mr-3 h-4 w-4 text-[#2D9CDB] focus:ring-[#2D9CDB]"
+                            className="mr-4 h-5 w-5 text-[#2D9CDB] focus:ring-[#2D9CDB] focus:ring-2"
                           />
-                          <div className="flex-1">
-                            <div className="font-semibold text-gray-800">Enter custom amount</div>
-                            <div className="text-sm text-gray-600">Specify your own payment amount</div>
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center group-has-[:checked]:bg-amber-500">
+                              <PenLine className="w-5 h-5 text-amber-600 group-has-[:checked]:text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <div className="font-bold text-gray-900 text-base">Enter custom amount</div>
+                              <div className="text-sm text-gray-600 mt-0.5">Specify your own payment amount</div>
+                            </div>
                           </div>
                         </label>
                       </>
