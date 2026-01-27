@@ -100,6 +100,34 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
 
   const hasLowCashFlow = cashFlowAfterMinimums < 200;
 
+  // Find highest-interest debt for HELOC tactical recommendation
+  const sortedDebtsByRate = [...allDebts]
+    .filter(d => d.id !== 'HELOC_VIRTUAL')
+    .sort((a, b) => b.interestRate - a.interestRate);
+  const highestRateDebt = sortedDebtsByRate[0];
+  const hasHELOCAccount = allDebts.some(d => d.category === 'HELOC' || d.id === 'HELOC_VIRTUAL');
+
+  // Calculate HELOC tactical strategy impact
+  const calculateHelocTacticalImpact = () => {
+    if (!highestRateDebt || !helocRate) return null;
+
+    const interestSavings = highestRateDebt.interestRate - helocRate;
+    const freedCashFlow = highestRateDebt.minimumPayment;
+    const targetSpendingCuts = 500;
+    const totalMonthlyToHELOC = freedCashFlow + targetSpendingCuts;
+    const monthsToPayoffHELOC = Math.ceil(highestRateDebt.currentBalance / totalMonthlyToHELOC);
+
+    return {
+      interestSavings,
+      freedCashFlow,
+      targetSpendingCuts,
+      totalMonthlyToHELOC,
+      monthsToPayoffHELOC,
+    };
+  };
+
+  const helocTacticalImpact = calculateHelocTacticalImpact();
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
@@ -133,8 +161,162 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
             </div>
           </div>
 
+          {highestRateDebt && helocRate > 0 && highestRateDebt.interestRate > helocRate && helocTacticalImpact && (
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-500 rounded-xl p-6 mb-6 shadow-md">
+              <div className="flex items-start gap-3 mb-4">
+                <span className="text-blue-600 text-2xl flex-shrink-0">✅</span>
+                <div className="flex-1">
+                  <h3 className="text-2xl font-bold text-blue-900 mb-2">
+                    Use HELOC Tactically {hasHELOCAccount ? '(Recommended)' : '(Recommended if you have home equity)'}
+                  </h3>
+                  {!hasHELOCAccount && (
+                    <div className="bg-blue-100 border border-blue-300 rounded-lg p-3 mb-4">
+                      <p className="text-sm font-semibold text-blue-900">
+                        Note: Consider opening a HELOC if you have home equity. This strategy can create immediate cash flow relief.
+                      </p>
+                    </div>
+                  )}
+                  <p className="text-gray-700 mb-4">
+                    If you have a HELOC, you can create immediate cash flow relief by strategically eliminating your highest-interest debt.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-5 mb-4">
+                <h4 className="font-bold text-gray-900 mb-3">Your highest-interest debt:</h4>
+                <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-4">
+                  <p className="text-xl font-bold text-red-900 mb-1">{highestRateDebt.accountName}</p>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-gray-600">Interest Rate</p>
+                      <p className="text-lg font-bold text-red-700">{highestRateDebt.interestRate.toFixed(2)}%</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Current Balance</p>
+                      <p className="text-lg font-bold text-gray-900">{CalculationService.formatCurrency(highestRateDebt.currentBalance)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Minimum Payment</p>
+                      <p className="text-lg font-bold text-gray-900">{CalculationService.formatCurrency(highestRateDebt.minimumPayment)}/mo</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">HELOC Rate</p>
+                      <p className="text-lg font-bold text-blue-700">{helocRate.toFixed(2)}%</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-400 rounded-lg p-5">
+                  <h4 className="font-bold text-emerald-900 mb-3 text-lg">The Tactical Strategy:</h4>
+                  <div className="space-y-2 text-gray-800">
+                    <div className="flex items-start gap-2">
+                      <span className="flex-shrink-0 w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
+                      <p>Draw {CalculationService.formatCurrency(highestRateDebt.currentBalance)} from HELOC ({helocRate.toFixed(2)}% rate)</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="flex-shrink-0 w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
+                      <p>Pay off {highestRateDebt.accountName} completely</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="flex-shrink-0 w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                      <p>Free up {CalculationService.formatCurrency(helocTacticalImpact.freedCashFlow)}/month in cash flow</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="flex-shrink-0 w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-xs font-bold">4</span>
+                      <p>Combine with spending cuts ({CalculationService.formatCurrency(helocTacticalImpact.targetSpendingCuts)}/month)</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="flex-shrink-0 w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-xs font-bold">5</span>
+                      <p>Now you have {CalculationService.formatCurrency(helocTacticalImpact.totalMonthlyToHELOC)}/month to attack HELOC</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="flex-shrink-0 w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-xs font-bold">6</span>
+                      <p>HELOC paid off in approximately {helocTacticalImpact.monthsToPayoffHELOC} months</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="flex-shrink-0 w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-xs font-bold">7</span>
+                      <p className="font-semibold text-emerald-900">Cash flow turns strongly positive</p>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="flex-shrink-0 w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-xs font-bold">8</span>
+                      <p className="font-semibold text-emerald-900">Attack remaining debts with freed payments</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 bg-blue-50 border border-blue-300 rounded-lg p-4">
+                  <h5 className="font-bold text-blue-900 mb-2">Why this works:</h5>
+                  <ul className="space-y-1 text-sm text-gray-800">
+                    <li className="flex items-start gap-2">
+                      <span className="flex-shrink-0">•</span>
+                      <span>Trade {highestRateDebt.interestRate.toFixed(2)}% interest for {helocRate.toFixed(2)}% (save {helocTacticalImpact.interestSavings.toFixed(2)}% on that balance)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="flex-shrink-0">•</span>
+                      <span>Creates immediate breathing room</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="flex-shrink-0">•</span>
+                      <span>Short-term strategy ({helocTacticalImpact.monthsToPayoffHELOC} months) for long-term gain</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="flex-shrink-0">•</span>
+                      <span>Requires discipline but highly effective</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="mt-4 bg-amber-50 border-2 border-amber-400 rounded-lg p-4">
+                  <div className="flex items-start gap-2 mb-2">
+                    <AlertTriangle className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+                    <h5 className="font-bold text-amber-900">Important: This only works if you commit to:</h5>
+                  </div>
+                  <ul className="space-y-1 text-sm text-gray-800 ml-7">
+                    <li className="flex items-start gap-2">
+                      <span className="flex-shrink-0">•</span>
+                      <span className="font-semibold">Not using the paid-off credit card</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="flex-shrink-0">•</span>
+                      <span className="font-semibold">Cutting spending to pay down HELOC quickly</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="flex-shrink-0">•</span>
+                      <span className="font-semibold">Tracking your HELOC balance weekly</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="flex gap-3 flex-wrap">
+                <button
+                  onClick={() => {
+                    const message = encodeURIComponent(
+                      `I'm interested in the HELOC tactical strategy to eliminate my ${highestRateDebt.accountName} debt (${CalculationService.formatCurrency(highestRateDebt.currentBalance)} at ${highestRateDebt.interestRate.toFixed(2)}%). Can you help me set this up?`
+                    );
+                    window.location.href = `mailto:ben@windmillmortgage.com?subject=NOVO%20HELOC%20Tactical%20Strategy&body=${message}`;
+                  }}
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold py-3 px-6 rounded-lg transition-all shadow-md hover:shadow-lg"
+                >
+                  Show My HELOC Strategy
+                </button>
+                <button
+                  onClick={() => {
+                    const message = encodeURIComponent(
+                      `I don't currently have a HELOC but I'm interested in learning more about using one tactically to improve my cash flow. Can you help?`
+                    );
+                    window.location.href = `mailto:ben@windmillmortgage.com?subject=NOVO%20HELOC%20Options&body=${message}`;
+                  }}
+                  className="bg-white hover:bg-gray-50 text-gray-800 font-semibold py-3 px-6 rounded-lg border-2 border-gray-300 transition-all"
+                >
+                  {hasHELOCAccount ? 'Learn More' : 'I Don\'t Have HELOC'}
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="bg-white rounded-lg p-6 mb-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">How to improve your cash flow:</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Additional ways to improve your cash flow:</h3>
             <div className="space-y-3">
               <div className="flex items-start gap-3">
                 <span className="text-emerald-600 text-xl flex-shrink-0">✅</span>
