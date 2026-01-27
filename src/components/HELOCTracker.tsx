@@ -954,15 +954,17 @@ function RecordDrawModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">
-          {editTransaction ? 'Edit' : 'Record'} HELOC Draw
-        </h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Record money withdrawn FROM your HELOC (debt payments, living expenses, emergencies, etc.)
-        </p>
+      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] flex flex-col">
+        <div className="p-6 pb-4 border-b border-gray-200">
+          <h3 className="text-xl font-bold text-gray-800 mb-2">
+            {editTransaction ? 'Edit' : 'Record'} HELOC Draw
+          </h3>
+          <p className="text-sm text-gray-600">
+            Record money withdrawn FROM your HELOC (debt payments, living expenses, emergencies, etc.)
+          </p>
+        </div>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Date</label>
             <input
@@ -1006,79 +1008,79 @@ function RecordDrawModal({
               </div>
 
               {selectedDebt && (
-                <div className="mt-6 pt-6 border-t-2 border-gray-200">
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 mb-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Wallet className="w-6 h-6 text-[#2D9CDB]" />
-                      <h3 className="text-xl font-bold text-gray-900">
+                <div className="mt-5 pt-5 border-t-2 border-gray-200">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Wallet className="w-5 h-5 text-[#2D9CDB]" />
+                      <h3 className="text-lg font-bold text-gray-900">
                         How much do you want to pay on {debts.find(d => d.id === selectedDebt)?.accountName}?
                       </h3>
                     </div>
-                    <p className="text-sm text-gray-600 ml-8">
+                    <p className="text-xs text-gray-600 ml-7">
                       Select one of the options below:
                     </p>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {debts.find(d => d.id === selectedDebt) && (
                       <>
-                        <label className="flex items-center cursor-pointer p-4 border-2 rounded-xl transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-[#2D9CDB] has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
+                        <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-[#2D9CDB] has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
                           <input
                             type="radio"
                             name="paymentType"
                             checked={paymentType === 'minimum'}
                             onChange={() => handlePaymentTypeChange('minimum')}
-                            className="mr-4 h-5 w-5 text-[#2D9CDB] focus:ring-[#2D9CDB] focus:ring-2"
+                            className="mr-3 h-5 w-5 text-[#2D9CDB] focus:ring-[#2D9CDB] focus:ring-2"
                           />
-                          <div className="flex items-center gap-3 flex-1">
-                            <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-has-[:checked]:bg-[#2D9CDB]">
-                              <CreditCard className="w-5 h-5 text-[#2D9CDB] group-has-[:checked]:text-white" />
+                          <div className="flex items-center gap-2.5 flex-1">
+                            <div className="flex-shrink-0 w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center group-has-[:checked]:bg-[#2D9CDB]">
+                              <CreditCard className="w-4 h-4 text-[#2D9CDB] group-has-[:checked]:text-white" />
                             </div>
                             <div className="flex-1">
-                              <div className="font-bold text-gray-900 text-base">Pay minimum payment</div>
-                              <div className="text-base text-gray-700 font-semibold mt-0.5">
+                              <div className="font-bold text-gray-900 text-sm">Pay minimum payment</div>
+                              <div className="text-sm text-gray-700 font-semibold">
                                 {CalculationService.formatCurrency(debts.find(d => d.id === selectedDebt)!.minimumPayment)}
                               </div>
                             </div>
                           </div>
                         </label>
 
-                        <label className="flex items-center cursor-pointer p-4 border-2 rounded-xl transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-[#2D9CDB] has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
+                        <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-[#2D9CDB] has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
                           <input
                             type="radio"
                             name="paymentType"
                             checked={paymentType === 'full'}
                             onChange={() => handlePaymentTypeChange('full')}
-                            className="mr-4 h-5 w-5 text-[#2D9CDB] focus:ring-[#2D9CDB] focus:ring-2"
+                            className="mr-3 h-5 w-5 text-[#2D9CDB] focus:ring-[#2D9CDB] focus:ring-2"
                           />
-                          <div className="flex items-center gap-3 flex-1">
-                            <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center group-has-[:checked]:bg-green-600">
-                              <Wallet className="w-5 h-5 text-green-600 group-has-[:checked]:text-white" />
+                          <div className="flex items-center gap-2.5 flex-1">
+                            <div className="flex-shrink-0 w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center group-has-[:checked]:bg-green-600">
+                              <Wallet className="w-4 h-4 text-green-600 group-has-[:checked]:text-white" />
                             </div>
                             <div className="flex-1">
-                              <div className="font-bold text-gray-900 text-base">Pay off in full</div>
-                              <div className="text-base text-gray-700 font-semibold mt-0.5">
+                              <div className="font-bold text-gray-900 text-sm">Pay off in full</div>
+                              <div className="text-sm text-gray-700 font-semibold">
                                 {CalculationService.formatCurrency(debts.find(d => d.id === selectedDebt)!.currentBalance)}
                               </div>
                             </div>
                           </div>
                         </label>
 
-                        <label className="flex items-center cursor-pointer p-4 border-2 rounded-xl transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-[#2D9CDB] has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
+                        <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-[#2D9CDB] has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
                           <input
                             type="radio"
                             name="paymentType"
                             checked={paymentType === 'custom'}
                             onChange={() => handlePaymentTypeChange('custom')}
-                            className="mr-4 h-5 w-5 text-[#2D9CDB] focus:ring-[#2D9CDB] focus:ring-2"
+                            className="mr-3 h-5 w-5 text-[#2D9CDB] focus:ring-[#2D9CDB] focus:ring-2"
                           />
-                          <div className="flex items-center gap-3 flex-1">
-                            <div className="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center group-has-[:checked]:bg-amber-500">
-                              <PenLine className="w-5 h-5 text-amber-600 group-has-[:checked]:text-white" />
+                          <div className="flex items-center gap-2.5 flex-1">
+                            <div className="flex-shrink-0 w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center group-has-[:checked]:bg-amber-500">
+                              <PenLine className="w-4 h-4 text-amber-600 group-has-[:checked]:text-white" />
                             </div>
                             <div className="flex-1">
-                              <div className="font-bold text-gray-900 text-base">Enter custom amount</div>
-                              <div className="text-sm text-gray-600 mt-0.5">Specify your own payment amount</div>
+                              <div className="font-bold text-gray-900 text-sm">Enter custom amount</div>
+                              <div className="text-xs text-gray-600">Specify your own payment amount</div>
                             </div>
                           </div>
                         </label>
@@ -1121,7 +1123,7 @@ function RecordDrawModal({
           </div>
         </div>
 
-        <div className="flex space-x-3 mt-6">
+        <div className="p-6 pt-4 border-t border-gray-200 flex space-x-3">
           <button
             onClick={onClose}
             className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-colors"
@@ -1194,15 +1196,17 @@ function RecordPaymentModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">
-          {editTransaction ? 'Edit' : 'Record'} HELOC Payment
-        </h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Record money deposited INTO your HELOC (paychecks, bonuses, tax refunds, etc.)
-        </p>
+      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] flex flex-col">
+        <div className="p-6 pb-4 border-b border-gray-200">
+          <h3 className="text-xl font-bold text-gray-800 mb-2">
+            {editTransaction ? 'Edit' : 'Record'} HELOC Payment
+          </h3>
+          <p className="text-sm text-gray-600">
+            Record money deposited INTO your HELOC (paychecks, bonuses, tax refunds, etc.)
+          </p>
+        </div>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Amount</label>
             <div className="relative">
@@ -1257,7 +1261,7 @@ function RecordPaymentModal({
           )}
         </div>
 
-        <div className="flex space-x-3 mt-6">
+        <div className="p-6 pt-4 border-t border-gray-200 flex space-x-3">
           <button
             onClick={onClose}
             className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-colors"
@@ -1339,12 +1343,14 @@ function RecordInterestModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">
-          {editTransaction ? 'Edit' : 'Record'} Interest Charge
-        </h3>
+      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] flex flex-col">
+        <div className="p-6 pb-4 border-b border-gray-200">
+          <h3 className="text-xl font-bold text-gray-800 mb-2">
+            {editTransaction ? 'Edit' : 'Record'} Interest Charge
+          </h3>
+        </div>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">For the month of:</label>
             <input
@@ -1396,7 +1402,7 @@ function RecordInterestModal({
           </div>
         </div>
 
-        <div className="flex space-x-3 mt-6">
+        <div className="p-6 pt-4 border-t border-gray-200 flex space-x-3">
           <button
             onClick={onClose}
             className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-colors"
