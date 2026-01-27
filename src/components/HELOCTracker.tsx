@@ -830,6 +830,7 @@ function RecordDrawModal({
   const [purpose, setPurpose] = useState(editTransaction?.debtLinked ? 'Pay Off Debt' : 'Other');
   const [selectedDebt, setSelectedDebt] = useState(editTransaction?.debtLinked || '');
   const [description, setDescription] = useState(editTransaction?.description || '');
+  const [paymentType, setPaymentType] = useState<'minimum' | 'full' | 'custom'>('minimum');
 
   const debts = StorageService.getDebts().filter(d => !d.isPaidOff);
 
@@ -838,8 +839,35 @@ function RecordDrawModal({
     if (debtId) {
       const debt = debts.find(d => d.id === debtId);
       if (debt) {
-        setAmount(debt.currentBalance.toString());
-        setDescription(`Pay off ${debt.accountName} with HELOC`);
+        if (paymentType === 'minimum') {
+          setAmount(debt.minimumPayment.toString());
+          setDescription(`Paid ${debt.accountName} minimum payment`);
+        } else if (paymentType === 'full') {
+          setAmount(debt.currentBalance.toString());
+          setDescription(`Paid off ${debt.accountName} in full`);
+        } else {
+          setAmount('');
+          setDescription(`Paid toward ${debt.accountName}`);
+        }
+      }
+    }
+  };
+
+  const handlePaymentTypeChange = (type: 'minimum' | 'full' | 'custom') => {
+    setPaymentType(type);
+    if (selectedDebt) {
+      const debt = debts.find(d => d.id === selectedDebt);
+      if (debt) {
+        if (type === 'minimum') {
+          setAmount(debt.minimumPayment.toString());
+          setDescription(`Paid ${debt.accountName} minimum payment`);
+        } else if (type === 'full') {
+          setAmount(debt.currentBalance.toString());
+          setDescription(`Paid off ${debt.accountName} in full`);
+        } else {
+          setAmount('');
+          setDescription(`Paid toward ${debt.accountName}`);
+        }
       }
     }
   };
@@ -880,36 +908,42 @@ function RecordDrawModal({
     if (selectedDebt && purpose === 'Pay Off Debt') {
       const debt = debts.find(d => d.id === selectedDebt);
       if (debt) {
-        // Mark debt as transferred to HELOC
-        debt.isPaidOff = true;
-        debt.transferredToHELOC = true;
-        debt.paidOffDate = date;
         const previousBalance = debt.currentBalance;
-        debt.currentBalance = 0;
+        const interestCharged = previousBalance * (debt.interestRate / 12 / 100);
+        const principalPaid = Math.max(0, drawAmount - interestCharged);
+        const newDebtBalance = Math.max(0, previousBalance - principalPaid);
+
+        debt.currentBalance = newDebtBalance;
+
+        if (paymentType === 'full' || newDebtBalance === 0) {
+          debt.isPaidOff = true;
+          debt.transferredToHELOC = true;
+          debt.paidOffDate = date;
+          debt.currentBalance = 0;
+        }
 
         const allDebts = StorageService.getDebts();
         const updated = allDebts.map(d => d.id === selectedDebt ? debt : d);
         localStorage.setItem('novo_debts', JSON.stringify(updated));
 
-        // Create a transaction record for the HELOC transfer
         const allTransactions = JSON.parse(localStorage.getItem('novo_transactions') || '[]');
-        const transferTransaction = {
+        const debtTransaction = {
           id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           debtId: selectedDebt,
           debtName: debt.accountName,
           date,
           type: 'payment',
-          amount: previousBalance,
-          previousBalance: previousBalance,
-          interestCharged: 0,
-          principalPaid: previousBalance,
-          newBalance: 0,
-          isExtraPayment: false,
-          notes: 'Transferred to HELOC',
+          amount: drawAmount,
+          previousBalance,
+          interestCharged,
+          principalPaid,
+          newBalance: newDebtBalance,
+          isExtraPayment: paymentType !== 'minimum' && drawAmount > debt.minimumPayment,
+          notes: paymentType === 'full' ? 'Paid off in full with HELOC' : 'Paid from HELOC',
           paidWithHELOC: true,
-          transferredToHELOC: true,
+          transferredToHELOC: paymentType === 'full',
         };
-        allTransactions.push(transferTransaction);
+        allTransactions.push(debtTransaction);
         localStorage.setItem('novo_transactions', JSON.stringify(allTransactions));
       }
     }
@@ -924,6 +958,9 @@ function RecordDrawModal({
         <h3 className="text-xl font-bold text-gray-800 mb-4">
           {editTransaction ? 'Edit' : 'Record'} HELOC Draw
         </h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Record money withdrawn FROM your HELOC (debt payments, living expenses, emergencies, etc.)
+        </p>
 
         <div className="space-y-4">
           <div>
@@ -966,26 +1003,82 @@ function RecordDrawModal({
           </div>
 
           {purpose === 'Pay Off Debt' && debts.length > 0 && (
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Select debt to pay off</label>
-              <select
-                value={selectedDebt}
-                onChange={(e) => handleDebtSelection(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent bg-white"
-              >
-                <option value="">Choose a debt...</option>
-                {debts.map(debt => (
-                  <option key={debt.id} value={debt.id}>
-                    {debt.accountName} - Balance: {CalculationService.formatCurrency(debt.currentBalance)}
-                  </option>
-                ))}
-              </select>
+            <>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Select debt to pay</label>
+                <select
+                  value={selectedDebt}
+                  onChange={(e) => handleDebtSelection(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent bg-white"
+                >
+                  <option value="">Choose a debt...</option>
+                  {debts.map(debt => (
+                    <option key={debt.id} value={debt.id}>
+                      {debt.accountName} - Balance: {CalculationService.formatCurrency(debt.currentBalance)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {selectedDebt && (
-                <p className="text-xs text-gray-600 mt-2">
-                  Amount and description auto-filled with full debt balance. You can edit below if paying partially.
-                </p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    How much do you want to pay?
+                  </label>
+                  <div className="space-y-2">
+                    {debts.find(d => d.id === selectedDebt) && (
+                      <>
+                        <label className="flex items-start cursor-pointer group">
+                          <input
+                            type="radio"
+                            name="paymentType"
+                            checked={paymentType === 'minimum'}
+                            onChange={() => handlePaymentTypeChange('minimum')}
+                            className="mt-1 mr-3 h-4 w-4 text-[#2D9CDB] focus:ring-[#2D9CDB]"
+                          />
+                          <div className="flex-1">
+                            <div className="font-semibold text-gray-800">Minimum payment only</div>
+                            <div className="text-sm text-gray-600">
+                              {CalculationService.formatCurrency(debts.find(d => d.id === selectedDebt)!.minimumPayment)}
+                            </div>
+                          </div>
+                        </label>
+
+                        <label className="flex items-start cursor-pointer group">
+                          <input
+                            type="radio"
+                            name="paymentType"
+                            checked={paymentType === 'full'}
+                            onChange={() => handlePaymentTypeChange('full')}
+                            className="mt-1 mr-3 h-4 w-4 text-[#2D9CDB] focus:ring-[#2D9CDB]"
+                          />
+                          <div className="flex-1">
+                            <div className="font-semibold text-gray-800">Pay off in full</div>
+                            <div className="text-sm text-gray-600">
+                              {CalculationService.formatCurrency(debts.find(d => d.id === selectedDebt)!.currentBalance)}
+                            </div>
+                          </div>
+                        </label>
+
+                        <label className="flex items-start cursor-pointer group">
+                          <input
+                            type="radio"
+                            name="paymentType"
+                            checked={paymentType === 'custom'}
+                            onChange={() => handlePaymentTypeChange('custom')}
+                            className="mt-1 mr-3 h-4 w-4 text-[#2D9CDB] focus:ring-[#2D9CDB]"
+                          />
+                          <div className="flex-1">
+                            <div className="font-semibold text-gray-800">Custom amount</div>
+                            <div className="text-sm text-gray-600">Enter your own amount below</div>
+                          </div>
+                        </label>
+                      </>
+                    )}
+                  </div>
+                </div>
               )}
-            </div>
+            </>
           )}
 
           <div>
@@ -1030,26 +1123,9 @@ function RecordPaymentModal({
   currentBalance: number;
   editTransaction: HELOCTransaction | null;
 }) {
-  const debts = StorageService.getDebts().filter(d => !d.isPaidOff);
   const [amount, setAmount] = useState(editTransaction?.amount.toString() || '');
   const [date, setDate] = useState(editTransaction?.date || new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState(editTransaction?.description || '');
-  const [paymentType, setPaymentType] = useState<'cash-flow' | 'debt-payment'>('cash-flow');
-  const [selectedDebt, setSelectedDebt] = useState('');
-
-  const handleDebtSelection = (debtId: string) => {
-    setSelectedDebt(debtId);
-    if (debtId) {
-      const debt = debts.find(d => d.id === debtId);
-      if (debt) {
-        setAmount(debt.minimumPayment.toString());
-        setDescription(`Monthly payment to ${debt.accountName}`);
-      }
-    } else {
-      setAmount('');
-      setDescription('');
-    }
-  };
 
   const paymentAmount = parseFloat(amount) || 0;
   const newBalance = Math.max(0, currentBalance - paymentAmount);
@@ -1069,8 +1145,7 @@ function RecordPaymentModal({
       date,
       type: 'payment',
       amount: paymentAmount,
-      description: description || (paymentType === 'debt-payment' ? 'Debt payment from HELOC' : 'HELOC Payment'),
-      debtLinked: selectedDebt || undefined,
+      description: description || 'Income deposit',
       balance: 0
     };
 
@@ -1086,45 +1161,6 @@ function RecordPaymentModal({
 
     localStorage.setItem('novo_heloc_transactions', JSON.stringify(transactions));
 
-    if (selectedDebt && paymentType === 'debt-payment') {
-      const debt = debts.find(d => d.id === selectedDebt);
-      if (debt) {
-        const previousBalance = debt.currentBalance;
-        const interestCharged = previousBalance * (debt.interestRate / 12 / 100);
-        const principalPaid = Math.max(0, paymentAmount - interestCharged);
-        const newDebtBalance = Math.max(0, previousBalance - principalPaid);
-
-        debt.currentBalance = newDebtBalance;
-        if (newDebtBalance === 0) {
-          debt.isPaidOff = true;
-          debt.paidOffDate = date;
-        }
-
-        const allDebts = StorageService.getDebts();
-        const updatedDebts = allDebts.map(d => d.id === selectedDebt ? debt : d);
-        localStorage.setItem('novo_debts', JSON.stringify(updatedDebts));
-
-        const allTransactions = JSON.parse(localStorage.getItem('novo_transactions') || '[]');
-        const debtTransaction = {
-          id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          debtId: selectedDebt,
-          debtName: debt.accountName,
-          date,
-          type: 'payment',
-          amount: paymentAmount,
-          previousBalance,
-          interestCharged,
-          principalPaid,
-          newBalance: newDebtBalance,
-          isExtraPayment: paymentAmount > debt.minimumPayment,
-          notes: 'Paid from HELOC',
-          paidWithHELOC: true,
-        };
-        allTransactions.push(debtTransaction);
-        localStorage.setItem('novo_transactions', JSON.stringify(allTransactions));
-      }
-    }
-
     onSuccess(paymentAmount, newBalance);
   };
 
@@ -1134,76 +1170,11 @@ function RecordPaymentModal({
         <h3 className="text-xl font-bold text-gray-800 mb-4">
           {editTransaction ? 'Edit' : 'Record'} HELOC Payment
         </h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Record money deposited INTO your HELOC (paychecks, bonuses, tax refunds, etc.)
+        </p>
 
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">What type of payment?</label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => {
-                  setPaymentType('cash-flow');
-                  setSelectedDebt('');
-                  setAmount('');
-                  setDescription('');
-                }}
-                className={`py-3 px-4 rounded-lg font-semibold transition-colors ${
-                  paymentType === 'cash-flow'
-                    ? 'bg-[#27AE60] text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Cash Flow Deposit
-              </button>
-              <button
-                onClick={() => {
-                  setPaymentType('debt-payment');
-                  setAmount('');
-                  setDescription('');
-                }}
-                className={`py-3 px-4 rounded-lg font-semibold transition-colors ${
-                  paymentType === 'debt-payment'
-                    ? 'bg-[#27AE60] text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Debt Payment
-              </button>
-            </div>
-          </div>
-
-          {paymentType === 'debt-payment' && debts.length > 0 && (
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Select Debt to Pay
-              </label>
-              <select
-                value={selectedDebt}
-                onChange={(e) => handleDebtSelection(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent bg-white"
-              >
-                <option value="">Choose a debt...</option>
-                {debts.map(debt => (
-                  <option key={debt.id} value={debt.id}>
-                    {debt.accountName} - Min: {CalculationService.formatCurrency(debt.minimumPayment)}
-                  </option>
-                ))}
-              </select>
-              {selectedDebt && (
-                <p className="text-xs text-gray-600 mt-2">
-                  Amount and description auto-filled. You can edit them below.
-                </p>
-              )}
-            </div>
-          )}
-
-          {paymentType === 'debt-payment' && debts.length === 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p className="text-sm text-gray-700">
-                No active debts found. Add debts in "My Debts" section first.
-              </p>
-            </div>
-          )}
-
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Payment Amount</label>
             <div className="relative">
@@ -1236,7 +1207,7 @@ function RecordPaymentModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
-              placeholder={paymentType === 'cash-flow' ? 'Paycheck deposit' : 'Monthly payment to...'}
+              placeholder="Paycheck deposit"
             />
           </div>
 
