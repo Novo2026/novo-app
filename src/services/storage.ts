@@ -20,6 +20,8 @@ const STORAGE_KEYS = {
   STRATEGY: 'novo_strategy',
   STRATEGY_RESULT: 'novo_strategy_result',
   HELOC_TRANSACTIONS: 'novo_heloc_transactions',
+  DATA_HASH: 'novo_data_hash',
+  STRATEGY_CALC_HASH: 'novo_strategy_calc_hash',
 };
 
 export const StorageService = {
@@ -148,5 +150,42 @@ export const StorageService = {
     } catch (error) {
       throw new Error('Invalid data format');
     }
+  },
+
+  calculateDataHash(): string {
+    const debts = this.getDebts().filter(d => !d.isPaidOff);
+    const financialProfile = this.getFinancialProfile();
+    const homeEquity = this.getHomeEquity();
+    const helocTransactions = localStorage.getItem(STORAGE_KEYS.HELOC_TRANSACTIONS);
+
+    const relevantData = {
+      debtsCount: debts.length,
+      totalBalance: debts.reduce((sum, d) => sum + d.currentBalance, 0),
+      monthlyIncome: financialProfile?.monthlyIncome || 0,
+      monthlyExpenses: financialProfile?.monthlyExpenses || 0,
+      helocBalance: homeEquity?.helocBalance || 0,
+      helocTransactionsCount: helocTransactions ? JSON.parse(helocTransactions).length : 0,
+    };
+
+    return JSON.stringify(relevantData);
+  },
+
+  hasDataChangedSinceLastCalculation(): boolean {
+    const currentHash = this.calculateDataHash();
+    const lastCalcHash = localStorage.getItem(STORAGE_KEYS.STRATEGY_CALC_HASH);
+
+    return currentHash !== lastCalcHash;
+  },
+
+  markStrategyCalculated(): void {
+    const currentHash = this.calculateDataHash();
+    localStorage.setItem(STORAGE_KEYS.STRATEGY_CALC_HASH, currentHash);
+  },
+
+  shouldAutoRecalculate(): boolean {
+    const strategyResult = this.getStrategyResult();
+    if (!strategyResult) return false;
+
+    return this.hasDataChangedSinceLastCalculation();
   },
 };

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ArrowRight, DollarSign, TrendingUp } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowRight, DollarSign, TrendingUp, CheckCircle } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import StrategyWizard from './StrategyWizard';
@@ -16,13 +16,63 @@ export default function PaymentStrategies({ onDataUpdate }: PaymentStrategiesPro
   const [strategyResult, setStrategyResult] = useState<StrategyResult | null>(
     StorageService.getStrategyResult()
   );
+  const [showAutoUpdateBanner, setShowAutoUpdateBanner] = useState(false);
+  const [isAutoCalculating, setIsAutoCalculating] = useState(false);
 
   const debts = StorageService.getDebts();
   const financialProfile = StorageService.getFinancialProfile();
 
+  useEffect(() => {
+    const checkAndAutoRecalculate = () => {
+      if (StorageService.shouldAutoRecalculate()) {
+        setIsAutoCalculating(true);
+
+        setTimeout(() => {
+          const activeDebts = StorageService.getDebts().filter(d => !d.isPaidOff);
+          if (activeDebts.length === 0) {
+            setIsAutoCalculating(false);
+            return;
+          }
+
+          const profile = StorageService.getFinancialProfile();
+          if (!profile) {
+            setIsAutoCalculating(false);
+            return;
+          }
+
+          const totalMinimumPayments = activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
+          const cashFlow = CalculationService.calculateCashFlow(
+            profile.monthlyNetIncome,
+            profile.monthlyEssentialExpenses,
+            profile.monthlyDiscretionaryExpenses,
+            totalMinimumPayments
+          );
+
+          const extraPayment = Math.floor(cashFlow.recommendedExtraPayment);
+          const newResult = CalculationService.projectDebtPayoff(activeDebts, extraPayment);
+
+          setStrategyResult(newResult);
+          StorageService.saveStrategyResult(newResult);
+          StorageService.markStrategyCalculated();
+          setIsAutoCalculating(false);
+          setShowAutoUpdateBanner(true);
+
+          setTimeout(() => {
+            setShowAutoUpdateBanner(false);
+          }, 5000);
+
+          onDataUpdate();
+        }, 500);
+      }
+    };
+
+    checkAndAutoRecalculate();
+  }, [onDataUpdate]);
+
   const handleWizardComplete = (result: StrategyResult) => {
     setStrategyResult(result);
     StorageService.saveStrategyResult(result);
+    StorageService.markStrategyCalculated();
     setShowWizard(false);
     onDataUpdate();
   };
@@ -41,6 +91,8 @@ export default function PaymentStrategies({ onDataUpdate }: PaymentStrategiesPro
       <StrategyResults
         result={strategyResult}
         onRunNew={() => setShowWizard(true)}
+        showAutoUpdateBanner={showAutoUpdateBanner}
+        isAutoCalculating={isAutoCalculating}
       />
     );
   }

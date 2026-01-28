@@ -1,4 +1,4 @@
-import { RefreshCw, TrendingDown, Calendar, DollarSign, BarChart3, AlertTriangle, Mail, Phone } from 'lucide-react';
+import { RefreshCw, TrendingDown, Calendar, DollarSign, BarChart3, AlertTriangle, Mail, Phone, CheckCircle } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import Accordion from './Accordion';
@@ -14,9 +14,11 @@ import type { StrategyResult } from '../types';
 interface StrategyResultsProps {
   result: StrategyResult;
   onRunNew: () => void;
+  showAutoUpdateBanner?: boolean;
+  isAutoCalculating?: boolean;
 }
 
-export default function StrategyResults({ result, onRunNew }: StrategyResultsProps) {
+export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner, isAutoCalculating }: StrategyResultsProps) {
   const allStoredDebts = StorageService.getDebts();
   const debts = allStoredDebts.filter(d => !d.isPaidOff);
   const paidOffDebts = allStoredDebts.filter(d => d.isPaidOff);
@@ -130,6 +132,20 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
 
   return (
     <div className="space-y-8">
+      {showAutoUpdateBanner && (
+        <div className="bg-gradient-to-r from-[#27AE60] to-[#229954] text-white rounded-lg shadow-lg p-4 flex items-center space-x-3 animate-fadeIn">
+          <CheckCircle className="w-5 h-5 flex-shrink-0" />
+          <p className="text-sm font-medium">Strategy updated based on recent activity</p>
+        </div>
+      )}
+
+      {isAutoCalculating && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-lg p-4 flex items-center space-x-3">
+          <RefreshCw className="w-5 h-5 flex-shrink-0 animate-spin" />
+          <p className="text-sm font-medium">Recalculating strategy with updated data...</p>
+        </div>
+      )}
+
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">Your Payoff Strategy</h2>
         <button
@@ -137,7 +153,7 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
           className="flex items-center space-x-2 text-[#2D9CDB] hover:text-[#1E8BBD] font-semibold transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
-          <span>Run New Strategy</span>
+          <span>Recalculate Strategy</span>
         </button>
       </div>
 
@@ -945,12 +961,12 @@ export default function StrategyResults({ result, onRunNew }: StrategyResultsPro
           <div>
             <h5 className="font-bold text-gray-800 mb-2">Can I change my strategy?</h5>
             <p className="text-gray-700 mb-2">
-              Yes! Life changes, and so can your strategy. Click "Run New Strategy" at the top to:
+              Yes! Your strategy automatically updates when you log payments or transfer debts. Click "Recalculate Strategy" at the top to manually refresh or:
             </p>
             <ul className="text-gray-700 space-y-1 ml-4">
               <li>• Update your cash flow if income/expenses changed</li>
               <li>• Switch between standard payoff and HELOC velocity banking</li>
-              <li>• Recalculate after adding or paying off debts</li>
+              <li>• Run a new calculation with different parameters</li>
               <li>• Adjust your extra payment amount</li>
             </ul>
           </div>
