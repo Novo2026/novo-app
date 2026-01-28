@@ -120,8 +120,8 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
     onDataUpdate();
   };
 
-  const getRecentActivity = (): { date: string; description: string; type: 'payment' | 'paidoff' | 'charge' | 'milestone'; transaction?: Transaction; icon?: string }[] => {
-    const activities: { date: string; description: string; type: 'payment' | 'paidoff' | 'charge' | 'milestone'; transaction?: Transaction; icon?: string }[] = [];
+  const getRecentActivity = (): { date: string; description: string; type: string; transaction?: Transaction; icon: string; amount?: number; amountColor?: string; source: string }[] => {
+    const activities: { date: string; description: string; type: string; transaction?: Transaction; icon: string; amount?: number; amountColor?: string; source: string }[] = [];
 
     const sortedTransactions = [...transactions].sort((a, b) =>
       new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -129,18 +129,115 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
 
     sortedTransactions.slice(0, 10).forEach(t => {
       if (t.type === 'payment') {
+        const paidWithHELOC = t.paidWithHELOC;
         activities.push({
           date: t.date,
-          description: `Paid ${CalculationService.formatCurrency(t.amount)} to ${t.debtName}`,
+          description: paidWithHELOC
+            ? `Paid ${t.debtName} from HELOC`
+            : `Paid ${t.debtName}`,
           type: 'payment',
           transaction: t,
+          icon: '💰',
+          amount: t.amount,
+          amountColor: 'text-[#27AE60]',
+          source: paidWithHELOC ? 'heloc' : 'debt',
         });
       } else if (t.type === 'charge') {
         activities.push({
           date: t.date,
-          description: `Added ${CalculationService.formatCurrency(t.amount)} charge to ${t.debtName}`,
+          description: `Added charge to ${t.debtName}`,
           type: 'charge',
           transaction: t,
+          icon: '💳',
+          amount: t.amount,
+          amountColor: 'text-red-600',
+          source: 'debt',
+        });
+      }
+    });
+
+    const helocTransactions = (() => {
+      const stored = localStorage.getItem('novo_heloc_transactions');
+      return stored ? JSON.parse(stored) : [];
+    })();
+
+    helocTransactions.forEach((ht: any) => {
+      if (ht.type === 'draw') {
+        activities.push({
+          date: ht.date,
+          description: ht.debtLinked
+            ? `Transferred ${ht.debtLinked} to HELOC`
+            : ht.description.includes('checking') || ht.description.toLowerCase().includes('expense')
+              ? `Transferred to checking for expenses`
+              : `HELOC draw`,
+          type: 'heloc_draw',
+          icon: '🏦',
+          amount: ht.amount,
+          amountColor: 'text-red-600',
+          source: 'heloc',
+        });
+      } else if (ht.type === 'payment') {
+        activities.push({
+          date: ht.date,
+          description: ht.description.includes('paycheck') || ht.description.includes('income')
+            ? `Deposited paycheck to HELOC`
+            : ht.description.includes('bonus')
+              ? `Deposited bonus to HELOC`
+              : `HELOC payment`,
+          type: 'heloc_payment',
+          icon: '💰',
+          amount: ht.amount,
+          amountColor: 'text-[#27AE60]',
+          source: 'heloc',
+        });
+      } else if (ht.type === 'interest') {
+        activities.push({
+          date: ht.date,
+          description: 'HELOC interest charge',
+          type: 'heloc_interest',
+          icon: '💳',
+          amount: ht.amount,
+          amountColor: 'text-red-600',
+          source: 'heloc',
+        });
+      }
+    });
+
+    const checkingTransactions = (() => {
+      const stored = localStorage.getItem('novo_checking_transactions');
+      return stored ? JSON.parse(stored) : [];
+    })();
+
+    checkingTransactions.forEach((ct: any) => {
+      if (ct.type === 'transfer_from_heloc') {
+        activities.push({
+          date: ct.date,
+          description: `Received from HELOC for expenses`,
+          type: 'checking_transfer',
+          icon: '🏦',
+          amount: ct.amount,
+          amountColor: 'text-[#2D9CDB]',
+          source: 'checking',
+        });
+      } else if (ct.type === 'bill_payment') {
+        activities.push({
+          date: ct.date,
+          description: `Paid ${ct.category || 'bill'}`,
+          type: 'checking_withdrawal',
+          icon: '💳',
+          amount: ct.amount,
+          amountColor: 'text-red-600',
+          source: 'checking',
+        });
+      } else if (ct.type === 'deposit') {
+        activities.push({
+          date: ct.date,
+          description: ct.description || 'Deposit',
+          type: 'checking_deposit',
+          icon: '💰',
+          amount: ct.amount,
+          amountColor: 'text-[#27AE60]',
+          source: 'checking',
         });
       }
     });
@@ -152,12 +249,13 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
         description: m.title,
         type: 'milestone',
         icon: '🎉',
+        source: 'milestone',
       });
     });
 
     return activities
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 8);
+      .slice(0, 15);
   };
 
   const recentActivity = getRecentActivity();
@@ -430,38 +528,46 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
 
       {recentActivity.length > 0 && (
         <div>
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Recent Activity</h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold text-gray-800">Recent Activity</h3>
+            <span className="text-xs text-gray-500 uppercase tracking-wide">Last 15 transactions</span>
+          </div>
           <div className="bg-white rounded-lg shadow-md p-6">
             <div className="space-y-4">
               {recentActivity.map((activity, index) => (
-                <div key={index} className="flex items-start space-x-3 pb-4 border-b border-gray-100 last:border-0 last:pb-0">
-                  {activity.type === 'milestone' ? (
+                <div key={index} className="flex items-start justify-between pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+                  <div className="flex items-start space-x-3 flex-1">
                     <span className="text-2xl mt-0.5">{activity.icon}</span>
-                  ) : (
-                    <div className={`w-2 h-2 rounded-full mt-2 ${
-                      activity.type === 'paidoff' ? 'bg-[#27AE60]' :
-                      activity.type === 'payment' ? 'bg-[#2D9CDB]' :
-                      'bg-[#F2C94C]'
-                    }`} />
-                  )}
-                  <div className="flex-1">
-                    <p className={`font-medium ${activity.type === 'milestone' ? 'text-[#27AE60]' : 'text-gray-800'}`}>
-                      {activity.description}
-                    </p>
-                    <p className="text-sm text-gray-500">{CalculationService.formatDate(activity.date)}</p>
+                    <div className="flex-1">
+                      <p className={`font-medium ${activity.type === 'milestone' ? 'text-[#27AE60]' : 'text-gray-800'}`}>
+                        {activity.description}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-sm text-gray-500">{CalculationService.formatDate(activity.date)}</p>
+                        <span className="text-gray-300">•</span>
+                        <span className="text-xs text-gray-400 capitalize">{activity.source}</span>
+                      </div>
+                    </div>
                   </div>
-                  {activity.transaction && (
-                    <button
-                      onClick={() => {
-                        setEditingTransaction(activity.transaction!);
-                        setShowEditPayment(true);
-                      }}
-                      className="text-[#2D9CDB] hover:text-[#1E8BBD] transition-colors p-1"
-                      title="Edit transaction"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {activity.amount && (
+                      <span className={`font-semibold text-sm ${activity.amountColor || 'text-gray-800'}`}>
+                        {activity.amountColor === 'text-red-600' ? '+' : ''}{CalculationService.formatCurrency(activity.amount)}
+                      </span>
+                    )}
+                    {activity.transaction && activity.source === 'debt' && (
+                      <button
+                        onClick={() => {
+                          setEditingTransaction(activity.transaction!);
+                          setShowEditPayment(true);
+                        }}
+                        className="text-[#2D9CDB] hover:text-[#1E8BBD] transition-colors p-1"
+                        title="Edit transaction"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

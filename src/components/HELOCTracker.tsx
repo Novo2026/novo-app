@@ -10,17 +10,7 @@ import ChunkingScenarioComparison from './ChunkingScenarioComparison';
 import ChunkingPlanCalculator from './ChunkingPlanCalculator';
 import AdvancedVelocityBanking from './AdvancedVelocityBanking';
 import ChunkingRiskAssessment from './ChunkingRiskAssessment';
-import type { Debt } from '../types';
-
-interface HELOCTransaction {
-  id: string;
-  date: string;
-  type: 'draw' | 'payment' | 'interest';
-  amount: number;
-  description: string;
-  debtLinked?: string;
-  balance: number;
-}
+import type { Debt, HELOCTransaction } from '../types';
 
 type TrackingType = 'heloc' | 'checking' | 'both';
 

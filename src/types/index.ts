@@ -150,6 +150,50 @@ export interface Milestone {
   freedPayment?: number;
 }
 
+export interface HELOCTransaction {
+  id: string;
+  date: string;
+  type: 'draw' | 'payment' | 'interest';
+  amount: number;
+  description: string;
+  debtLinked?: string;
+  balance: number;
+}
+
+export type CheckingTransactionType = 'deposit' | 'withdrawal' | 'transfer_from_heloc' | 'bill_payment' | 'other';
+
+export interface CheckingTransaction {
+  id: string;
+  date: string;
+  type: CheckingTransactionType;
+  amount: number;
+  description: string;
+  category?: string;
+  balance: number;
+}
+
+export type UnifiedActivityType =
+  | 'debt_payment'
+  | 'debt_charge'
+  | 'heloc_draw'
+  | 'heloc_payment'
+  | 'heloc_interest'
+  | 'checking_deposit'
+  | 'checking_withdrawal'
+  | 'checking_transfer'
+  | 'milestone';
+
+export interface UnifiedActivity {
+  id: string;
+  date: string;
+  type: UnifiedActivityType;
+  description: string;
+  amount?: number;
+  icon: string;
+  source: 'debt' | 'heloc' | 'checking' | 'milestone';
+  transaction?: Transaction | HELOCTransaction | CheckingTransaction;
+}
+
 export interface AppData {
   debts: Debt[];
   transactions: Transaction[];
