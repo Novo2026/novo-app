@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { TrendingUp, Plus, Download, Edit2, X, CreditCard, Wallet, PenLine } from 'lucide-react';
+import { TrendingUp, Plus, Download, Edit2, X, CreditCard, Wallet, PenLine, Link2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
@@ -332,11 +332,46 @@ export function HELOCTracker() {
                   else setShowInterestModal(true);
                 }}
                 onDelete={(id) => {
-                  if (confirm('Delete this transaction? All balances will be recalculated from this point forward.')) {
+                  const transaction = transactions.find(t => t.id === id);
+                  if (!transaction) return;
+
+                  if (transaction.linkedCheckingTransactionId) {
+                    const choice = confirm(
+                      'This transaction is linked to a Checking transaction.\n\n' +
+                      'Click OK to delete both transactions, or Cancel to delete only this one.'
+                    );
+
                     const filtered = transactions.filter(t => t.id !== id);
                     recalculateBalances(filtered);
                     localStorage.setItem('novo_heloc_transactions', JSON.stringify(filtered));
+
+                    if (choice) {
+                      const checkingTransactions = JSON.parse(localStorage.getItem('novo_checking_transactions') || '[]');
+                      const filteredChecking = checkingTransactions.filter((t: any) => t.id !== transaction.linkedCheckingTransactionId);
+
+                      const startingBalance = parseFloat(localStorage.getItem('novo_checking_starting_balance') || '0');
+                      let runningBalance = startingBalance;
+                      filteredChecking.forEach((txn: any) => {
+                        if (txn.type === 'deposit' || txn.type === 'transfer_from_heloc') {
+                          runningBalance += txn.amount;
+                        } else {
+                          runningBalance -= txn.amount;
+                        }
+                        runningBalance = Math.max(0, runningBalance);
+                        txn.balance = Math.round(runningBalance * 100) / 100;
+                      });
+
+                      localStorage.setItem('novo_checking_transactions', JSON.stringify(filteredChecking));
+                    }
+
                     setRefreshTrigger(prev => prev + 1);
+                  } else {
+                    if (confirm('Delete this transaction? All balances will be recalculated from this point forward.')) {
+                      const filtered = transactions.filter(t => t.id !== id);
+                      recalculateBalances(filtered);
+                      localStorage.setItem('novo_heloc_transactions', JSON.stringify(filtered));
+                      setRefreshTrigger(prev => prev + 1);
+                    }
                   }
                 }}
               />
@@ -759,13 +794,24 @@ function TransactionLedger({
                     {new Date(transaction.date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}
                   </td>
                   <td className="py-3 px-4">
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                      transaction.type === 'draw' ? 'bg-red-100 text-red-800' :
-                      transaction.type === 'payment' ? 'bg-green-100 text-green-800' :
-                      'bg-orange-100 text-orange-800'
-                    }`}>
-                      {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                        transaction.type === 'draw' ? (transaction.isTransferToChecking ? 'bg-purple-100 text-purple-800' : 'bg-red-100 text-red-800') :
+                        transaction.type === 'payment' ? 'bg-green-100 text-green-800' :
+                        'bg-orange-100 text-orange-800'
+                      }`}>
+                        {transaction.isTransferToChecking ? 'Transfer to Checking' :
+                         transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
+                      </span>
+                      {transaction.linkedCheckingTransactionId && (
+                        <div className="relative group">
+                          <Link2 className="w-4 h-4 text-purple-600" />
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                            Linked to Checking transaction
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="py-3 px-4 text-gray-800">{transaction.description}</td>
                   <td className={`py-3 px-4 text-right font-semibold ${
@@ -817,10 +863,14 @@ function RecordDrawModal({
 }) {
   const [amount, setAmount] = useState(editTransaction?.amount.toString() || '');
   const [date, setDate] = useState(editTransaction?.date || new Date().toISOString().split('T')[0]);
-  const [purpose, setPurpose] = useState(editTransaction?.debtLinked ? 'Pay Off Debt' : 'Other');
+  const [purpose, setPurpose] = useState(
+    editTransaction?.isTransferToChecking ? 'Transfer to Checking' :
+    editTransaction?.debtLinked ? 'Pay Off Debt' : 'Other'
+  );
   const [selectedDebt, setSelectedDebt] = useState(editTransaction?.debtLinked || '');
   const [description, setDescription] = useState(editTransaction?.description || '');
   const [paymentType, setPaymentType] = useState<'minimum' | 'full' | 'custom'>('minimum');
+  const [autoRecordInChecking, setAutoRecordInChecking] = useState(true);
 
   const debts = StorageService.getDebts().filter(d => !d.isPaidOff);
 
@@ -873,6 +923,10 @@ function RecordDrawModal({
       localStorage.getItem('novo_heloc_transactions') || '[]'
     );
 
+    const checkingTransactionId = purpose === 'Transfer to Checking' && autoRecordInChecking
+      ? `checking_${Date.now()}_linked`
+      : undefined;
+
     const newTransaction: HELOCTransaction = {
       id: editTransaction?.id || `heloc_${Date.now()}`,
       date,
@@ -880,7 +934,9 @@ function RecordDrawModal({
       amount: drawAmount,
       description: description || `HELOC Draw - ${purpose}`,
       debtLinked: selectedDebt || undefined,
-      balance: 0
+      balance: 0,
+      linkedCheckingTransactionId: checkingTransactionId,
+      isTransferToChecking: purpose === 'Transfer to Checking'
     };
 
     if (editTransaction) {
@@ -894,6 +950,44 @@ function RecordDrawModal({
     recalculateBalances(transactions);
 
     localStorage.setItem('novo_heloc_transactions', JSON.stringify(transactions));
+
+    if (purpose === 'Transfer to Checking' && autoRecordInChecking && checkingTransactionId) {
+      const checkingTransactions = JSON.parse(
+        localStorage.getItem('novo_checking_transactions') || '[]'
+      );
+      const startingBalance = parseFloat(localStorage.getItem('novo_checking_starting_balance') || '0');
+
+      const currentCheckingBalance = checkingTransactions.length > 0
+        ? checkingTransactions[checkingTransactions.length - 1].balance
+        : startingBalance;
+
+      const newCheckingTransaction = {
+        id: checkingTransactionId,
+        date,
+        type: 'transfer_from_heloc' as const,
+        amount: drawAmount,
+        description: 'Received from HELOC for living expenses',
+        balance: currentCheckingBalance + drawAmount,
+        linkedHelocTransactionId: newTransaction.id,
+        isTransferFromHeloc: true
+      };
+
+      checkingTransactions.push(newCheckingTransaction);
+      checkingTransactions.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      let runningBalance = startingBalance;
+      checkingTransactions.forEach((txn: any) => {
+        if (txn.type === 'deposit' || txn.type === 'transfer_from_heloc') {
+          runningBalance += txn.amount;
+        } else {
+          runningBalance -= txn.amount;
+        }
+        runningBalance = Math.max(0, runningBalance);
+        txn.balance = Math.round(runningBalance * 100) / 100;
+      });
+
+      localStorage.setItem('novo_checking_transactions', JSON.stringify(checkingTransactions));
+    }
 
     if (selectedDebt && purpose === 'Pay Off Debt') {
       const debt = debts.find(d => d.id === selectedDebt);
@@ -969,15 +1063,38 @@ function RecordDrawModal({
             <label className="block text-sm font-semibold text-gray-700 mb-2">Purpose</label>
             <select
               value={purpose}
-              onChange={(e) => setPurpose(e.target.value)}
+              onChange={(e) => {
+                setPurpose(e.target.value);
+                if (e.target.value === 'Transfer to Checking') {
+                  setDescription('Transfer to checking for living expenses');
+                }
+              }}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
             >
               <option value="Pay Off Debt">Pay Off Debt</option>
+              <option value="Transfer to Checking">Living expenses (transfer to checking)</option>
               <option value="Home Improvement">Home Improvement</option>
               <option value="Emergency Expense">Emergency Expense</option>
               <option value="Other">Other</option>
             </select>
           </div>
+
+          {purpose === 'Transfer to Checking' && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <label className="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoRecordInChecking}
+                  onChange={(e) => setAutoRecordInChecking(e.target.checked)}
+                  className="w-5 h-5 text-[#27AE60] rounded focus:ring-[#27AE60]"
+                />
+                <div>
+                  <div className="font-semibold text-gray-800">Automatically record in Checking Register</div>
+                  <div className="text-sm text-gray-600">Creates a matching deposit in your Checking account</div>
+                </div>
+              </label>
+            </div>
+          )}
 
           {purpose === 'Pay Off Debt' && debts.length > 0 && (
             <>

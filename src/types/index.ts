@@ -158,6 +158,9 @@ export interface HELOCTransaction {
   description: string;
   debtLinked?: string;
   balance: number;
+  linkedCheckingTransactionId?: string;
+  isTransferToChecking?: boolean;
+  isTransferFromChecking?: boolean;
 }
 
 export type CheckingTransactionType = 'deposit' | 'withdrawal' | 'transfer_from_heloc' | 'bill_payment' | 'other';
