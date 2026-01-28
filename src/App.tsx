@@ -266,6 +266,7 @@ function App() {
             </button>
             <button
               onClick={() => setCurrentSection('settings')}
+              data-section="settings"
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'settings'
                   ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'

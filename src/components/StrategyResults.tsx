@@ -23,6 +23,7 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
   const debts = allStoredDebts.filter(d => !d.isPaidOff);
   const paidOffDebts = allStoredDebts.filter(d => d.isPaidOff);
   const financialProfile = StorageService.getFinancialProfile();
+  const featurePreferences = StorageService.getFeaturePreferences();
 
   // Get HELOC balance to display if exists
   const helocTransactions = JSON.parse(localStorage.getItem('novo_heloc_transactions') || '[]');
@@ -730,7 +731,47 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
         </div>
       </div>
 
-      {result.strategy.type === 'heloc-velocity' && financialProfile && homeEquity && (
+      {result.strategy.type === 'heloc-velocity' && financialProfile && homeEquity && !featurePreferences.helocEnabled && (
+        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-xl p-6 shadow-lg">
+          <div className="flex items-start space-x-4">
+            <div className="text-4xl">💡</div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-gray-800 mb-2">
+                Want to accelerate your debt payoff even faster?
+              </h3>
+              <p className="text-gray-700 mb-4 leading-relaxed">
+                If you're a homeowner with equity, a HELOC can help you eliminate high-interest debt faster by trading expensive rates for lower HELOC rates. Enable HELOC features to access advanced velocity banking tools and tracking.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const guideSection = document.querySelector('[data-section="heloc-guide"]');
+                    if (guideSection) {
+                      guideSection.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
+                  className="inline-flex items-center px-4 py-2 bg-white hover:bg-gray-50 text-blue-600 font-semibold rounded-lg border-2 border-blue-200 transition-colors"
+                >
+                  Learn About HELOC Strategy
+                </a>
+                <button
+                  onClick={() => {
+                    window.location.hash = 'settings';
+                    window.location.reload();
+                  }}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition-colors"
+                >
+                  Enable HELOC Features
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {result.strategy.type === 'heloc-velocity' && financialProfile && homeEquity && featurePreferences.helocEnabled && (
         <div className="space-y-4">
           <Accordion
             emoji="📊"

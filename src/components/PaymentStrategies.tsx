@@ -21,6 +21,7 @@ export default function PaymentStrategies({ onDataUpdate }: PaymentStrategiesPro
 
   const debts = StorageService.getDebts();
   const financialProfile = StorageService.getFinancialProfile();
+  const featurePreferences = StorageService.getFeaturePreferences();
 
   useEffect(() => {
     const checkAndAutoRecalculate = () => {
@@ -141,9 +142,13 @@ export default function PaymentStrategies({ onDataUpdate }: PaymentStrategiesPro
           <div className="w-12 h-12 bg-[#2D9CDB]/20 rounded-full flex items-center justify-center mx-auto mb-3">
             <span className="text-2xl font-bold text-[#2D9CDB]">2</span>
           </div>
-          <h3 className="font-bold text-gray-800 mb-2">Home Equity</h3>
+          <h3 className="font-bold text-gray-800 mb-2">
+            {featurePreferences.helocEnabled ? 'Home Equity' : 'Review Your Debts'}
+          </h3>
           <p className="text-sm text-gray-600">
-            Enter home value and mortgage to unlock HELOC strategies
+            {featurePreferences.helocEnabled
+              ? 'Enter home value and mortgage to unlock HELOC strategies'
+              : 'Ensure all your debts are entered with accurate rates'}
           </p>
         </div>
 
@@ -153,10 +158,41 @@ export default function PaymentStrategies({ onDataUpdate }: PaymentStrategiesPro
           </div>
           <h3 className="font-bold text-gray-800 mb-2">Choose Strategy</h3>
           <p className="text-sm text-gray-600">
-            Select extra payment or HELOC velocity banking strategy
+            {featurePreferences.helocEnabled
+              ? 'Select extra payment or HELOC velocity banking strategy'
+              : 'Apply the debt avalanche method with extra payments'}
           </p>
         </div>
       </div>
+
+      {!featurePreferences.helocEnabled && (
+        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-xl p-6 shadow-lg max-w-3xl mx-auto">
+          <div className="flex items-start space-x-4">
+            <div className="text-4xl">💡</div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-gray-800 mb-2">
+                Want to accelerate your debt payoff even faster?
+              </h3>
+              <p className="text-gray-700 mb-4 leading-relaxed">
+                If you're a homeowner with equity, a HELOC can help you eliminate high-interest debt faster by trading expensive rates for lower HELOC rates. Enable HELOC features to access advanced velocity banking strategies and powerful tracking tools.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => {
+                    const settingsButton = document.querySelector('[data-section="settings"]');
+                    if (settingsButton instanceof HTMLElement) {
+                      settingsButton.click();
+                    }
+                  }}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition-colors"
+                >
+                  Enable HELOC Features
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {financialProfile && (
         <div className="bg-white rounded-lg shadow-md p-6 max-w-2xl mx-auto">
@@ -181,7 +217,8 @@ export default function PaymentStrategies({ onDataUpdate }: PaymentStrategiesPro
       )}
 
       {/* Smart Chunking Calculator */}
-      {financialProfile &&
+      {featurePreferences.helocEnabled &&
+       financialProfile &&
        financialProfile.homeValue &&
        financialProfile.mortgageBalance &&
        financialProfile.helocLimit &&
