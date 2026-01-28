@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { TrendingUp, Plus, Download, Edit2, X, CreditCard, Wallet, PenLine, Link2 } from 'lucide-react';
+import { TrendingUp, Plus, Download, Edit2, X, CreditCard, Wallet, PenLine, Link2, Zap } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
@@ -236,6 +236,37 @@ export function HELOCTracker() {
               </div>
             </div>
 
+            {(() => {
+              const currentYear = new Date().getFullYear();
+              const interestTransactions = transactions.filter(t => t.type === 'interest');
+              const totalInterestLifetime = interestTransactions.reduce((sum, t) => sum + t.amount, 0);
+              const totalInterestThisYear = interestTransactions
+                .filter(t => new Date(t.date).getFullYear() === currentYear)
+                .reduce((sum, t) => sum + t.amount, 0);
+
+              if (interestTransactions.length > 0) {
+                return (
+                  <div className="bg-white/10 rounded-lg p-4 mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="flex items-center space-x-3">
+                      <Zap className="w-5 h-5 text-orange-300" />
+                      <div>
+                        <div className="text-xs opacity-80">Total Interest This Year</div>
+                        <div className="text-lg font-bold text-orange-200">{CalculationService.formatCurrency(totalInterestThisYear)}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <Zap className="w-5 h-5 text-orange-300" />
+                      <div>
+                        <div className="text-xs opacity-80">Total Interest Paid (Lifetime)</div>
+                        <div className="text-lg font-bold text-orange-200">{CalculationService.formatCurrency(totalInterestLifetime)}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
             <div className="bg-white/10 rounded-lg p-4 mb-4">
               <div className="text-sm mb-2">Monthly Interest Accruing: <span className="font-bold">{CalculationService.formatCurrency(monthlyInterest)}</span></div>
               {monthsToPayoff > 0 && averagePayment > 0 && (
@@ -282,6 +313,50 @@ export function HELOCTracker() {
                 </div>
               </div>
             )}
+
+            {(() => {
+              const today = new Date();
+              const dayOfMonth = today.getDate();
+              const currentMonth = today.getMonth();
+              const currentYear = today.getFullYear();
+
+              const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+              const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+              const hasInterestForLastMonth = transactions.some(t => {
+                if (t.type !== 'interest') return false;
+                const txDate = new Date(t.date);
+                return txDate.getMonth() === lastMonth && txDate.getFullYear() === lastMonthYear;
+              });
+
+              if (dayOfMonth <= 10 && !hasInterestForLastMonth && currentBalance > 0) {
+                const lastMonthName = new Date(lastMonthYear, lastMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                return (
+                  <div className="bg-gradient-to-r from-orange-500/20 to-yellow-500/20 border-2 border-orange-300/50 rounded-lg p-4 mb-4">
+                    <div className="flex items-start space-x-3">
+                      <Zap className="w-6 h-6 text-orange-300 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <h3 className="font-bold text-white text-lg mb-1">Monthly Interest Reminder</h3>
+                        <p className="text-white/90 text-sm mb-3">
+                          Don't forget to record your HELOC interest charge for {lastMonthName}
+                        </p>
+                        <button
+                          onClick={() => {
+                            setEditingTransaction(null);
+                            setShowInterestModal(true);
+                          }}
+                          className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors text-sm flex items-center space-x-2"
+                        >
+                          <Zap className="w-4 h-4" />
+                          <span>Record Interest Now</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             <div className="flex flex-wrap gap-3">
               <button
@@ -724,9 +799,11 @@ function TransactionLedger({
     const headers = ['Date', 'Type', 'Description', 'Amount', 'Balance'];
     const rows = transactions.map(t => [
       t.date,
-      t.type.charAt(0).toUpperCase() + t.type.slice(1),
+      t.type === 'interest' ? 'Interest Charge' : t.type.charAt(0).toUpperCase() + t.type.slice(1),
       t.description,
-      t.type === 'payment' ? `-$${t.amount.toFixed(2)}` : `+$${t.amount.toFixed(2)}`,
+      t.type === 'payment' ? `-$${t.amount.toFixed(2)}` :
+      t.type === 'interest' ? `$${t.amount.toFixed(2)}` :
+      `+$${t.amount.toFixed(2)}`,
       `$${t.balance.toFixed(2)}`
     ]);
 
@@ -795,12 +872,16 @@ function TransactionLedger({
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center space-x-2">
+                      {transaction.type === 'interest' && (
+                        <Zap className="w-4 h-4 text-orange-600" />
+                      )}
                       <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
                         transaction.type === 'draw' ? (transaction.isTransferToChecking ? 'bg-purple-100 text-purple-800' : 'bg-red-100 text-red-800') :
                         transaction.type === 'payment' ? 'bg-green-100 text-green-800' :
                         'bg-orange-100 text-orange-800'
                       }`}>
                         {transaction.isTransferToChecking ? 'Transfer to Checking' :
+                         transaction.type === 'interest' ? 'Interest Charge' :
                          transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
                       </span>
                       {transaction.linkedCheckingTransactionId && (
@@ -815,9 +896,11 @@ function TransactionLedger({
                   </td>
                   <td className="py-3 px-4 text-gray-800">{transaction.description}</td>
                   <td className={`py-3 px-4 text-right font-semibold ${
-                    transaction.type === 'payment' ? 'text-green-600' : 'text-red-600'
+                    transaction.type === 'payment' ? 'text-green-600' :
+                    transaction.type === 'interest' ? 'text-orange-600' : 'text-red-600'
                   }`}>
-                    {transaction.type === 'payment' ? '-' : '+'}{CalculationService.formatCurrency(transaction.amount)}
+                    {transaction.type === 'payment' ? '-' : transaction.type === 'interest' ? '' : '+'}
+                    {CalculationService.formatCurrency(transaction.amount)}
                   </td>
                   <td className="py-3 px-4 text-right font-semibold text-gray-800">
                     {CalculationService.formatCurrency(transaction.balance)}
@@ -1453,13 +1536,16 @@ function RecordInterestModal({
       <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] flex flex-col">
         <div className="p-6 pb-4 border-b border-gray-200">
           <h3 className="text-xl font-bold text-gray-800 mb-2">
-            {editTransaction ? 'Edit' : 'Record'} Interest Charge
+            {editTransaction ? 'Edit' : 'Record Monthly HELOC Interest Charge'}
           </h3>
+          <p className="text-sm text-gray-600">
+            Record the interest charged by your lender. This increases your HELOC balance.
+          </p>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">For the month of:</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Billing Period:</label>
             <input
               type="month"
               value={month}
@@ -1506,6 +1592,25 @@ function RecordInterestModal({
                 />
               </div>
             )}
+          </div>
+
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 space-y-2">
+            <div className="flex items-center space-x-2 mb-2">
+              <Zap className="w-5 h-5 text-orange-600" />
+              <span className="font-semibold text-gray-800">Balance Impact Preview:</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Previous balance:</span>
+              <span className="font-semibold text-gray-800">{CalculationService.formatCurrency(currentBalance)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">+ Interest charge:</span>
+              <span className="font-semibold text-orange-600">{CalculationService.formatCurrency(interestAmount)}</span>
+            </div>
+            <div className="flex justify-between text-sm border-t border-orange-300 pt-2">
+              <span className="text-gray-800 font-semibold">= New balance:</span>
+              <span className="font-bold text-gray-800">{CalculationService.formatCurrency(currentBalance + interestAmount)}</span>
+            </div>
           </div>
         </div>
 
