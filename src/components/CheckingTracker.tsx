@@ -42,11 +42,13 @@ export function CheckingTracker() {
   const [showModal, setShowModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<CheckingTransaction | null>(null);
   const [modalType, setModalType] = useState<'deposit' | 'withdrawal' | 'debt_payment'>('deposit');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const transactions = useMemo(() => {
     const stored = localStorage.getItem('novo_checking_transactions');
     return stored ? JSON.parse(stored) as CheckingTransaction[] : [];
-  }, [showModal]);
+  }, [refreshTrigger]);
 
   const startingBalance = parseFloat(localStorage.getItem('novo_checking_starting_balance') || '0');
   const currentBalance = transactions.length > 0
@@ -129,6 +131,20 @@ export function CheckingTracker() {
 
   return (
     <div className="space-y-6">
+      {successMessage && (
+        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg shadow-md animate-fade-in">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold">{successMessage}</span>
+            <button
+              onClick={() => setSuccessMessage(null)}
+              className="text-green-700 hover:text-green-900 font-bold"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="bg-gradient-to-br from-[#27AE60] to-[#229954] text-white rounded-lg shadow-lg p-6">
         <h2 className="text-2xl font-bold mb-6">Checking Account Overview</h2>
 
@@ -174,7 +190,9 @@ export function CheckingTracker() {
               const balance = prompt('Enter your starting balance:', startingBalance.toString());
               if (balance !== null) {
                 localStorage.setItem('novo_checking_starting_balance', balance);
-                window.location.reload();
+                setSuccessMessage(`✓ Starting balance updated to ${CalculationService.formatCurrency(parseFloat(balance))}`);
+                setRefreshTrigger(prev => prev + 1);
+                setTimeout(() => setSuccessMessage(null), 5000);
               }
             }}
             className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 font-semibold py-2 px-4 rounded-lg transition-colors"
@@ -195,8 +213,9 @@ export function CheckingTracker() {
             const filtered = transactions.filter(t => t.id !== id);
             recalculateBalances(filtered, startingBalance);
             localStorage.setItem('novo_checking_transactions', JSON.stringify(filtered));
-            alert('Transaction deleted. Balances updated.');
-            window.location.reload();
+            setSuccessMessage('✓ Transaction deleted. Balances updated.');
+            setRefreshTrigger(prev => prev + 1);
+            setTimeout(() => setSuccessMessage(null), 5000);
           }
         }}
       />
@@ -221,6 +240,13 @@ export function CheckingTracker() {
           onClose={() => {
             setShowModal(false);
             setEditingTransaction(null);
+          }}
+          onSuccess={(message) => {
+            setShowModal(false);
+            setEditingTransaction(null);
+            setSuccessMessage(message);
+            setRefreshTrigger(prev => prev + 1);
+            setTimeout(() => setSuccessMessage(null), 5000);
           }}
           currentBalance={currentBalance}
           startingBalance={startingBalance}
@@ -449,12 +475,14 @@ function TransactionLedger({
 
 function TransactionModal({
   onClose,
+  onSuccess,
   currentBalance,
   startingBalance,
   editTransaction,
   type
 }: {
   onClose: () => void;
+  onSuccess: (message: string) => void;
   currentBalance: number;
   startingBalance: number;
   editTransaction: CheckingTransaction | null;
@@ -581,9 +609,8 @@ function TransactionModal({
     }
 
     const typeLabel = type === 'deposit' ? 'Deposit' : type === 'debt_payment' ? 'Debt Payment' : 'Withdrawal';
-    alert(`✓ ${typeLabel} recorded: ${type === 'deposit' ? '+' : '-'}${CalculationService.formatCurrency(transactionAmount)}. New balance: ${CalculationService.formatCurrency(newBalance)}`);
-    onClose();
-    window.location.reload();
+    const message = `✓ ${typeLabel} recorded: ${type === 'deposit' ? '+' : '-'}${CalculationService.formatCurrency(transactionAmount)}. New balance: ${CalculationService.formatCurrency(newBalance)}`;
+    onSuccess(message);
   };
 
   return (
