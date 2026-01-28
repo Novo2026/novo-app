@@ -1,21 +1,47 @@
 import { useState, useMemo } from 'react';
-import { Plus, Download, Edit2, X, DollarSign } from 'lucide-react';
+import { Plus, Download, Edit2, X, DollarSign, CreditCard, TrendingUp, TrendingDown } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CalculationService } from '../services/calculations';
+import { StorageService } from '../services/storage';
 
 interface CheckingTransaction {
   id: string;
   date: string;
-  type: 'deposit' | 'withdrawal';
+  type: 'deposit' | 'withdrawal' | 'debt_payment';
   amount: number;
   description: string;
   balance: number;
+  category?: string;
+  subcategory?: string;
+  debtId?: string;
+  debtName?: string;
 }
+
+const ESSENTIAL_CATEGORIES = [
+  'Rent/Housing',
+  'Utilities',
+  'Groceries',
+  'Insurance',
+  'Transportation/Gas',
+  'Childcare',
+  'Medical',
+  'Other Essential'
+];
+
+const DISCRETIONARY_CATEGORIES = [
+  'Dining Out',
+  'Entertainment',
+  'Shopping/Clothing',
+  'Hobbies',
+  'Subscriptions',
+  'Travel',
+  'Other Discretionary'
+];
 
 export function CheckingTracker() {
   const [showModal, setShowModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<CheckingTransaction | null>(null);
-  const [modalType, setModalType] = useState<'deposit' | 'withdrawal'>('deposit');
+  const [modalType, setModalType] = useState<'deposit' | 'withdrawal' | 'debt_payment'>('deposit');
 
   const transactions = useMemo(() => {
     const stored = localStorage.getItem('novo_checking_transactions');
@@ -53,7 +79,49 @@ export function CheckingTracker() {
     return data;
   }, [transactions]);
 
-  const openModal = (type: 'deposit' | 'withdrawal', transaction: CheckingTransaction | null = null) => {
+  const monthlySummary = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const currentMonthTransactions = transactions.filter(t => {
+      const txDate = new Date(t.date);
+      return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
+    });
+
+    const income = currentMonthTransactions
+      .filter(t => t.type === 'deposit')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const essentialExpenses = currentMonthTransactions
+      .filter(t => t.type === 'withdrawal' && t.category === 'Essential Expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const discretionaryExpenses = currentMonthTransactions
+      .filter(t => t.type === 'withdrawal' && t.category === 'Discretionary Expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const debtPayments = currentMonthTransactions
+      .filter(t => t.type === 'debt_payment')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const otherWithdrawals = currentMonthTransactions
+      .filter(t => t.type === 'withdrawal' && !t.category)
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    const netChange = income - essentialExpenses - discretionaryExpenses - debtPayments - otherWithdrawals;
+
+    return {
+      income,
+      essentialExpenses,
+      discretionaryExpenses,
+      debtPayments,
+      otherWithdrawals,
+      netChange
+    };
+  }, [transactions]);
+
+  const openModal = (type: 'deposit' | 'withdrawal' | 'debt_payment', transaction: CheckingTransaction | null = null) => {
     setModalType(type);
     setEditingTransaction(transaction);
     setShowModal(true);
@@ -95,6 +163,13 @@ export function CheckingTracker() {
             <span>Record Withdrawal</span>
           </button>
           <button
+            onClick={() => openModal('debt_payment')}
+            className="flex items-center space-x-2 bg-[#2D9CDB] hover:bg-[#1E6F9E] font-semibold py-2 px-4 rounded-lg transition-colors"
+          >
+            <CreditCard className="w-4 h-4" />
+            <span>Record Debt Payment</span>
+          </button>
+          <button
             onClick={() => {
               const balance = prompt('Enter your starting balance:', startingBalance.toString());
               if (balance !== null) {
@@ -109,6 +184,8 @@ export function CheckingTracker() {
           </button>
         </div>
       </div>
+
+      <MonthlySummary summary={monthlySummary} />
 
       <TransactionLedger
         transactions={transactions}
@@ -155,6 +232,85 @@ export function CheckingTracker() {
   );
 }
 
+function MonthlySummary({ summary }: { summary: {
+  income: number;
+  essentialExpenses: number;
+  discretionaryExpenses: number;
+  debtPayments: number;
+  otherWithdrawals: number;
+  netChange: number;
+}}) {
+  const now = new Date();
+  const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xl font-bold text-gray-800">This Month's Summary</h3>
+        <span className="text-sm text-gray-600">{monthName}</span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="bg-green-50 border-l-4 border-green-500 rounded-r-lg p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-gray-600 mb-1">Income Deposited</div>
+              <div className="text-2xl font-bold text-green-700">
+                {CalculationService.formatCurrency(summary.income)}
+              </div>
+            </div>
+            <TrendingUp className="w-8 h-8 text-green-500" />
+          </div>
+        </div>
+
+        <div className="bg-orange-50 border-l-4 border-orange-500 rounded-r-lg p-4">
+          <div className="text-sm text-gray-600 mb-1">Essential Expenses</div>
+          <div className="text-xl font-bold text-orange-700">
+            {CalculationService.formatCurrency(summary.essentialExpenses)}
+          </div>
+        </div>
+
+        <div className="bg-purple-50 border-l-4 border-purple-500 rounded-r-lg p-4">
+          <div className="text-sm text-gray-600 mb-1">Discretionary Expenses</div>
+          <div className="text-xl font-bold text-purple-700">
+            {CalculationService.formatCurrency(summary.discretionaryExpenses)}
+          </div>
+        </div>
+
+        <div className="bg-blue-50 border-l-4 border-blue-500 rounded-r-lg p-4">
+          <div className="text-sm text-gray-600 mb-1">Debt Payments</div>
+          <div className="text-xl font-bold text-blue-700">
+            {CalculationService.formatCurrency(summary.debtPayments)}
+          </div>
+        </div>
+
+        <div className="bg-gray-50 border-l-4 border-gray-400 rounded-r-lg p-4">
+          <div className="text-sm text-gray-600 mb-1">Other Withdrawals</div>
+          <div className="text-xl font-bold text-gray-700">
+            {CalculationService.formatCurrency(summary.otherWithdrawals)}
+          </div>
+        </div>
+
+        <div className={`${summary.netChange >= 0 ? 'bg-green-50 border-green-600' : 'bg-red-50 border-red-600'} border-l-4 rounded-r-lg p-4`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-gray-600 mb-1">Net Change</div>
+              <div className={`text-2xl font-bold ${summary.netChange >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                {summary.netChange >= 0 ? '+' : ''}{CalculationService.formatCurrency(summary.netChange)}
+              </div>
+            </div>
+            {summary.netChange >= 0 ? (
+              <TrendingUp className="w-8 h-8 text-green-600" />
+            ) : (
+              <TrendingDown className="w-8 h-8 text-red-600" />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TransactionLedger({
   transactions,
   onEdit,
@@ -165,24 +321,28 @@ function TransactionLedger({
   onDelete: (id: string) => void;
 }) {
   const exportCSV = () => {
-    const headers = ['Date', 'Type', 'Description', 'Amount', 'Balance'];
+    const headers = ['Date', 'Type', 'Category', 'Subcategory', 'Description', 'Amount', 'Balance'];
     const rows = transactions.map(t => [
       t.date,
-      t.type.charAt(0).toUpperCase() + t.type.slice(1),
+      t.type === 'debt_payment' ? 'Debt Payment' : t.type.charAt(0).toUpperCase() + t.type.slice(1),
+      t.category || '',
+      t.subcategory || '',
       t.description,
-      t.type === 'withdrawal' ? `-$${t.amount.toFixed(2)}` : `+$${t.amount.toFixed(2)}`,
+      t.type === 'deposit' ? `+$${t.amount.toFixed(2)}` : `-$${t.amount.toFixed(2)}`,
       `$${t.balance.toFixed(2)}`
     ]);
 
     const totalDeposits = transactions.filter(t => t.type === 'deposit').reduce((sum, t) => sum + t.amount, 0);
     const totalWithdrawals = transactions.filter(t => t.type === 'withdrawal').reduce((sum, t) => sum + t.amount, 0);
+    const totalDebtPayments = transactions.filter(t => t.type === 'debt_payment').reduce((sum, t) => sum + t.amount, 0);
     const currentBalance = transactions.length > 0 ? transactions[transactions.length - 1].balance : 0;
 
     rows.push([]);
-    rows.push(['Summary', '', '', '', '']);
-    rows.push(['Total Deposits', '', '', `$${totalDeposits.toFixed(2)}`, '']);
-    rows.push(['Total Withdrawals', '', '', `-$${totalWithdrawals.toFixed(2)}`, '']);
-    rows.push(['Current Balance', '', '', '', `$${currentBalance.toFixed(2)}`]);
+    rows.push(['Summary', '', '', '', '', '', '']);
+    rows.push(['Total Deposits', '', '', '', '', `$${totalDeposits.toFixed(2)}`, '']);
+    rows.push(['Total Withdrawals', '', '', '', '', `-$${totalWithdrawals.toFixed(2)}`, '']);
+    rows.push(['Total Debt Payments', '', '', '', '', `-$${totalDebtPayments.toFixed(2)}`, '']);
+    rows.push(['Current Balance', '', '', '', '', '', `$${currentBalance.toFixed(2)}`]);
 
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -224,6 +384,7 @@ function TransactionLedger({
               <tr className="border-b-2 border-gray-200">
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Date</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Type</th>
+                <th className="text-left py-3 px-4 font-semibold text-gray-700">Category</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Description</th>
                 <th className="text-right py-3 px-4 font-semibold text-gray-700">Amount</th>
                 <th className="text-right py-3 px-4 font-semibold text-gray-700">Balance</th>
@@ -239,10 +400,15 @@ function TransactionLedger({
                   <td className="py-3 px-4">
                     <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
                       transaction.type === 'deposit' ? 'bg-green-100 text-green-800' :
+                      transaction.type === 'debt_payment' ? 'bg-blue-100 text-blue-800' :
                       'bg-red-100 text-red-800'
                     }`}>
-                      {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
+                      {transaction.type === 'debt_payment' ? 'Debt Payment' :
+                       transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
                     </span>
+                  </td>
+                  <td className="py-3 px-4 text-sm text-gray-700">
+                    {transaction.subcategory || transaction.category || '—'}
                   </td>
                   <td className="py-3 px-4 text-gray-800">{transaction.description}</td>
                   <td className={`py-3 px-4 text-right font-semibold ${
@@ -292,11 +458,21 @@ function TransactionModal({
   currentBalance: number;
   startingBalance: number;
   editTransaction: CheckingTransaction | null;
-  type: 'deposit' | 'withdrawal';
+  type: 'deposit' | 'withdrawal' | 'debt_payment';
 }) {
+  const debts = StorageService.getDebts().filter(d => !d.isPaidOff);
+
   const [amount, setAmount] = useState(editTransaction?.amount.toString() || '');
   const [date, setDate] = useState(editTransaction?.date || new Date().toISOString().split('T')[0]);
   const [description, setDescription] = useState(editTransaction?.description || '');
+  const [selectedDebt, setSelectedDebt] = useState(editTransaction?.debtId || (debts.length > 0 ? debts[0].id : ''));
+  const [expenseType, setExpenseType] = useState<'essential' | 'discretionary' | 'other'>(
+    editTransaction?.category === 'Essential Expense' ? 'essential' :
+    editTransaction?.category === 'Discretionary Expense' ? 'discretionary' : 'other'
+  );
+  const [subcategory, setSubcategory] = useState(editTransaction?.subcategory || '');
+
+  const selectedDebtObj = debts.find(d => d.id === selectedDebt);
 
   const transactionAmount = parseFloat(amount) || 0;
   const newBalance = type === 'deposit'
@@ -309,17 +485,47 @@ function TransactionModal({
       return;
     }
 
+    if (type === 'debt_payment' && !selectedDebt) {
+      alert('Please select a debt to pay');
+      return;
+    }
+
     const transactions: CheckingTransaction[] = JSON.parse(
       localStorage.getItem('novo_checking_transactions') || '[]'
     );
+
+    let category = undefined;
+    let finalSubcategory = undefined;
+    let finalDescription = description;
+
+    if (type === 'withdrawal') {
+      if (expenseType === 'essential') {
+        category = 'Essential Expense';
+        finalSubcategory = subcategory;
+      } else if (expenseType === 'discretionary') {
+        category = 'Discretionary Expense';
+        finalSubcategory = subcategory;
+      }
+      if (!finalDescription) {
+        finalDescription = 'Expense/Withdrawal';
+      }
+    } else if (type === 'debt_payment') {
+      finalDescription = description || `Paid ${selectedDebtObj?.accountName}`;
+    } else if (type === 'deposit' && !finalDescription) {
+      finalDescription = 'Cash Flow Deposit';
+    }
 
     const newTransaction: CheckingTransaction = {
       id: editTransaction?.id || `checking_${Date.now()}`,
       date,
       type: editTransaction?.type || type,
       amount: transactionAmount,
-      description: description || (type === 'deposit' ? 'Cash Flow Deposit' : 'Expense/Withdrawal'),
-      balance: 0
+      description: finalDescription,
+      balance: 0,
+      category,
+      subcategory: finalSubcategory,
+      debtId: type === 'debt_payment' ? selectedDebt : undefined,
+      debtName: type === 'debt_payment' ? selectedDebtObj?.accountName : undefined
     };
 
     if (editTransaction) {
@@ -334,19 +540,89 @@ function TransactionModal({
 
     localStorage.setItem('novo_checking_transactions', JSON.stringify(transactions));
 
-    alert(`✓ ${type === 'deposit' ? 'Deposit' : 'Withdrawal'} recorded: ${type === 'deposit' ? '+' : '-'}${CalculationService.formatCurrency(transactionAmount)}. New balance: ${CalculationService.formatCurrency(newBalance)}`);
+    if (type === 'debt_payment' && selectedDebtObj) {
+      const allDebts = StorageService.getDebts();
+      const debtIndex = allDebts.findIndex(d => d.id === selectedDebt);
+
+      if (debtIndex !== -1) {
+        const debt = allDebts[debtIndex];
+        const previousBalance = debt.currentBalance;
+        const interestCharged = 0;
+        const principalPaid = transactionAmount;
+        const newDebtBalance = Math.max(0, previousBalance - transactionAmount);
+
+        debt.currentBalance = newDebtBalance;
+
+        if (newDebtBalance === 0 && !debt.isPaidOff) {
+          debt.isPaidOff = true;
+          debt.paidOffDate = date;
+        }
+
+        const debtTransaction = {
+          id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          debtId: debt.id,
+          debtName: debt.accountName,
+          date,
+          type: 'payment' as const,
+          amount: transactionAmount,
+          previousBalance,
+          interestCharged,
+          principalPaid,
+          newBalance: newDebtBalance,
+          notes: `Paid from checking account: ${finalDescription}`
+        };
+
+        const allTransactions = StorageService.getTransactions();
+        allTransactions.push(debtTransaction);
+
+        StorageService.saveDebts(allDebts);
+        StorageService.saveTransactions(allTransactions);
+      }
+    }
+
+    const typeLabel = type === 'deposit' ? 'Deposit' : type === 'debt_payment' ? 'Debt Payment' : 'Withdrawal';
+    alert(`✓ ${typeLabel} recorded: ${type === 'deposit' ? '+' : '-'}${CalculationService.formatCurrency(transactionAmount)}. New balance: ${CalculationService.formatCurrency(newBalance)}`);
     onClose();
     window.location.reload();
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
+      <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
         <h3 className="text-xl font-bold text-gray-800 mb-4">
-          {editTransaction ? 'Edit' : 'Record'} {type === 'deposit' ? 'Deposit' : 'Withdrawal'}
+          {editTransaction ? 'Edit' : 'Record'} {type === 'deposit' ? 'Deposit' : type === 'debt_payment' ? 'Debt Payment' : 'Withdrawal'}
         </h3>
 
         <div className="space-y-4">
+          {type === 'debt_payment' && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Select Debt</label>
+              <select
+                value={selectedDebt}
+                onChange={(e) => {
+                  setSelectedDebt(e.target.value);
+                  const debt = debts.find(d => d.id === e.target.value);
+                  if (debt) {
+                    setAmount(debt.minimumPayment.toString());
+                    setDescription(`Paid ${debt.accountName}`);
+                  }
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              >
+                {debts.map(debt => (
+                  <option key={debt.id} value={debt.id}>
+                    {debt.accountName} ({debt.category}) - Balance: {CalculationService.formatCurrency(debt.currentBalance)}
+                  </option>
+                ))}
+              </select>
+              {selectedDebtObj && (
+                <p className="text-xs text-gray-600 mt-1">
+                  Min payment: {CalculationService.formatCurrency(selectedDebtObj.minimumPayment)}
+                </p>
+              )}
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Amount</label>
             <div className="relative">
@@ -372,14 +648,90 @@ function TransactionModal({
             />
           </div>
 
+          {type === 'withdrawal' && (
+            <>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Expense Type</label>
+                <div className="space-y-2">
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      value="essential"
+                      checked={expenseType === 'essential'}
+                      onChange={(e) => setExpenseType(e.target.value as 'essential')}
+                      className="w-4 h-4 text-[#27AE60] focus:ring-[#27AE60]"
+                    />
+                    <span className="text-gray-800">Essential Expense</span>
+                  </label>
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      value="discretionary"
+                      checked={expenseType === 'discretionary'}
+                      onChange={(e) => setExpenseType(e.target.value as 'discretionary')}
+                      className="w-4 h-4 text-[#27AE60] focus:ring-[#27AE60]"
+                    />
+                    <span className="text-gray-800">Discretionary Expense</span>
+                  </label>
+                  <label className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      value="other"
+                      checked={expenseType === 'other'}
+                      onChange={(e) => setExpenseType(e.target.value as 'other')}
+                      className="w-4 h-4 text-[#27AE60] focus:ring-[#27AE60]"
+                    />
+                    <span className="text-gray-800">Other Withdrawal</span>
+                  </label>
+                </div>
+              </div>
+
+              {expenseType === 'essential' && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
+                  <select
+                    value={subcategory}
+                    onChange={(e) => setSubcategory(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#27AE60] focus:border-transparent"
+                  >
+                    <option value="">Select category...</option>
+                    {ESSENTIAL_CATEGORIES.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {expenseType === 'discretionary' && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
+                  <select
+                    value={subcategory}
+                    onChange={(e) => setSubcategory(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#27AE60] focus:border-transparent"
+                  >
+                    <option value="">Select category...</option>
+                    {DISCRETIONARY_CATEGORIES.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </>
+          )}
+
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Description (optional)</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#27AE60] focus:border-transparent"
-              placeholder={type === 'deposit' ? 'Extra paycheck, windfalls, etc.' : 'Debt payment, expenses, etc.'}
+              placeholder={
+                type === 'deposit' ? 'Extra paycheck, windfalls, etc.' :
+                type === 'debt_payment' ? 'Payment details...' :
+                'Expense details...'
+              }
             />
           </div>
 
@@ -390,7 +742,9 @@ function TransactionModal({
                 <span className="font-semibold text-gray-800">{CalculationService.formatCurrency(currentBalance)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">{type === 'deposit' ? 'Deposit:' : 'Withdrawal:'}</span>
+                <span className="text-gray-600">
+                  {type === 'deposit' ? 'Deposit:' : type === 'debt_payment' ? 'Debt Payment:' : 'Withdrawal:'}
+                </span>
                 <span className={`font-semibold ${type === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
                   {type === 'deposit' ? '+' : '-'}{CalculationService.formatCurrency(transactionAmount)}
                 </span>
@@ -412,9 +766,13 @@ function TransactionModal({
           </button>
           <button
             onClick={handleSubmit}
-            className={`flex-1 ${type === 'deposit' ? 'bg-[#27AE60] hover:bg-[#229954]' : 'bg-[#EB5757] hover:bg-[#C0392B]'} text-white font-semibold py-3 px-6 rounded-lg transition-colors`}
+            className={`flex-1 ${
+              type === 'deposit' ? 'bg-[#27AE60] hover:bg-[#229954]' :
+              type === 'debt_payment' ? 'bg-[#2D9CDB] hover:bg-[#1E6F9E]' :
+              'bg-[#EB5757] hover:bg-[#C0392B]'
+            } text-white font-semibold py-3 px-6 rounded-lg transition-colors`}
           >
-            {editTransaction ? 'Update' : 'Record'} {type === 'deposit' ? 'Deposit' : 'Withdrawal'}
+            {editTransaction ? 'Update' : 'Record'}
           </button>
         </div>
       </div>
@@ -428,7 +786,7 @@ function recalculateBalances(transactions: CheckingTransaction[], startingBalanc
   transactions.forEach(transaction => {
     if (transaction.type === 'deposit') {
       runningBalance += transaction.amount;
-    } else if (transaction.type === 'withdrawal') {
+    } else {
       runningBalance -= transaction.amount;
     }
     runningBalance = Math.max(0, runningBalance);
