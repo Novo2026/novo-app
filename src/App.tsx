@@ -108,6 +108,11 @@ function App() {
         helocMinPayment: parseCurrency(data.helocMinPayment),
       };
       StorageService.saveHomeEquity(homeEquity);
+
+      // Enable HELOC features automatically when user has HELOC
+      const preferences = StorageService.getFeaturePreferences();
+      preferences.helocEnabled = true;
+      StorageService.saveFeaturePreferences(preferences);
     }
 
     setShowOnboarding(false);

@@ -388,7 +388,159 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
           <CreditCard className="w-8 h-8 text-white" />
         </div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Now let's add your debts</h1>
-        <p className="text-gray-600">Add at least one debt to continue</p>
+        <p className="text-gray-600">First, tell us about your HELOC situation</p>
+      </div>
+
+      {/* HELOC Question Section */}
+      <div className="space-y-4 mb-8">
+        <h3 className="text-lg font-bold text-gray-800 text-center">Do you have a Home Equity Line of Credit (HELOC)?</h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* YES Card */}
+          <button
+            type="button"
+            onClick={() => setData({ ...data, hasHELOC: true })}
+            className={`relative p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+              data.hasHELOC
+                ? 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-500 shadow-lg scale-105'
+                : 'bg-white border-gray-300 hover:border-blue-300 hover:shadow-md'
+            }`}
+          >
+            <div className="flex items-start space-x-3">
+              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg ${
+                data.hasHELOC ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
+                {data.hasHELOC ? '✓' : '○'}
+              </div>
+              <div className="flex-1">
+                <h4 className="font-bold text-gray-900 mb-2 text-lg">Yes, I have a HELOC</h4>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  I want to use velocity banking strategies to accelerate debt payoff
+                </p>
+              </div>
+            </div>
+          </button>
+
+          {/* NO Card */}
+          <button
+            type="button"
+            onClick={() => setData({ ...data, hasHELOC: false })}
+            className={`relative p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+              !data.hasHELOC
+                ? 'bg-gradient-to-br from-gray-50 to-slate-50 border-gray-500 shadow-lg scale-105'
+                : 'bg-white border-gray-300 hover:border-gray-400 hover:shadow-md'
+            }`}
+          >
+            <div className="flex items-start space-x-3">
+              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg ${
+                !data.hasHELOC ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
+                {!data.hasHELOC ? '✓' : '○'}
+              </div>
+              <div className="flex-1">
+                <h4 className="font-bold text-gray-900 mb-2 text-lg">No, I don't have a HELOC</h4>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  I'll use cash flow strategies to eliminate debt
+                </p>
+              </div>
+            </div>
+          </button>
+        </div>
+
+        <div className="text-center">
+          <a
+            href="#"
+            onClick={(e) => {
+              e.preventDefault();
+              alert("What is a HELOC?\n\nA HELOC (Home Equity Line of Credit) is a revolving credit line secured by your home's equity - similar to a credit card, but using your home as collateral.\n\nKey Benefits:\n• Lower interest rates (typically 6-9% vs 18-25% for credit cards)\n• Tax-deductible interest in some cases\n• Flexibility to draw and repay as needed\n• Can significantly accelerate debt payoff through velocity banking\n\nShould you get one?\nConsider a HELOC if you:\n• Own a home with equity (typically 15-20% minimum)\n• Have high-interest debt to consolidate\n• Are disciplined with credit management\n• Want to accelerate your debt-free journey\n\nYou can always enable HELOC features later in Settings if you decide to get one!");
+            }}
+            className="text-sm text-blue-600 hover:text-blue-700 font-semibold underline"
+          >
+            What's a HELOC and should I get one?
+          </a>
+        </div>
+
+        {/* HELOC Input Fields */}
+        {data.hasHELOC && (
+          <div className="mt-6 space-y-4 bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+            <h4 className="font-bold text-gray-800 text-lg mb-4">Enter Your HELOC Details</h4>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">HELOC Credit Limit</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <input
+                  type="text"
+                  value={data.helocLimit}
+                  onChange={(e) => handleCurrencyChange('helocLimit', e.target.value)}
+                  placeholder="50,000"
+                  className="w-full pl-7 pr-3 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">HELOC Interest Rate</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={data.helocRate}
+                  onChange={(e) => setData({ ...data, helocRate: e.target.value.replace(/[^0-9.]/g, '') })}
+                  placeholder="6.5"
+                  className="w-full pl-3 pr-10 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">HELOC Current Balance</label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <input
+                  type="text"
+                  value={data.helocBalance}
+                  onChange={(e) => handleCurrencyChange('helocBalance', e.target.value)}
+                  onFocus={(e) => {
+                    if (e.target.value === '0') handleCurrencyChange('helocBalance', '');
+                  }}
+                  placeholder="Enter amount or leave blank"
+                  className="w-full pl-7 pr-3 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Leave blank if no current balance</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                HELOC Minimum Monthly Payment
+                {parseCurrency(data.helocBalance) > 0 && <span className="text-red-500 ml-1">*</span>}
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                <input
+                  type="text"
+                  value={data.helocMinPayment}
+                  onChange={(e) => handleCurrencyChange('helocMinPayment', e.target.value)}
+                  onFocus={(e) => {
+                    if (e.target.value === '0') handleCurrencyChange('helocMinPayment', '');
+                  }}
+                  placeholder="Enter amount or leave blank"
+                  className="w-full pl-7 pr-3 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              {parseCurrency(data.helocBalance) > 0 && parseCurrency(data.helocMinPayment) === 0 && (
+                <p className="text-xs text-red-600 mt-1">Required when current balance is greater than $0</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Debts Section */}
+      <div className="border-t-2 border-gray-200 pt-6">
+        <h3 className="text-lg font-bold text-gray-800 mb-4 text-center">Add Your Debts</h3>
+        <p className="text-sm text-gray-600 mb-4 text-center">Add at least one debt to continue</p>
       </div>
 
       <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
@@ -559,91 +711,6 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         <Plus className="w-5 h-5" />
         <span>Add Another Debt</span>
       </button>
-
-      <div className="pt-4 border-t-2 border-gray-200">
-        <label className="flex items-center space-x-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={data.hasHELOC}
-            onChange={(e) => setData({ ...data, hasHELOC: e.target.checked })}
-            className="w-5 h-5 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
-          />
-          <span className="font-semibold text-gray-700">I have a HELOC available</span>
-        </label>
-
-        {data.hasHELOC && (
-          <div className="mt-4 space-y-3 bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">HELOC Credit Limit</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="text"
-                  value={data.helocLimit}
-                  onChange={(e) => handleCurrencyChange('helocLimit', e.target.value)}
-                  placeholder="50,000"
-                  className="w-full pl-7 pr-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">HELOC Interest Rate</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={data.helocRate}
-                  onChange={(e) => setData({ ...data, helocRate: e.target.value.replace(/[^0-9.]/g, '') })}
-                  placeholder="6.5"
-                  className="w-full pl-3 pr-8 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">HELOC Current Balance</label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="text"
-                  value={data.helocBalance}
-                  onChange={(e) => handleCurrencyChange('helocBalance', e.target.value)}
-                  onFocus={(e) => {
-                    if (e.target.value === '0') handleCurrencyChange('helocBalance', '');
-                  }}
-                  placeholder="Enter amount or leave blank"
-                  className="w-full pl-7 pr-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">Leave blank if no current balance</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                HELOC Minimum Monthly Payment
-                {parseCurrency(data.helocBalance) > 0 && <span className="text-red-500 ml-1">*</span>}
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="text"
-                  value={data.helocMinPayment}
-                  onChange={(e) => handleCurrencyChange('helocMinPayment', e.target.value)}
-                  onFocus={(e) => {
-                    if (e.target.value === '0') handleCurrencyChange('helocMinPayment', '');
-                  }}
-                  placeholder="Enter amount or leave blank"
-                  className="w-full pl-7 pr-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                />
-              </div>
-              {parseCurrency(data.helocBalance) > 0 && parseCurrency(data.helocMinPayment) === 0 && (
-                <p className="text-xs text-red-600 mt-1">Required when current balance is greater than $0</p>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 
