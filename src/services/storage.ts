@@ -8,6 +8,7 @@ import type {
   Strategy,
   StrategyResult,
   AppData,
+  FeaturePreferences,
 } from '../types';
 
 const STORAGE_KEYS = {
@@ -22,6 +23,7 @@ const STORAGE_KEYS = {
   HELOC_TRANSACTIONS: 'novo_heloc_transactions',
   DATA_HASH: 'novo_data_hash',
   STRATEGY_CALC_HASH: 'novo_strategy_calc_hash',
+  FEATURE_PREFERENCES: 'novo_feature_preferences',
 };
 
 export const StorageService = {
@@ -121,6 +123,7 @@ export const StorageService = {
       homeEquity: this.getHomeEquity() || undefined,
       strategy: this.getStrategy() || undefined,
       strategyResult: this.getStrategyResult() || undefined,
+      featurePreferences: this.getFeaturePreferences(),
     };
   },
 
@@ -147,6 +150,7 @@ export const StorageService = {
       if (data.homeEquity) this.saveHomeEquity(data.homeEquity);
       if (data.strategy) this.saveStrategy(data.strategy);
       if (data.strategyResult) this.saveStrategyResult(data.strategyResult);
+      if (data.featurePreferences) this.saveFeaturePreferences(data.featurePreferences);
     } catch (error) {
       throw new Error('Invalid data format');
     }
@@ -187,5 +191,14 @@ export const StorageService = {
     if (!strategyResult) return false;
 
     return this.hasDataChangedSinceLastCalculation();
+  },
+
+  getFeaturePreferences(): FeaturePreferences {
+    const data = localStorage.getItem(STORAGE_KEYS.FEATURE_PREFERENCES);
+    return data ? JSON.parse(data) : { helocEnabled: false, checkingEnabled: false };
+  },
+
+  saveFeaturePreferences(preferences: FeaturePreferences): void {
+    localStorage.setItem(STORAGE_KEYS.FEATURE_PREFERENCES, JSON.stringify(preferences));
   },
 };

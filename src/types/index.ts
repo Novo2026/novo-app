@@ -194,6 +194,11 @@ export interface UnifiedActivity {
   transaction?: Transaction | HELOCTransaction | CheckingTransaction;
 }
 
+export interface FeaturePreferences {
+  helocEnabled: boolean;
+  checkingEnabled: boolean;
+}
+
 export interface AppData {
   debts: Debt[];
   transactions: Transaction[];
@@ -203,4 +208,5 @@ export interface AppData {
   homeEquity?: HomeEquity;
   strategy?: Strategy;
   strategyResult?: StrategyResult;
+  featurePreferences?: FeaturePreferences;
 }

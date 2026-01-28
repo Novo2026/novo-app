@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Trash2, Download, AlertTriangle, CheckCircle, User, DollarSign, RefreshCw, Target, Mail, Phone } from 'lucide-react';
+import { Trash2, Download, AlertTriangle, CheckCircle, User, DollarSign, RefreshCw, Target, Mail, Phone, Settings as SettingsIcon } from 'lucide-react';
 import { StorageService } from '../services/storage';
-import type { FinancialProfile } from '../types';
+import type { FinancialProfile, FeaturePreferences } from '../types';
 
 interface SettingsProps {
   onDataUpdate: () => void;
@@ -16,11 +16,16 @@ export default function Settings({ onDataUpdate }: SettingsProps) {
   const [showFinancialSuccess, setShowFinancialSuccess] = useState(false);
   const [quizStatus, setQuizStatus] = useState<'passed' | 'failed' | 'not-taken'>('not-taken');
   const [showQuizResetSuccess, setShowQuizResetSuccess] = useState(false);
+  const [showFeaturesSuccess, setShowFeaturesSuccess] = useState(false);
   const [financialProfile, setFinancialProfile] = useState<FinancialProfile>({
     monthlyGrossIncome: 0,
     monthlyNetIncome: 0,
     monthlyEssentialExpenses: 0,
     monthlyDiscretionaryExpenses: 0,
+  });
+  const [featurePreferences, setFeaturePreferences] = useState<FeaturePreferences>({
+    helocEnabled: false,
+    checkingEnabled: false,
   });
 
   // Strategy Readiness Assessment state
@@ -35,7 +40,9 @@ export default function Settings({ onDataUpdate }: SettingsProps) {
       setFinancialProfile(profile);
     }
 
-    // Load quiz status
+    const preferences = StorageService.getFeaturePreferences();
+    setFeaturePreferences(preferences);
+
     const stored = localStorage.getItem('chunkingQuizPassed');
     if (stored === 'true') {
       setQuizStatus('passed');
@@ -123,6 +130,20 @@ export default function Settings({ onDataUpdate }: SettingsProps) {
         setShowFinancialSuccess(false);
       }, 3000);
     }
+  };
+
+  const handleToggleFeature = (feature: 'heloc' | 'checking') => {
+    const updatedPreferences = {
+      ...featurePreferences,
+      [feature === 'heloc' ? 'helocEnabled' : 'checkingEnabled']: !featurePreferences[feature === 'heloc' ? 'helocEnabled' : 'checkingEnabled'],
+    };
+    setFeaturePreferences(updatedPreferences);
+    StorageService.saveFeaturePreferences(updatedPreferences);
+    setShowFeaturesSuccess(true);
+    onDataUpdate();
+    setTimeout(() => {
+      setShowFeaturesSuccess(false);
+    }, 3000);
   };
 
   const handleClearAllData = () => {
@@ -378,6 +399,76 @@ export default function Settings({ onDataUpdate }: SettingsProps) {
             <div className="flex items-center space-x-2 bg-emerald-50 border border-emerald-300 text-emerald-800 px-4 py-3 rounded-lg">
               <CheckCircle className="w-5 h-5" />
               <span className="font-semibold">Financial profile updated successfully!</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex items-center space-x-2 mb-4">
+          <SettingsIcon className="w-6 h-6 text-[#1E3A5F]" />
+          <h3 className="text-xl font-bold text-gray-800">Account Features</h3>
+        </div>
+        <p className="text-gray-600 mb-6">
+          What tools do you want to use?
+        </p>
+
+        <div className="space-y-4">
+          <div className="bg-gray-50 rounded-lg p-5 border-2 border-gray-200">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex-1">
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className="text-2xl">🏠</span>
+                  <h4 className="font-bold text-gray-800 text-lg">HELOC / Home Equity Line of Credit</h4>
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Enable if you have a HELOC and want to use velocity banking strategies. You can track draws, payments, and optimize debt payoff using your home equity.
+                </p>
+              </div>
+              <button
+                onClick={() => handleToggleFeature('heloc')}
+                className={`ml-4 flex-shrink-0 relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                  featurePreferences.helocEnabled ? 'bg-emerald-600' : 'bg-gray-300'
+                }`}
+                role="switch"
+                aria-checked={featurePreferences.helocEnabled}
+              >
+                <span
+                  className={`${
+                    featurePreferences.helocEnabled ? 'translate-x-7' : 'translate-x-1'
+                  } inline-block h-6 w-6 transform rounded-full bg-white transition-transform shadow-lg`}
+                />
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-5 border-2 border-gray-200 opacity-50">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex-1">
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className="text-2xl">💳</span>
+                  <h4 className="font-bold text-gray-800 text-lg">Checking Account Register</h4>
+                  <span className="text-xs font-semibold text-gray-500 bg-gray-200 px-2 py-1 rounded">Coming Soon</span>
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Track daily expenses and transfers from your HELOC or other accounts.
+                </p>
+              </div>
+              <button
+                disabled
+                className="ml-4 flex-shrink-0 relative inline-flex h-8 w-14 items-center rounded-full bg-gray-300 cursor-not-allowed"
+                role="switch"
+                aria-checked={false}
+              >
+                <span className="translate-x-1 inline-block h-6 w-6 transform rounded-full bg-white shadow-lg" />
+              </button>
+            </div>
+          </div>
+
+          {showFeaturesSuccess && (
+            <div className="flex items-center space-x-2 bg-emerald-50 border border-emerald-300 text-emerald-800 px-4 py-3 rounded-lg">
+              <CheckCircle className="w-5 h-5" />
+              <span className="font-semibold">Feature preferences saved successfully!</span>
             </div>
           )}
         </div>
