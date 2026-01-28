@@ -5,6 +5,7 @@ import { CalculationService } from '../services/calculations';
 import StrategyWizard from './StrategyWizard';
 import StrategyResults from './StrategyResults';
 import SmartChunkingCalculator from './SmartChunkingCalculator';
+import LearnHELOCModal from './LearnHELOCModal';
 import type { StrategyResult } from '../types';
 
 interface PaymentStrategiesProps {
@@ -18,6 +19,7 @@ export default function PaymentStrategies({ onDataUpdate }: PaymentStrategiesPro
   );
   const [showAutoUpdateBanner, setShowAutoUpdateBanner] = useState(false);
   const [isAutoCalculating, setIsAutoCalculating] = useState(false);
+  const [showLearnHELOCModal, setShowLearnHELOCModal] = useState(false);
 
   const debts = StorageService.getDebts();
   const financialProfile = StorageService.getFinancialProfile();
@@ -178,6 +180,12 @@ export default function PaymentStrategies({ onDataUpdate }: PaymentStrategiesPro
               </p>
               <div className="flex flex-wrap gap-3">
                 <button
+                  onClick={() => setShowLearnHELOCModal(true)}
+                  className="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg shadow-md transition-colors"
+                >
+                  Learn About HELOC Strategy
+                </button>
+                <button
                   onClick={() => {
                     const settingsButton = document.querySelector('[data-section="settings"]');
                     if (settingsButton instanceof HTMLElement) {
@@ -240,6 +248,18 @@ export default function PaymentStrategies({ onDataUpdate }: PaymentStrategiesPro
           />
         </div>
       )}
+
+      <LearnHELOCModal
+        isOpen={showLearnHELOCModal}
+        onClose={() => setShowLearnHELOCModal(false)}
+        showEnableButton={true}
+        onEnableHELOC={() => {
+          const settingsButton = document.querySelector('[data-section="settings"]');
+          if (settingsButton instanceof HTMLElement) {
+            settingsButton.click();
+          }
+        }}
+      />
     </div>
   );
 }

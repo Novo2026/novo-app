@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DollarSign, CreditCard, CheckCircle, ChevronLeft, Plus, X, Info } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
 import CashFlowWarningModal from './CashFlowWarningModal';
+import LearnHELOCModal from './LearnHELOCModal';
 
 interface DebtInput {
   id: string;
@@ -37,6 +38,7 @@ interface OnboardingModalProps {
 export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const [step, setStep] = useState(1);
   const [showCashFlowWarning, setShowCashFlowWarning] = useState(false);
+  const [showLearnHELOCModal, setShowLearnHELOCModal] = useState(false);
   const [data, setData] = useState<OnboardingData>({
     userName: '',
     grossIncome: '',
@@ -448,16 +450,12 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         </div>
 
         <div className="text-center">
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              alert("What is a HELOC?\n\nA HELOC (Home Equity Line of Credit) is a revolving credit line secured by your home's equity - similar to a credit card, but using your home as collateral.\n\nKey Benefits:\n• Lower interest rates (typically 6-9% vs 18-25% for credit cards)\n• Tax-deductible interest in some cases\n• Flexibility to draw and repay as needed\n• Can significantly accelerate debt payoff through velocity banking\n\nShould you get one?\nConsider a HELOC if you:\n• Own a home with equity (typically 15-20% minimum)\n• Have high-interest debt to consolidate\n• Are disciplined with credit management\n• Want to accelerate your debt-free journey\n\nYou can always enable HELOC features later in Settings if you decide to get one!");
-            }}
+          <button
+            onClick={() => setShowLearnHELOCModal(true)}
             className="text-sm text-blue-600 hover:text-blue-700 font-semibold underline"
           >
             What's a HELOC and should I get one?
-          </a>
+          </button>
         </div>
 
         {/* HELOC Input Fields */}
@@ -821,6 +819,12 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
           onContactCoach={handleCashFlowContactCoach}
         />
       )}
+
+      <LearnHELOCModal
+        isOpen={showLearnHELOCModal}
+        onClose={() => setShowLearnHELOCModal(false)}
+        showEnableButton={false}
+      />
     </>
   );
 }

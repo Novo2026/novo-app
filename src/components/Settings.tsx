@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Trash2, Download, AlertTriangle, CheckCircle, User, DollarSign, RefreshCw, Target, Mail, Phone, Settings as SettingsIcon } from 'lucide-react';
 import { StorageService } from '../services/storage';
+import LearnHELOCModal from './LearnHELOCModal';
 import type { FinancialProfile, FeaturePreferences } from '../types';
 
 interface SettingsProps {
@@ -19,6 +20,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
   const [showQuizResetSuccess, setShowQuizResetSuccess] = useState(false);
   const [showFeaturesSuccess, setShowFeaturesSuccess] = useState(false);
   const [showHelocDisableConfirm, setShowHelocDisableConfirm] = useState(false);
+  const [showLearnHELOCModal, setShowLearnHELOCModal] = useState(false);
   const [financialProfile, setFinancialProfile] = useState<FinancialProfile>({
     monthlyGrossIncome: 0,
     monthlyNetIncome: 0,
@@ -503,6 +505,16 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
                 />
               </button>
             </div>
+            {!featurePreferences.helocEnabled && (
+              <div className="mt-3 pt-3 border-t border-gray-300">
+                <button
+                  onClick={() => setShowLearnHELOCModal(true)}
+                  className="text-purple-600 hover:text-purple-700 font-semibold text-sm underline transition-colors"
+                >
+                  Learn About HELOC Strategy →
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="bg-gray-50 rounded-lg p-5 border-2 border-gray-200 opacity-50">
@@ -894,6 +906,15 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
           <p><span className="font-semibold">Privacy:</span> All data stays on your device</p>
         </div>
       </div>
+
+      <LearnHELOCModal
+        isOpen={showLearnHELOCModal}
+        onClose={() => setShowLearnHELOCModal(false)}
+        showEnableButton={!featurePreferences.helocEnabled}
+        onEnableHELOC={() => {
+          handleToggleFeature('heloc');
+        }}
+      />
     </div>
   );
 }
