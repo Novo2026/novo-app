@@ -195,7 +195,7 @@ export const StorageService = {
 
   getFeaturePreferences(): FeaturePreferences {
     const data = localStorage.getItem(STORAGE_KEYS.FEATURE_PREFERENCES);
-    return data ? JSON.parse(data) : { helocEnabled: false, checkingEnabled: false };
+    return data ? JSON.parse(data) : { helocEnabled: false, checkingEnabled: true };
   },
 
   saveFeaturePreferences(preferences: FeaturePreferences): void {

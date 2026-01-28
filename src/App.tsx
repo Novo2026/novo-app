@@ -3,7 +3,7 @@ import { Home, CreditCard, TrendingUp, BarChart3, Settings as SettingsIcon, Wall
 import Dashboard from './components/Dashboard';
 import MyDebts from './components/MyDebts';
 import PaymentStrategies from './components/PaymentStrategies';
-import { HELOCTracker } from './components/HELOCTracker';
+import { Tracker } from './components/Tracker';
 import SavingsTracker from './components/SavingsTracker';
 import ProgressReports from './components/ProgressReports';
 import Guide from './components/Guide';
@@ -12,7 +12,7 @@ import OnboardingModal from './components/OnboardingModal';
 import { StorageService } from './services/storage';
 import type { Debt, Transaction, FeaturePreferences } from './types';
 
-type Section = 'dashboard' | 'debts' | 'strategies' | 'heloc' | 'savings' | 'progress' | 'guide' | 'settings';
+type Section = 'dashboard' | 'debts' | 'strategies' | 'tracker' | 'savings' | 'progress' | 'guide' | 'settings';
 
 function App() {
   const [currentSection, setCurrentSection] = useState<Section>('dashboard');
@@ -22,7 +22,7 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [featurePreferences, setFeaturePreferences] = useState<FeaturePreferences>({
     helocEnabled: false,
-    checkingEnabled: false,
+    checkingEnabled: true,
   });
   const [showHelocWelcome, setShowHelocWelcome] = useState(false);
 
@@ -147,8 +147,8 @@ function App() {
         return <MyDebts onDataUpdate={handleDataUpdate} />;
       case 'strategies':
         return <PaymentStrategies onDataUpdate={handleDataUpdate} />;
-      case 'heloc':
-        return <HELOCTracker />;
+      case 'tracker':
+        return <Tracker />;
       case 'savings':
         return <SavingsTracker />;
       case 'progress':
@@ -223,17 +223,17 @@ function App() {
               <TrendingUp className="w-4 h-4" />
               <span>Payment Strategies</span>
             </button>
-            {featurePreferences.helocEnabled && (
+            {(featurePreferences.helocEnabled || featurePreferences.checkingEnabled) && (
               <button
-                onClick={() => setCurrentSection('heloc')}
+                onClick={() => setCurrentSection('tracker')}
                 className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
-                  currentSection === 'heloc'
+                  currentSection === 'tracker'
                     ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
                 <Wallet className="w-4 h-4" />
-                <span>HELOC Tracker</span>
+                <span>Tracker</span>
               </button>
             )}
             <button
@@ -301,7 +301,7 @@ function App() {
               <div className="flex-1">
                 <h3 className="font-bold text-gray-800 mb-1">HELOC Tracker Enabled!</h3>
                 <p className="text-sm text-gray-600">
-                  Find it in the main navigation to start tracking your velocity banking strategy.
+                  Find it in the Tracker tab to start tracking your velocity banking strategy.
                 </p>
               </div>
               <button
