@@ -181,8 +181,163 @@ function Guide() {
       )
     },
     {
+      id: 'daily-use',
+      title: '2. Daily Use - How to Use NOVO Every Day',
+      icon: Repeat,
+      color: 'bg-teal-500',
+      content: (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-teal-50 to-cyan-50 border-l-4 border-teal-500 p-6 rounded-r">
+            <h4 className="font-semibold text-teal-900 text-lg mb-2">Your Daily Workflow</h4>
+            <p className="text-teal-800">
+              NOVO is designed to fit seamlessly into your life. Here's how to use it effectively on a day-to-day basis.
+            </p>
+          </div>
+
+          <div>
+            <h4 className="font-bold text-gray-900 text-xl mb-4">Logging Debt Payments - 3 Methods</h4>
+            <p className="text-gray-700 mb-4">
+              There are three ways to log debt payments in NOVO. Choose whichever method is most convenient for you:
+            </p>
+
+            <div className="space-y-4">
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r">
+                <h5 className="font-semibold text-blue-900 mb-2">Method 1: Quick Log from Dashboard (Fastest)</h5>
+                <ol className="space-y-1 text-blue-800 ml-4 list-decimal">
+                  <li>Go to the Dashboard tab</li>
+                  <li>Find the debt you just paid in the "Active Debts" section</li>
+                  <li>Click the "Log Payment" button on that debt card</li>
+                  <li>The payment amount auto-fills with the minimum payment</li>
+                  <li>Adjust the amount if you paid more (or less)</li>
+                  <li>Click "Log Payment" to save</li>
+                </ol>
+                <p className="text-blue-800 mt-2 text-sm italic">
+                  <strong>Best for:</strong> Logging regular monthly payments quickly
+                </p>
+              </div>
+
+              <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r">
+                <h5 className="font-semibold text-green-900 mb-2">Method 2: From My Debts Tab (Most Detailed)</h5>
+                <ol className="space-y-1 text-green-800 ml-4 list-decimal">
+                  <li>Go to the "My Debts" tab</li>
+                  <li>Find the debt card you want to log a payment for</li>
+                  <li>Click "Log Payment" button</li>
+                  <li>Enter payment amount and date</li>
+                  <li>Add notes if needed (optional - e.g., "Extra $200 from bonus")</li>
+                  <li>System automatically calculates interest vs. principal</li>
+                  <li>Click "Log Payment" to save</li>
+                </ol>
+                <p className="text-green-800 mt-2 text-sm italic">
+                  <strong>Best for:</strong> When you want to see full debt details and add notes
+                </p>
+              </div>
+
+              <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-r">
+                <h5 className="font-semibold text-purple-900 mb-2">Method 3: Bulk Update via Settings (End of Month)</h5>
+                <ol className="space-y-1 text-purple-800 ml-4 list-decimal">
+                  <li>Go to the "Settings" tab</li>
+                  <li>Scroll to "Edit Debt Balances"</li>
+                  <li>Update all current balances from your statements</li>
+                  <li>NOVO calculates the payment based on balance change</li>
+                  <li>Click "Save Changes"</li>
+                </ol>
+                <p className="text-purple-800 mt-2 text-sm italic">
+                  <strong>Best for:</strong> Monthly reconciliation when you have all statements
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-bold text-gray-900 text-xl mb-4">Using the Checking Register</h4>
+            <p className="text-gray-700 mb-3">
+              The Checking Register (found in the "Tracker" tab) helps you track your available cash flow for debt payoff.
+            </p>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-3">
+              <h5 className="font-semibold text-gray-900 mb-2">How to Use It:</h5>
+              <ol className="space-y-2 text-gray-700 ml-4 list-decimal">
+                <li><strong>Select "Checking/Cash Flow Account"</strong> from the tracking dropdown</li>
+                <li><strong>Set your starting balance</strong> - Enter your current checking account balance</li>
+                <li><strong>Log income deposits:</strong>
+                  <ul className="ml-4 mt-1 space-y-1">
+                    <li>• Paychecks</li>
+                    <li>• Side income</li>
+                    <li>• Tax refunds</li>
+                    <li>• Bonuses</li>
+                  </ul>
+                </li>
+                <li><strong>Log extra debt payments:</strong> Record any payments beyond minimums</li>
+                <li><strong>Track windfalls:</strong> Gifts, rebates, unexpected income</li>
+              </ol>
+            </div>
+
+            <div className="bg-cyan-50 border-l-4 border-cyan-500 p-4 rounded-r">
+              <h5 className="font-semibold text-cyan-900 mb-2">Why Track Checking?</h5>
+              <p className="text-cyan-800">
+                This gives you visibility into your debt payoff reserve. You can see exactly how much cash you have available to throw at debt, and track how your windfalls and bonuses accelerate your progress.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-purple-50 border-2 border-purple-300 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <span className="inline-block bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-bold">HELOC FEATURE</span>
+            </div>
+            <h4 className="font-bold text-gray-900 text-lg mb-3">Using the HELOC Tracker (HELOC Owners Only)</h4>
+            <p className="text-gray-700 mb-3">
+              If you have a HELOC, the tracker becomes your command center for velocity banking.
+            </p>
+
+            <div className="bg-white border border-purple-200 rounded-lg p-4 mb-3">
+              <h5 className="font-semibold text-gray-900 mb-2">Select "HELOC Account" from tracking dropdown</h5>
+              <p className="text-gray-700 mb-3">Then use these transaction types:</p>
+
+              <div className="space-y-3">
+                <div>
+                  <p className="font-semibold text-red-700">Record Draw (Increases Balance)</p>
+                  <p className="text-gray-600 text-sm">When you pull money from HELOC to pay off a high-interest debt</p>
+                  <p className="text-gray-600 text-sm mt-1"><strong>Example:</strong> Draw $5,000 to pay off a 24% credit card</p>
+                </div>
+
+                <div>
+                  <p className="font-semibold text-green-700">Record Payment (Decreases Balance)</p>
+                  <p className="text-gray-600 text-sm">When you pay down your HELOC balance with your cash flow</p>
+                  <p className="text-gray-600 text-sm mt-1"><strong>Example:</strong> Pay $2,000 from your paycheck toward HELOC</p>
+                </div>
+
+                <div>
+                  <p className="font-semibold text-orange-700">Record Interest (Increases Balance)</p>
+                  <p className="text-gray-600 text-sm">Monthly interest charge from your lender (check your statement)</p>
+                  <p className="text-gray-600 text-sm mt-1"><strong>Example:</strong> $169 interest charged in August</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-orange-50 border border-orange-300 rounded-lg p-3">
+              <p className="text-orange-900 font-semibold mb-1">Important:</p>
+              <p className="text-orange-800 text-sm">
+                Log interest charges monthly when you receive your HELOC statement. This keeps your balance accurate and helps you see the true cost of HELOC usage.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r">
+            <h4 className="font-semibold text-amber-900 mb-2">Pro Tip: Set a Monthly Routine</h4>
+            <p className="text-amber-800 mb-2">Create a consistent habit for maximum results:</p>
+            <ul className="space-y-1 text-amber-800 ml-4">
+              <li>• <strong>Weekly:</strong> Log any payments you made</li>
+              <li>• <strong>Mid-Month:</strong> Check progress on dashboard</li>
+              <li>• <strong>End of Month:</strong> Reconcile all balances with statements</li>
+              <li>• <strong>Monthly:</strong> Review Progress Reports for motivation</li>
+            </ul>
+          </div>
+        </div>
+      )
+    },
+    {
       id: 'income-expenses',
-      title: '2. Understanding Your Income & Expenses',
+      title: '3. Understanding Your Income & Expenses',
       icon: Wallet,
       color: 'bg-emerald-500',
       content: (
@@ -247,7 +402,7 @@ function Guide() {
     },
     {
       id: 'adding-debts',
-      title: '3. Adding Your Debts',
+      title: '4. Adding Your Debts',
       icon: DollarSign,
       color: 'bg-orange-500',
       content: (
@@ -338,7 +493,7 @@ function Guide() {
     },
     {
       id: 'payoff-strategy',
-      title: '4. Understanding Your Payoff Strategy',
+      title: '5. Understanding Your Payoff Strategy',
       icon: TrendingUp,
       color: 'bg-purple-500',
       content: (
@@ -389,7 +544,7 @@ function Guide() {
     },
     {
       id: 'debt-snowball-effect',
-      title: '5. The Debt Snowball Effect',
+      title: '6. The Debt Snowball Effect',
       icon: Zap,
       color: 'bg-cyan-500',
       content: (
@@ -429,7 +584,7 @@ function Guide() {
     },
     {
       id: 'using-tracker',
-      title: '6. Using the Tracker (Optional)',
+      title: '7. Using the Tracker (Optional)',
       icon: Repeat,
       color: 'bg-teal-500',
       content: (
@@ -476,7 +631,7 @@ function Guide() {
     },
     {
       id: 'heloc-velocity',
-      title: '7. HELOC Velocity Banking Explained (HELOC Only)',
+      title: '8. HELOC Velocity Banking Explained (HELOC Only)',
       icon: Repeat,
       color: 'bg-indigo-600',
       content: (
@@ -557,7 +712,7 @@ function Guide() {
     },
     {
       id: 'smart-chunking-calculator',
-      title: '8. Using the Smart Chunking Calculator (HELOC Only - Advanced)',
+      title: '9. Using the Smart Chunking Calculator (HELOC Only - Advanced)',
       icon: Target,
       color: 'bg-purple-600',
       content: (
@@ -680,7 +835,7 @@ function Guide() {
     },
     {
       id: 'logging-payments',
-      title: '9. Logging Payments',
+      title: '10. Logging Payments',
       icon: DollarSign,
       color: 'bg-pink-500',
       content: (
@@ -744,7 +899,7 @@ function Guide() {
     },
     {
       id: 'dashboard',
-      title: '10. Reading Your Dashboard',
+      title: '11. Reading Your Dashboard',
       icon: BarChart3,
       color: 'bg-blue-600',
       content: (
@@ -798,7 +953,7 @@ function Guide() {
     },
     {
       id: 'savings-tracker',
-      title: '11. Using the Savings Tracker',
+      title: '12. Using the Savings Tracker',
       icon: PiggyBank,
       color: 'bg-green-600',
       content: (
@@ -857,7 +1012,7 @@ function Guide() {
     },
     {
       id: 'progress-reports',
-      title: '12. Progress Reports & Charts',
+      title: '13. Progress Reports & Charts',
       icon: LineChart,
       color: 'bg-purple-600',
       content: (
@@ -908,7 +1063,7 @@ function Guide() {
     },
     {
       id: 'ask-novo-ai',
-      title: '13. Ask NOVO AI Coach',
+      title: '14. Ask NOVO AI Coach',
       icon: Bot,
       color: 'bg-indigo-500',
       content: (
@@ -950,7 +1105,7 @@ function Guide() {
     },
     {
       id: 'updating-info',
-      title: '14. Updating Your Information',
+      title: '15. Updating Your Information',
       icon: SettingsIcon,
       color: 'bg-gray-600',
       content: (
@@ -1000,69 +1155,473 @@ function Guide() {
     },
     {
       id: 'troubleshooting',
-      title: '15. Troubleshooting & Tips',
+      title: '16. Common Scenarios - How to Use NOVO for Your Situation',
       icon: AlertCircle,
       color: 'bg-orange-500',
       content: (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-cyan-50 to-blue-50 border-l-4 border-cyan-500 p-6 rounded-r">
+            <p className="text-cyan-900 font-semibold text-lg">
+              Everyone's debt situation is different. Here's how to use NOVO based on YOUR specific circumstances.
+            </p>
+          </div>
+
+          <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-6">
+            <h4 className="font-bold text-blue-900 text-xl mb-3">Scenario 1: Cash Flow Only (No HELOC)</h4>
+            <p className="text-blue-800 mb-3 font-semibold">
+              Best for: Renters, homeowners without HELOCs, anyone building emergency fund first
+            </p>
+
+            <div className="bg-white border border-blue-200 rounded-lg p-4 mb-3">
+              <h5 className="font-semibold text-gray-900 mb-2">Your Workflow:</h5>
+              <ol className="space-y-2 text-gray-700 ml-4 list-decimal">
+                <li><strong>Complete onboarding</strong> without enabling HELOC features</li>
+                <li><strong>Focus on Dashboard:</strong> Your command center for debt payoff</li>
+                <li><strong>Follow the avalanche strategy:</strong> NOVO shows you which debt to attack first</li>
+                <li><strong>Log payments monthly:</strong> Use Method 1 (Quick Log from Dashboard)</li>
+                <li><strong>Celebrate snowball effect:</strong> Watch freed payments accelerate your progress</li>
+                <li><strong>Build emergency fund:</strong> Use Savings Tracker to reach 3-6 months expenses</li>
+              </ol>
+            </div>
+
+            <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r">
+              <h5 className="font-semibold text-green-900 mb-2">Key Features to Use:</h5>
+              <ul className="space-y-1 text-green-800 ml-4">
+                <li>• Dashboard - Track all active debts</li>
+                <li>• Payment Strategies - See your avalanche plan</li>
+                <li>• Savings Tracker - Build emergency fund</li>
+                <li>• Progress Reports - Visualize your journey</li>
+                <li>• Ask NOVO AI - Get personalized coaching</li>
+              </ul>
+            </div>
+
+            <div className="bg-cyan-50 border border-cyan-300 rounded-lg p-3 mt-3">
+              <p className="text-cyan-900 font-semibold mb-1">Expected Results:</p>
+              <p className="text-cyan-800 text-sm">
+                With consistent extra payments of $500/month, most users eliminate all non-mortgage debt in 2-4 years and save thousands in interest compared to minimum payments.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-purple-50 border-2 border-purple-300 rounded-xl p-6">
+            <div className="flex items-center space-x-2 mb-3">
+              <span className="inline-block bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-bold">HELOC FEATURE</span>
+            </div>
+            <h4 className="font-bold text-purple-900 text-xl mb-3">Scenario 2: HELOC Only (For Specific High-Rate Debts)</h4>
+            <p className="text-purple-800 mb-3 font-semibold">
+              Best for: Homeowners with HELOCs who want to tackle 1-2 high-interest debts strategically
+            </p>
+
+            <div className="bg-white border border-purple-200 rounded-lg p-4 mb-3">
+              <h5 className="font-semibold text-gray-900 mb-2">Your Workflow:</h5>
+              <ol className="space-y-2 text-gray-700 ml-4 list-decimal">
+                <li><strong>Complete onboarding</strong> and enable HELOC features</li>
+                <li><strong>Review rate arbitrage:</strong> NOVO highlights debts where HELOC chunking makes sense (green debts)</li>
+                <li><strong>Take Chunking Quiz:</strong> Make sure you're ready before chunking</li>
+                <li><strong>Chunk ONE high-rate debt:</strong> Start with smallest favorable debt</li>
+                <li><strong>Track HELOC aggressively:</strong> Switch Tracker to "HELOC Account"</li>
+                <li><strong>Pay down HELOC fast:</strong> Aim to clear chunk in 3-6 months</li>
+                <li><strong>Repeat cycle:</strong> Once HELOC is clear, chunk next target</li>
+              </ol>
+            </div>
+
+            <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r">
+              <h5 className="font-semibold text-amber-900 mb-2">Key Features to Use:</h5>
+              <ul className="space-y-1 text-amber-800 ml-4">
+                <li>• Payment Strategies - See rate arbitrage analysis</li>
+                <li>• Smart Chunking Calculator - Determine optimal chunk size</li>
+                <li>• HELOC Tracker - Monitor draws, payments, interest</li>
+                <li>• Dashboard - Track overall progress</li>
+                <li>• Progress Reports - Compare HELOC strategy vs baseline</li>
+              </ul>
+            </div>
+
+            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r mt-3">
+              <p className="text-red-900 font-semibold mb-1">Safety Rule:</p>
+              <p className="text-red-800 text-sm">
+                Only chunk debts with interest rates HIGHER than your HELOC rate. NOVO warns you with red color-coding if chunking doesn't make financial sense.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-indigo-400 rounded-xl p-6">
+            <div className="flex items-center space-x-2 mb-3">
+              <span className="inline-block bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-bold">HELOC FEATURE - ADVANCED</span>
+            </div>
+            <h4 className="font-bold text-indigo-900 text-xl mb-3">Scenario 3: Combined Strategy (HELOC + Cash Flow)</h4>
+            <p className="text-indigo-800 mb-3 font-semibold">
+              Best for: Experienced HELOC users with strong discipline and cash flow
+            </p>
+
+            <div className="bg-white border border-indigo-200 rounded-lg p-4 mb-3">
+              <h5 className="font-semibold text-gray-900 mb-2">Your Workflow:</h5>
+              <ol className="space-y-2 text-gray-700 ml-4 list-decimal">
+                <li><strong>Complete onboarding</strong> with full HELOC setup</li>
+                <li><strong>Set Tracker to "Both":</strong> Track HELOC AND Checking simultaneously</li>
+                <li><strong>Route income through HELOC:</strong> Deposit paychecks to HELOC to reduce average daily balance</li>
+                <li><strong>Pay bills from HELOC:</strong> Track all draws for expenses</li>
+                <li><strong>Chunk aggressively:</strong> Use freed cash flow to take larger chunks</li>
+                <li><strong>Monitor DAILY:</strong> This strategy requires constant tracking</li>
+                <li><strong>Use velocity banking cycle:</strong> Chunk → Paydown → Repeat</li>
+              </ol>
+            </div>
+
+            <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r">
+              <h5 className="font-semibold text-orange-900 mb-2">Key Features to Use:</h5>
+              <ul className="space-y-1 text-orange-800 ml-4">
+                <li>• HELOC Tracker with "Both" selected</li>
+                <li>• Smart Chunking Calculator - Advanced strategies</li>
+                <li>• Daily interest monitoring in HELOC overview</li>
+                <li>• Checking Register - Track all cash flow</li>
+                <li>• Ask NOVO AI - Get guidance on complex scenarios</li>
+              </ul>
+            </div>
+
+            <div className="bg-red-50 border-2 border-red-400 rounded-lg p-4 mt-3">
+              <p className="text-red-900 font-bold mb-2">WARNING - Advanced Users Only:</p>
+              <p className="text-red-800 text-sm mb-2">
+                This strategy requires exceptional financial discipline. You're essentially using your HELOC as your checking account. One mistake can spiral into increased debt.
+              </p>
+              <p className="text-red-800 text-sm font-semibold">
+                Only attempt if you have: 6+ months emergency fund, perfect payment history, strong spending control, and commitment to daily tracking.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 p-6 rounded-r">
+            <h4 className="font-semibold text-green-900 mb-2">Not Sure Which Scenario Fits You?</h4>
+            <p className="text-green-800 mb-3">
+              Start with Scenario 1 (Cash Flow Only) regardless of whether you have a HELOC. Master the basics, build an emergency fund, and get comfortable with NOVO's core features.
+            </p>
+            <p className="text-green-800 font-semibold">
+              You can always enable HELOC features later when you're ready. There's no rush!
+            </p>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'troubleshooting',
+      title: '17. Troubleshooting Common Issues',
+      icon: AlertCircle,
+      color: 'bg-red-500',
+      content: (
         <div className="space-y-4">
-          <div>
-            <h4 className="font-semibold text-gray-900 mb-2">Why is my mortgage payoff date so far away?</h4>
-            <p className="text-gray-700">
-              Check that you entered your P&I payment only (not including taxes, insurance, HOA, or PMI). These additional amounts should be in your expenses, not your mortgage payment.
+          <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-r">
+            <h4 className="font-semibold text-red-900 text-lg mb-2">Running Into Problems? Here's How to Fix Them</h4>
+            <p className="text-red-800">
+              Most issues have simple solutions. Work through these common problems and their fixes.
             </p>
           </div>
 
           <div>
-            <h4 className="font-semibold text-gray-900 mb-2">Why does NOVO say not to use HELOC?</h4>
-            <p className="text-gray-700">
-              If a debt has a lower interest rate than your HELOC, chunking it with the HELOC would cost you more money. NOVO color-codes these debts red to warn you. <strong>Remember: HELOC features are optional - you can eliminate debt effectively without one!</strong>
-            </p>
+            <h4 className="font-semibold text-gray-900 mb-2">My mortgage payoff date seems impossibly far away</h4>
+            <div className="bg-gray-50 border border-gray-300 rounded-lg p-4">
+              <p className="text-gray-800 font-semibold mb-2">Problem:</p>
+              <p className="text-gray-700 mb-3">NOVO shows you won't pay off mortgage for 40+ years</p>
+
+              <p className="text-gray-800 font-semibold mb-2">Solution:</p>
+              <ol className="space-y-1 text-gray-700 ml-4 list-decimal">
+                <li>Go to Settings and edit your mortgage</li>
+                <li>Make sure you entered ONLY P&I (Principal & Interest) payment</li>
+                <li>Remove taxes, insurance, HOA, and PMI from the payment amount</li>
+                <li>Add those items to your monthly expenses instead</li>
+                <li>Save and refresh - your timeline should now be accurate</li>
+              </ol>
+            </div>
           </div>
 
           <div>
-            <h4 className="font-semibold text-gray-900 mb-2">How do I reduce my debt-free date?</h4>
-            <p className="text-gray-700 mb-2">Main approaches (available to everyone):</p>
-            <ul className="space-y-1 text-gray-700 ml-4">
-              <li>1. <strong>Increase extra payments:</strong> Reduce discretionary spending and allocate more to debt</li>
-              <li>2. <strong>Reduce expenses:</strong> Lower your monthly bills to free up more cash flow</li>
-              <li>3. <strong>Increase income:</strong> Side hustles, overtime, or negotiating a raise</li>
-              <li>4. <strong className="inline-block bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs mr-1">HELOC FEATURE</strong><strong>Use HELOC strategically:</strong> Chunk high-rate debts with your HELOC if the rate difference is favorable (homeowners only)</li>
-            </ul>
+            <h4 className="font-semibold text-gray-900 mb-2">NOVO says not to use my HELOC for certain debts</h4>
+            <div className="bg-gray-50 border border-gray-300 rounded-lg p-4">
+              <p className="text-gray-800 font-semibold mb-2">Problem:</p>
+              <p className="text-gray-700 mb-3">Some debts show red and NOVO warns against chunking</p>
+
+              <p className="text-gray-800 font-semibold mb-2">Explanation:</p>
+              <p className="text-gray-700 mb-2">
+                This is actually PROTECTING you from a costly mistake! If a debt's interest rate is lower than your HELOC rate, chunking it would INCREASE your interest costs.
+              </p>
+              <p className="text-gray-700">
+                <strong>Solution:</strong> Leave those debts alone and pay them with cash flow. Only chunk debts that show GREEN (higher rate than HELOC).
+              </p>
+            </div>
           </div>
 
           <div>
-            <h4 className="font-semibold text-gray-900 mb-2">
-              <span className="inline-block bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs mr-2">HELOC FEATURE</span>
-              HELOC balance not decreasing?
-            </h4>
-            <p className="text-gray-700">
-              Make sure you're logging all payments to the HELOC and limiting new draws. Check that you're recording monthly interest charges from your lender. <em>(Only applies if you have a HELOC)</em>
-            </p>
+            <h4 className="font-semibold text-gray-900 mb-2">My HELOC balance isn't going down (or it's going up!)</h4>
+            <div className="bg-gray-50 border border-gray-300 rounded-lg p-4">
+              <p className="text-gray-800 font-semibold mb-2">Possible Causes:</p>
+              <ul className="space-y-2 text-gray-700 ml-4">
+                <li>• <strong>Forgetting to log interest charges:</strong> Check your statement and record monthly interest</li>
+                <li>• <strong>Making new draws without logging them:</strong> Every HELOC draw must be tracked</li>
+                <li>• <strong>Not making payments:</strong> HELOC won't pay itself - you need cash flow payments</li>
+                <li>• <strong>Spending problem:</strong> If you're using HELOC for lifestyle instead of debt elimination</li>
+              </ul>
+
+              <p className="text-gray-800 font-semibold mt-3 mb-2">Solution:</p>
+              <ol className="space-y-1 text-gray-700 ml-4 list-decimal">
+                <li>Review your HELOC transaction history - are all draws and payments recorded?</li>
+                <li>Add any missing interest charges from statements</li>
+                <li>Stop making new draws until balance decreases</li>
+                <li>Increase your monthly HELOC payments if possible</li>
+                <li>If balance keeps rising, consider stopping HELOC strategy temporarily</li>
+              </ol>
+            </div>
           </div>
 
           <div>
-            <h4 className="font-semibold text-gray-900 mb-2">Strategy not updating?</h4>
-            <p className="text-gray-700">
-              Try refreshing the page. If that doesn't work, check that all debts are entered correctly with valid balances, rates, and minimum payments.
+            <h4 className="font-semibold text-gray-900 mb-2">I logged a payment but my balance didn't update</h4>
+            <div className="bg-gray-50 border border-gray-300 rounded-lg p-4">
+              <p className="text-gray-800 font-semibold mb-2">Try These Steps:</p>
+              <ol className="space-y-1 text-gray-700 ml-4 list-decimal">
+                <li>Refresh your browser (Ctrl+R or Cmd+R)</li>
+                <li>Check that payment actually saved - go to My Debts and view transaction history</li>
+                <li>If payment is missing, log it again</li>
+                <li>If payment exists but balance wrong, edit the payment amount</li>
+                <li>Last resort: Go to Settings and manually update the debt balance</li>
+              </ol>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">My debt-free date isn't changing even though I'm making payments</h4>
+            <div className="bg-gray-50 border border-gray-300 rounded-lg p-4">
+              <p className="text-gray-800 font-semibold mb-2">Explanation:</p>
+              <p className="text-gray-700 mb-3">
+                If you're only making minimum payments, your debt-free date stays the same because that's what NOVO originally calculated. The date only improves if you pay MORE than minimums.
+              </p>
+
+              <p className="text-gray-800 font-semibold mb-2">Solution:</p>
+              <ul className="space-y-1 text-gray-700 ml-4">
+                <li>• Log extra payments beyond minimums</li>
+                <li>• Increase your monthly cash flow by reducing expenses</li>
+                <li>• Add side income to accelerate payoff</li>
+                <li>• Use windfalls (bonuses, tax refunds) for lump sum payments</li>
+              </ul>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">I accidentally deleted a payment or debt</h4>
+            <div className="bg-gray-50 border border-gray-300 rounded-lg p-4">
+              <p className="text-gray-800 font-semibold mb-2">Solution:</p>
+              <ul className="space-y-2 text-gray-700 ml-4">
+                <li>• <strong>Deleted payment:</strong> Simply log it again with correct date and amount</li>
+                <li>• <strong>Deleted debt:</strong> Go to My Debts and add it back with current balance and details</li>
+                <li>• <strong>Cleared all data by accident:</strong> Unfortunately this is permanent - you'll need to re-enter everything</li>
+              </ul>
+              <p className="text-gray-700 mt-2 italic text-sm">
+                Tip: Export your data to CSV periodically as a backup!
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">The numbers don't match my bank statements exactly</h4>
+            <div className="bg-gray-50 border border-gray-300 rounded-lg p-4">
+              <p className="text-gray-800 font-semibold mb-2">Common Causes:</p>
+              <ul className="space-y-2 text-gray-700 ml-4">
+                <li>• <strong>Interest calculation differences:</strong> NOVO uses simple daily interest - some lenders use different methods</li>
+                <li>• <strong>Fees not logged:</strong> Late fees, annual fees, or other charges need to be recorded</li>
+                <li>• <strong>Payment timing:</strong> Payments logged on different dates than when they posted</li>
+                <li>• <strong>Purchases on credit cards:</strong> New charges increase balance</li>
+              </ul>
+
+              <p className="text-gray-800 font-semibold mt-3 mb-2">Solution:</p>
+              <p className="text-gray-700 mb-2">
+                Do a monthly reconciliation: Update all debt balances in Settings to match your statements exactly. This keeps NOVO accurate even if calculations differ slightly.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-900 mb-2">I'm not sure if I'm using NOVO correctly</h4>
+            <div className="bg-gray-50 border border-gray-300 rounded-lg p-4">
+              <p className="text-gray-800 font-semibold mb-2">You're probably doing fine! But here's a quick checklist:</p>
+              <ul className="space-y-2 text-gray-700 ml-4">
+                <li>✓ All debts entered with current balances</li>
+                <li>✓ Logging payments monthly as you make them</li>
+                <li>✓ Following the suggested payment order from Payment Strategies</li>
+                <li>✓ Dashboard shows your progress growing over time</li>
+                <li>✓ Debt-free date is getting closer as you pay down debt</li>
+              </ul>
+              <p className="text-gray-700 mt-3">
+                If all of these are true, you're using NOVO effectively! If unsure, click "Ask NOVO" for personalized guidance.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r">
+            <h4 className="font-semibold text-blue-900 mb-2">Still Stuck?</h4>
+            <p className="text-blue-800">
+              Contact Ben Hulshof for personalized troubleshooting. Email: <a href="mailto:ben@windmillmortgage.com" className="underline hover:text-blue-900">ben@windmillmortgage.com</a> or call 614-327-2213.
+            </p>
+          </div>
+        </div>
+      )
+    },
+    {
+      id: 'tips-for-success',
+      title: '18. Tips for Success',
+      icon: Target,
+      color: 'bg-emerald-600',
+      content: (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-emerald-50 to-green-50 border-l-4 border-emerald-500 p-6 rounded-r">
+            <h4 className="font-semibold text-emerald-900 text-lg mb-2">Make Debt Freedom Inevitable</h4>
+            <p className="text-emerald-800">
+              Success isn't about perfection - it's about consistency. These tips will help you stay on track and accelerate your progress.
             </p>
           </div>
 
-          <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r">
-            <h4 className="font-semibold text-orange-900 mb-2">Quick Tips for Success:</h4>
-            <ul className="space-y-2 text-orange-800">
-              <li>• Log payments monthly as soon as you make them</li>
-              <li>• Update your strategy whenever income or expenses change</li>
-              <li>• Review progress reports quarterly to stay motivated</li>
-              <li>• Ask NOVO AI Coach when you're uncertain about a decision</li>
-              <li>• Celebrate small wins - every payment brings you closer to freedom</li>
-            </ul>
+          <div className="bg-blue-50 border-2 border-blue-300 rounded-xl p-6">
+            <h4 className="font-bold text-blue-900 text-xl mb-4">Cash Flow Strategy Tips (Everyone)</h4>
+
+            <div className="space-y-3">
+              <div className="bg-white border-l-4 border-blue-500 p-4 rounded-r">
+                <p className="font-semibold text-blue-900 mb-1">1. Log Payments Immediately</p>
+                <p className="text-blue-800 text-sm">
+                  Don't wait until end of month. Log each payment right after you make it. Takes 30 seconds and keeps your dashboard accurate.
+                </p>
+              </div>
+
+              <div className="bg-white border-l-4 border-blue-500 p-4 rounded-r">
+                <p className="font-semibold text-blue-900 mb-1">2. Review Progress Monthly</p>
+                <p className="text-blue-800 text-sm">
+                  Check Progress Reports at least once per month. Seeing your progress builds momentum and motivation. Celebrate small wins!
+                </p>
+              </div>
+
+              <div className="bg-white border-l-4 border-blue-500 p-4 rounded-r">
+                <p className="font-semibold text-blue-900 mb-1">3. Attack Windfalls Strategically</p>
+                <p className="text-blue-800 text-sm">
+                  Tax refunds, bonuses, gifts - throw 100% at debt (after covering any immediate needs). A $2,000 windfall can eliminate months of interest charges.
+                </p>
+              </div>
+
+              <div className="bg-white border-l-4 border-blue-500 p-4 rounded-r">
+                <p className="font-semibold text-blue-900 mb-1">4. Find $100/Month to Cut</p>
+                <p className="text-blue-800 text-sm">
+                  Review discretionary expenses. $100/month extra = $1,200/year toward debt. Common places: subscriptions, dining out, entertainment. Small cuts compound fast.
+                </p>
+              </div>
+
+              <div className="bg-white border-l-4 border-blue-500 p-4 rounded-r">
+                <p className="font-semibold text-blue-900 mb-1">5. Update NOVO When Life Changes</p>
+                <p className="text-blue-800 text-sm">
+                  Got a raise? Cut an expense? Change jobs? Update your income and expenses in Settings immediately so NOVO gives you accurate projections.
+                </p>
+              </div>
+
+              <div className="bg-white border-l-4 border-blue-500 p-4 rounded-r">
+                <p className="font-semibold text-blue-900 mb-1">6. Build Emergency Fund FIRST</p>
+                <p className="text-blue-800 text-sm">
+                  Save $1,000 minimum before aggressive debt payoff. Use Savings Tracker. This prevents you from going deeper into debt when emergencies hit.
+                </p>
+              </div>
+
+              <div className="bg-white border-l-4 border-blue-500 p-4 rounded-r">
+                <p className="font-semibold text-blue-900 mb-1">7. Trust the Avalanche Method</p>
+                <p className="text-blue-800 text-sm">
+                  Don't overthink it. NOVO's avalanche strategy (highest rate first) is mathematically optimal. Follow the plan even if other debts "feel" more urgent.
+                </p>
+              </div>
+
+              <div className="bg-white border-l-4 border-blue-500 p-4 rounded-r">
+                <p className="font-semibold text-blue-900 mb-1">8. Ask NOVO AI When Uncertain</p>
+                <p className="text-blue-800 text-sm">
+                  Got a question? Unsure about a decision? Click "Ask NOVO" for instant personalized guidance. Don't let confusion slow your progress.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-purple-50 border-2 border-purple-300 rounded-xl p-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <span className="inline-block bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-bold">HELOC FEATURE</span>
+            </div>
+            <h4 className="font-bold text-purple-900 text-xl mb-4">HELOC Strategy Tips (HELOC Users Only)</h4>
+
+            <div className="space-y-3">
+              <div className="bg-white border-l-4 border-purple-500 p-4 rounded-r">
+                <p className="font-semibold text-purple-900 mb-1">1. Start Small with Chunking</p>
+                <p className="text-purple-800 text-sm">
+                  Chunk your SMALLEST favorable debt first (not largest). Build confidence and prove to yourself you can pay down the HELOC quickly before tackling bigger chunks.
+                </p>
+              </div>
+
+              <div className="bg-white border-l-4 border-purple-500 p-4 rounded-r">
+                <p className="font-semibold text-purple-900 mb-1">2. Track HELOC Balance Weekly</p>
+                <p className="text-purple-800 text-sm">
+                  Don't wait for monthly statements. Check HELOC balance every week. If it's not dropping, investigate immediately before it becomes a problem.
+                </p>
+              </div>
+
+              <div className="bg-white border-l-4 border-purple-500 p-4 rounded-r">
+                <p className="font-semibold text-purple-900 mb-1">3. Log Interest Charges Religiously</p>
+                <p className="text-purple-800 text-sm">
+                  Set a monthly reminder to record HELOC interest when you get your statement. Missing this makes your balance inaccurate and hides the true cost of HELOC usage.
+                </p>
+              </div>
+
+              <div className="bg-white border-l-4 border-purple-500 p-4 rounded-r">
+                <p className="font-semibold text-purple-900 mb-1">4. Only Chunk What You Can Payback in 6 Months</p>
+                <p className="text-purple-800 text-sm">
+                  Rule of thumb: Don't chunk more than 3x your monthly cash flow. If you have $2,000/month cash flow, max chunk is $6,000. This ensures fast payback.
+                </p>
+              </div>
+
+              <div className="bg-white border-l-4 border-purple-500 p-4 rounded-r">
+                <p className="font-semibold text-purple-900 mb-1">5. Keep $5,000 HELOC Space for Emergencies</p>
+                <p className="text-purple-800 text-sm">
+                  Never max out your HELOC. Always maintain at least $5,000 available credit for true emergencies. Prevents forced draws at bad times.
+                </p>
+              </div>
+
+              <div className="bg-white border-l-4 border-purple-500 p-4 rounded-r">
+                <p className="font-semibold text-purple-900 mb-1">6. Don't Use HELOC for Lifestyle</p>
+                <p className="text-purple-800 text-sm">
+                  HELOC is a debt elimination tool, not a credit card. No vacations, no new cars, no home improvements. Stay laser-focused on debt payoff.
+                </p>
+              </div>
+
+              <div className="bg-white border-l-4 border-purple-500 p-4 rounded-r">
+                <p className="font-semibold text-purple-900 mb-1">7. Pause Chunking If Cash Flow Drops</p>
+                <p className="text-purple-800 text-sm">
+                  Job change? Income reduction? Pause chunking immediately and focus on paying down existing HELOC balance. Don't take new draws during uncertainty.
+                </p>
+              </div>
+
+              <div className="bg-white border-l-4 border-purple-500 p-4 rounded-r">
+                <p className="font-semibold text-purple-900 mb-1">8. Celebrate Each Chunk Payback</p>
+                <p className="text-purple-800 text-sm">
+                  When you pay off a chunk completely, celebrate! You just eliminated a high-interest debt AND freed up your HELOC for the next target. That's a double win.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-500 p-6 rounded-r">
+            <h4 className="font-semibold text-amber-900 mb-3">Universal Truth About Debt Freedom:</h4>
+            <p className="text-amber-800 text-lg leading-relaxed">
+              <strong>Consistency beats intensity.</strong> Making $200 extra payments every single month for 3 years eliminates more debt than sporadic $1,000 payments. Show up consistently, trust the process, and debt freedom becomes inevitable.
+            </p>
+          </div>
+
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-300 rounded-lg p-6">
+            <p className="text-center text-gray-800 font-bold text-xl mb-2">
+              You've got this.
+            </p>
+            <p className="text-center text-gray-700 text-lg">
+              Every payment is progress. Every month you're closer. NOVO is here to guide you every step of the way.
+            </p>
           </div>
         </div>
       )
     },
     {
       id: 'getting-help',
-      title: '16. Getting Help',
+      title: '19. Getting Help',
       icon: HelpCircle,
       color: 'bg-blue-700',
       content: (
