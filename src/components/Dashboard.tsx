@@ -185,9 +185,30 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
           <span className="font-bold">{CalculationService.formatCurrency(metrics.totalCurrentBalance)}</span> remaining of{' '}
           <span className="font-bold">{CalculationService.formatCurrency(metrics.totalStartingBalance)}</span> starting
         </p>
-        <p className="text-xl font-bold text-[#27AE60]">
-          You've paid off {CalculationService.formatCurrency(metrics.actualDebtEliminated)} from cash flow!
-        </p>
+        <div className="group relative">
+          <p className="text-xl font-bold text-[#27AE60]">
+            You've paid off {CalculationService.formatCurrency(metrics.actualDebtEliminated)} from cash flow!
+          </p>
+          {(metrics.traditionalDebtPrincipal > 0 || metrics.helocNetPaydown > 0) && (
+            <div className="absolute hidden group-hover:block bg-white text-gray-800 rounded-lg shadow-xl p-4 mt-2 z-10 min-w-[300px]">
+              <p className="font-semibold text-sm mb-2">Breakdown:</p>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Traditional debt principal:</span>
+                  <span className="font-semibold">{CalculationService.formatCurrency(metrics.traditionalDebtPrincipal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">HELOC net paydown:</span>
+                  <span className="font-semibold">{CalculationService.formatCurrency(metrics.helocNetPaydown)}</span>
+                </div>
+                <div className="flex justify-between pt-1.5 border-t border-gray-200">
+                  <span className="font-semibold">Total:</span>
+                  <span className="font-bold text-[#27AE60]">{CalculationService.formatCurrency(metrics.actualDebtEliminated)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
         {strategyResult && (
           <p className="mt-4 text-sm opacity-90">
             Projected debt-free date: <span className="font-semibold">{CalculationService.formatMonthYear(strategyResult.debtFreeDate)}</span>

@@ -118,10 +118,19 @@ export const CalculationService = {
     const totalStartingBalance = debts.reduce((sum, debt) => sum + debt.startingBalance, 0);
     const totalCurrentBalance = debts.reduce((sum, debt) => sum + debt.currentBalance, 0) + helocBalance;
 
-    // Calculate actual debt eliminated (only from cash flow payments, not HELOC transfers)
-    const actualDebtEliminated = transactions
+    // Calculate actual debt eliminated from traditional debts (only from cash flow payments, not HELOC transfers)
+    const traditionalDebtPrincipal = transactions
       .filter(t => t.type === 'payment' && !t.paidWithHELOC)
       .reduce((sum, t) => sum + t.principalPaid, 0);
+
+    // Calculate HELOC net paydown (total draws - current balance = net paid down from cash flow)
+    const totalHelocDraws = helocTransactions
+      .filter((t: any) => t.type === 'draw')
+      .reduce((sum: number, t: any) => sum + t.amount, 0);
+    const helocNetPaydown = Math.max(0, totalHelocDraws - helocBalance);
+
+    // Total actual debt eliminated = traditional debt principal + HELOC net paydown
+    const actualDebtEliminated = traditionalDebtPrincipal + helocNetPaydown;
 
     // For progress calculation, use actual eliminated vs total starting
     const totalPaidOff = totalStartingBalance - totalCurrentBalance;
@@ -137,6 +146,8 @@ export const CalculationService = {
       totalCurrentBalance,
       totalPaidOff,
       actualDebtEliminated,
+      traditionalDebtPrincipal,
+      helocNetPaydown,
       helocBalance,
       progressPercentage,
       activeDebts,
