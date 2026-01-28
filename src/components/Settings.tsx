@@ -5,9 +5,10 @@ import type { FinancialProfile, FeaturePreferences } from '../types';
 
 interface SettingsProps {
   onDataUpdate: () => void;
+  onHelocEnabledFirstTime?: () => void;
 }
 
-export default function Settings({ onDataUpdate }: SettingsProps) {
+export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: SettingsProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -17,6 +18,7 @@ export default function Settings({ onDataUpdate }: SettingsProps) {
   const [quizStatus, setQuizStatus] = useState<'passed' | 'failed' | 'not-taken'>('not-taken');
   const [showQuizResetSuccess, setShowQuizResetSuccess] = useState(false);
   const [showFeaturesSuccess, setShowFeaturesSuccess] = useState(false);
+  const [showHelocDisableConfirm, setShowHelocDisableConfirm] = useState(false);
   const [financialProfile, setFinancialProfile] = useState<FinancialProfile>({
     monthlyGrossIncome: 0,
     monthlyNetIncome: 0,
@@ -133,12 +135,40 @@ export default function Settings({ onDataUpdate }: SettingsProps) {
   };
 
   const handleToggleFeature = (feature: 'heloc' | 'checking') => {
+    if (feature === 'heloc' && featurePreferences.helocEnabled) {
+      setShowHelocDisableConfirm(true);
+      return;
+    }
+
+    const wasHelocDisabled = feature === 'heloc' && !featurePreferences.helocEnabled;
+    const isFirstTimeEnable = wasHelocDisabled && !localStorage.getItem('heloc_enabled_once');
+
     const updatedPreferences = {
       ...featurePreferences,
       [feature === 'heloc' ? 'helocEnabled' : 'checkingEnabled']: !featurePreferences[feature === 'heloc' ? 'helocEnabled' : 'checkingEnabled'],
     };
     setFeaturePreferences(updatedPreferences);
     StorageService.saveFeaturePreferences(updatedPreferences);
+    setShowFeaturesSuccess(true);
+    onDataUpdate();
+    setTimeout(() => {
+      setShowFeaturesSuccess(false);
+    }, 3000);
+
+    if (isFirstTimeEnable) {
+      localStorage.setItem('heloc_enabled_once', 'true');
+      onHelocEnabledFirstTime?.();
+    }
+  };
+
+  const handleConfirmHelocDisable = () => {
+    const updatedPreferences = {
+      ...featurePreferences,
+      helocEnabled: false,
+    };
+    setFeaturePreferences(updatedPreferences);
+    StorageService.saveFeaturePreferences(updatedPreferences);
+    setShowHelocDisableConfirm(false);
     setShowFeaturesSuccess(true);
     onDataUpdate();
     setTimeout(() => {
@@ -226,6 +256,39 @@ export default function Settings({ onDataUpdate }: SettingsProps) {
     { id: 6, text: "I can commit to not using credit cards for new purchases" },
     { id: 7, text: "I'm ready to reduce discretionary spending if needed" },
   ];
+
+  if (showHelocDisableConfirm) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6">
+          <div className="flex items-start space-x-3 mb-4">
+            <AlertTriangle className="w-6 h-6 text-amber-500 flex-shrink-0 mt-1" />
+            <div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Disable HELOC Tracker?</h3>
+              <p className="text-gray-600 leading-relaxed">
+                Are you sure? This will hide the HELOC Tracker from your navigation. Your HELOC data will be saved if you re-enable it later.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex space-x-3 mt-6">
+            <button
+              onClick={() => setShowHelocDisableConfirm(false)}
+              className="flex-1 px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmHelocDisable}
+              className="flex-1 px-4 py-3 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg transition-colors"
+            >
+              Yes, Disable
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (showSuccess) {
     return (

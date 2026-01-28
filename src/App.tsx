@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Home, CreditCard, TrendingUp, BarChart3, Settings as SettingsIcon, Wallet, PiggyBank, MessageCircle, BookOpen } from 'lucide-react';
+import { Home, CreditCard, TrendingUp, BarChart3, Settings as SettingsIcon, Wallet, PiggyBank, MessageCircle, BookOpen, CheckCircle, X } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import MyDebts from './components/MyDebts';
 import PaymentStrategies from './components/PaymentStrategies';
@@ -10,7 +10,7 @@ import Guide from './components/Guide';
 import Settings from './components/Settings';
 import OnboardingModal from './components/OnboardingModal';
 import { StorageService } from './services/storage';
-import type { Debt, Transaction } from './types';
+import type { Debt, Transaction, FeaturePreferences } from './types';
 
 type Section = 'dashboard' | 'debts' | 'strategies' | 'heloc' | 'savings' | 'progress' | 'guide' | 'settings';
 
@@ -20,11 +20,22 @@ function App() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [featurePreferences, setFeaturePreferences] = useState<FeaturePreferences>({
+    helocEnabled: false,
+    checkingEnabled: false,
+  });
+  const [showHelocWelcome, setShowHelocWelcome] = useState(false);
 
   useEffect(() => {
     loadData();
     checkOnboarding();
+    loadFeaturePreferences();
   }, []);
+
+  const loadFeaturePreferences = () => {
+    const preferences = StorageService.getFeaturePreferences();
+    setFeaturePreferences(preferences);
+  };
 
   const checkOnboarding = () => {
     const userName = localStorage.getItem('userName');
@@ -112,7 +123,15 @@ function App() {
 
   const handleDataUpdate = () => {
     loadData();
+    loadFeaturePreferences();
     setRefreshKey(prev => prev + 1);
+  };
+
+  const handleHelocEnabledFirstTime = () => {
+    setShowHelocWelcome(true);
+    setTimeout(() => {
+      setShowHelocWelcome(false);
+    }, 5000);
   };
 
   const renderSection = () => {
@@ -132,7 +151,7 @@ function App() {
       case 'guide':
         return <Guide />;
       case 'settings':
-        return <Settings onDataUpdate={handleDataUpdate} />;
+        return <Settings onDataUpdate={handleDataUpdate} onHelocEnabledFirstTime={handleHelocEnabledFirstTime} />;
       default:
         return <Dashboard onDataUpdate={handleDataUpdate} onNavigateToSavings={() => setCurrentSection('savings')} />;
     }
@@ -199,17 +218,19 @@ function App() {
               <TrendingUp className="w-4 h-4" />
               <span>Payment Strategies</span>
             </button>
-            <button
-              onClick={() => setCurrentSection('heloc')}
-              className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
-                currentSection === 'heloc'
-                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <Wallet className="w-4 h-4" />
-              <span>Tracker</span>
-            </button>
+            {featurePreferences.helocEnabled && (
+              <button
+                onClick={() => setCurrentSection('heloc')}
+                className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
+                  currentSection === 'heloc'
+                    ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Wallet className="w-4 h-4" />
+                <span>HELOC Tracker</span>
+              </button>
+            )}
             <button
               onClick={() => setCurrentSection('savings')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
@@ -261,6 +282,32 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div key={refreshKey}>{renderSection()}</div>
       </main>
+
+      {showHelocWelcome && (
+        <div className="fixed bottom-8 right-8 z-50 animate-slide-up">
+          <div className="bg-white rounded-lg shadow-2xl border-2 border-emerald-500 p-4 max-w-md">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-gray-800 mb-1">HELOC Tracker Enabled!</h3>
+                <p className="text-sm text-gray-600">
+                  Find it in the main navigation to start tracking your velocity banking strategy.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowHelocWelcome(false)}
+                className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
