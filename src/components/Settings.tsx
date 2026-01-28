@@ -29,7 +29,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
   });
   const [featurePreferences, setFeaturePreferences] = useState<FeaturePreferences>({
     helocEnabled: false,
-    checkingEnabled: false,
+    checkingEnabled: true,
   });
 
   // Strategy Readiness Assessment state
@@ -487,7 +487,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
                   <h4 className="font-bold text-gray-800 text-lg">HELOC / Home Equity Line of Credit</h4>
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  Enable if you have a HELOC and want to use velocity banking strategies. You can track draws, payments, and optimize debt payoff using your home equity.
+                  Enable if you have a HELOC and want to use velocity banking strategies. Track draws, payments, and optimize debt payoff using your home equity.
                 </p>
               </div>
               <button
@@ -509,7 +509,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
               <div className="mt-3 pt-3 border-t border-gray-300">
                 <button
                   onClick={() => setShowLearnHELOCModal(true)}
-                  className="text-purple-600 hover:text-purple-700 font-semibold text-sm underline transition-colors"
+                  className="text-[#2D9CDB] hover:text-[#1E8BBD] font-semibold text-sm underline transition-colors"
                 >
                   Learn About HELOC Strategy →
                 </button>
@@ -517,25 +517,30 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
             )}
           </div>
 
-          <div className="bg-gray-50 rounded-lg p-5 border-2 border-gray-200 opacity-50">
+          <div className="bg-gray-50 rounded-lg p-5 border-2 border-gray-200">
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-2">
                   <span className="text-2xl">💳</span>
                   <h4 className="font-bold text-gray-800 text-lg">Checking Account Register</h4>
-                  <span className="text-xs font-semibold text-gray-500 bg-gray-200 px-2 py-1 rounded">Coming Soon</span>
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  Track daily expenses and transfers from your HELOC or other accounts.
+                  Track your checking account deposits, withdrawals, and expenses. See where your money goes each month and stay on budget.
                 </p>
               </div>
               <button
-                disabled
-                className="ml-4 flex-shrink-0 relative inline-flex h-8 w-14 items-center rounded-full bg-gray-300 cursor-not-allowed"
+                onClick={() => handleToggleFeature('checking')}
+                className={`ml-4 flex-shrink-0 relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                  featurePreferences.checkingEnabled ? 'bg-emerald-600' : 'bg-gray-300'
+                }`}
                 role="switch"
-                aria-checked={false}
+                aria-checked={featurePreferences.checkingEnabled}
               >
-                <span className="translate-x-1 inline-block h-6 w-6 transform rounded-full bg-white shadow-lg" />
+                <span
+                  className={`${
+                    featurePreferences.checkingEnabled ? 'translate-x-7' : 'translate-x-1'
+                  } inline-block h-6 w-6 transform rounded-full bg-white transition-transform shadow-lg`}
+                />
               </button>
             </div>
           </div>
