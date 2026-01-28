@@ -31,6 +31,25 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
   const metrics = CalculationService.calculateTotalDebtMetrics(debts, transactions);
   const savingsMetrics = CalculationService.calculateSavingsMetrics(savingsAccounts);
 
+  const activeDebts = debts.filter(d => !d.isPaidOff);
+  const totalMinimumPayments = activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
+
+  let optimizedProjection: { debtFreeDate: string; totalMonths: number } | null = null;
+  if (financialProfile && activeDebts.length > 0) {
+    const cashFlowMetrics = CalculationService.calculateCashFlow(
+      financialProfile.monthlyNetIncome,
+      financialProfile.monthlyEssentialExpenses,
+      financialProfile.monthlyDiscretionaryExpenses,
+      totalMinimumPayments
+    );
+    const extraPayment = Math.max(0, cashFlowMetrics.recommendedExtraPayment);
+    const projection = CalculationService.projectDebtPayoff(activeDebts, extraPayment);
+    optimizedProjection = {
+      debtFreeDate: projection.debtFreeDate,
+      totalMonths: projection.totalMonths
+    };
+  }
+
   const getGreeting = (): string => {
     const userName = localStorage.getItem('userName');
     const lastVisit = localStorage.getItem('lastVisit');
@@ -209,9 +228,9 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
             </div>
           )}
         </div>
-        {strategyResult && (
+        {optimizedProjection && (
           <p className="mt-4 text-sm opacity-90">
-            Projected debt-free date: <span className="font-semibold">{CalculationService.formatMonthYear(strategyResult.debtFreeDate)}</span>
+            Projected debt-free date: <span className="font-semibold">{CalculationService.formatMonthYear(optimizedProjection.debtFreeDate)}</span>
           </p>
         )}
       </div>
