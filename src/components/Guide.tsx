@@ -37,6 +37,114 @@ function Guide() {
 
   const sections: GuideSection[] = [
     {
+      id: 'who-is-novo-for',
+      title: '0. Who Is NOVO For?',
+      icon: HelpCircle,
+      color: 'bg-[#FF6B35]',
+      content: (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-xl p-6">
+            <h4 className="font-bold text-emerald-900 text-2xl mb-3">NOVO Helps ANYONE Eliminate Debt Faster</h4>
+            <p className="text-emerald-800 text-lg leading-relaxed">
+              Whether you're a renter, homeowner, have a HELOC, or just have extra cash flow - NOVO creates a personalized strategy to accelerate your debt-free journey.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 mt-6">
+            <div className="bg-white border-2 border-blue-300 rounded-xl p-6 shadow-sm">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="bg-blue-500 text-white p-3 rounded-lg">
+                  <DollarSign className="w-7 h-7" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-blue-900 text-xl">1. Cash Flow Strategy</h4>
+                  <p className="text-blue-700 text-sm font-semibold">(For Everyone)</p>
+                </div>
+              </div>
+
+              <p className="text-gray-700 mb-4 leading-relaxed">
+                Use NOVO to track debts, follow the debt avalanche method (highest interest first), and watch the snowball effect accelerate your payoff. <strong>No HELOC required.</strong>
+              </p>
+
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r mb-4">
+                <p className="font-semibold text-blue-900 mb-2">What You Get:</p>
+                <ul className="space-y-1 text-blue-800 text-sm">
+                  <li>• Debt avalanche strategy (mathematically optimal)</li>
+                  <li>• Payment tracking and progress monitoring</li>
+                  <li>• Snowball effect automation</li>
+                  <li>• Interest savings calculations</li>
+                  <li>• Debt-free date projections</li>
+                  <li>• Savings tracker for emergency fund</li>
+                  <li>• 24/7 AI coaching</li>
+                </ul>
+              </div>
+
+              <div className="bg-green-50 border border-green-300 rounded-lg p-3">
+                <p className="font-bold text-green-900 text-sm mb-1">Best For:</p>
+                <p className="text-green-800 text-sm">
+                  Anyone with debt who wants to become debt-free faster using proven strategies. Renters, homeowners, students - everyone!
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-white border-2 border-purple-300 rounded-xl p-6 shadow-sm">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="bg-purple-600 text-white p-3 rounded-lg">
+                  <Repeat className="w-7 h-7" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-purple-900 text-xl">2. HELOC Velocity Banking</h4>
+                  <p className="text-purple-700 text-sm font-semibold">(Homeowners - Advanced)</p>
+                </div>
+              </div>
+
+              <p className="text-gray-700 mb-4 leading-relaxed">
+                If you have a Home Equity Line of Credit, NOVO helps you use it strategically to eliminate high-interest debt by trading expensive rates for lower HELOC rates.
+              </p>
+
+              <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-r mb-4">
+                <p className="font-semibold text-purple-900 mb-2">Additional Features:</p>
+                <ul className="space-y-1 text-purple-800 text-sm">
+                  <li>• Everything from Cash Flow Strategy, PLUS:</li>
+                  <li>• Smart chunking calculator</li>
+                  <li>• HELOC tracker with daily interest</li>
+                  <li>• Rate arbitrage analysis</li>
+                  <li>• Velocity banking cycle guidance</li>
+                  <li>• Advanced cash flow routing strategies</li>
+                  <li>• Chunking readiness quiz</li>
+                </ul>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-400 rounded-lg p-3">
+                <p className="font-bold text-amber-900 text-sm mb-1">Best For:</p>
+                <p className="text-amber-800 text-sm">
+                  Homeowners with equity, stable income, and discipline to execute velocity banking strategies.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-cyan-300 rounded-xl p-6 mt-6">
+            <div className="flex items-start space-x-3">
+              <Zap className="w-8 h-8 text-cyan-600 flex-shrink-0 mt-1" />
+              <div>
+                <h4 className="font-bold text-cyan-900 text-xl mb-2">Start Simple, Scale Up When Ready</h4>
+                <p className="text-cyan-800 leading-relaxed">
+                  You can start with Cash Flow Strategy and enable HELOC features later if your situation changes. Many users pay off thousands in debt using just the cash flow approach before ever considering a HELOC. <strong>The choice is yours!</strong>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 border border-gray-300 rounded-lg p-4 mt-4">
+            <p className="text-gray-700 text-sm italic">
+              <strong>Note:</strong> Throughout this guide, sections marked with <span className="inline-block bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs font-bold">HELOC FEATURE</span> require a HELOC. All other features work for everyone regardless of homeownership status.
+            </p>
+          </div>
+        </div>
+      )
+    },
+    {
       id: 'getting-started',
       title: '1. Getting Started',
       icon: Play,
@@ -66,7 +174,7 @@ function Guide() {
               <li>• Recent loan statements for all your debts</li>
               <li>• Pay stubs showing gross and net income</li>
               <li>• Monthly expense breakdown</li>
-              <li>• HELOC details (if you have one)</li>
+              <li>• HELOC details (optional - only if you have one)</li>
             </ul>
           </div>
         </div>
@@ -200,9 +308,13 @@ function Guide() {
           </div>
 
           <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r">
+            <div className="flex items-center space-x-2 mb-2">
+              <span className="inline-block bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs font-bold">HELOC FEATURE</span>
+              <span className="text-blue-900 font-semibold text-sm">(Optional)</span>
+            </div>
             <h4 className="font-semibold text-blue-900 mb-2">HELOC Setup</h4>
             <p className="text-blue-800 mb-2">
-              If you have a HELOC, check the HELOC box and enter:
+              <strong>Only if you have a HELOC:</strong> Check the HELOC box and enter:
             </p>
             <ul className="space-y-1 text-blue-800 ml-4">
               <li>• Credit limit</li>
@@ -211,7 +323,7 @@ function Guide() {
               <li>• Minimum payment (if any)</li>
             </ul>
             <p className="text-blue-800 mt-2">
-              This unlocks HELOC velocity banking features and the HELOC tracker.
+              This unlocks HELOC velocity banking features and the HELOC tracker. <strong>If you don't have a HELOC, simply skip this step!</strong>
             </p>
           </div>
 
@@ -239,16 +351,19 @@ function Guide() {
           </div>
 
           <div className="bg-purple-50 border-l-4 border-purple-500 p-4 rounded-r">
-            <h4 className="font-semibold text-purple-900 mb-2">Rate Arbitrage Check</h4>
+            <div className="flex items-center space-x-2 mb-2">
+              <span className="inline-block bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs font-bold">HELOC FEATURE</span>
+            </div>
+            <h4 className="font-semibold text-purple-900 mb-2">Rate Arbitrage Check (For HELOC Users)</h4>
             <p className="text-purple-800 mb-2">
-              NOVO analyzes whether using your HELOC makes financial sense:
+              If you have a HELOC, NOVO analyzes whether using it makes financial sense:
             </p>
             <ul className="space-y-1 text-purple-800 ml-4">
               <li>• <strong className="text-green-700">Green debts:</strong> Higher rate than HELOC - good candidates for chunking</li>
               <li>• <strong className="text-red-700">Red debts:</strong> Lower rate than HELOC - not recommended for chunking</li>
             </ul>
             <p className="text-purple-800 mt-2 text-sm">
-              <strong>Advanced Note:</strong> Some users chunk lower-rate debt using HELOC as a cash flow tool. Ask NOVO AI Coach about this advanced strategy.
+              <strong>Note:</strong> If you don't have a HELOC, ignore this feature and focus on the debt avalanche method instead!
             </p>
           </div>
 
@@ -314,7 +429,7 @@ function Guide() {
     },
     {
       id: 'using-tracker',
-      title: '6. Using the Tracker',
+      title: '6. Using the Tracker (Optional)',
       icon: Repeat,
       color: 'bg-teal-500',
       content: (
@@ -325,9 +440,9 @@ function Guide() {
               The Tracker is your flexible ledger for monitoring cash flow. Use the dropdown to choose what to track:
             </p>
             <ul className="space-y-2 text-gray-700 ml-4">
-              <li><strong>HELOC Account:</strong> Track draws, payments, and interest for velocity banking</li>
-              <li><strong>Checking/Cash Flow Account:</strong> Monitor income deposits, extra payments, bonuses, windfalls</li>
-              <li><strong>Both:</strong> Advanced velocity banking - route income through HELOC to minimize interest</li>
+              <li><strong className="inline-block bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs mr-2">HELOC FEATURE</strong><strong>HELOC Account:</strong> Track draws, payments, and interest for velocity banking</li>
+              <li><strong>Checking/Cash Flow Account:</strong> Monitor income deposits, extra payments, bonuses, windfalls (Available to everyone)</li>
+              <li><strong className="inline-block bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs mr-2">HELOC FEATURE</strong><strong>Both:</strong> Advanced velocity banking - route income through HELOC to minimize interest</li>
             </ul>
           </div>
 
@@ -361,11 +476,20 @@ function Guide() {
     },
     {
       id: 'heloc-velocity',
-      title: '7. HELOC Velocity Banking Explained',
+      title: '7. HELOC Velocity Banking Explained (HELOC Only)',
       icon: Repeat,
       color: 'bg-indigo-600',
       content: (
         <div className="space-y-4">
+          <div className="bg-purple-50 border-2 border-purple-300 rounded-lg p-4 mb-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <span className="inline-block bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-bold">HELOC FEATURE</span>
+            </div>
+            <p className="text-purple-900 font-semibold">
+              This section is for homeowners with a HELOC. If you don't have a HELOC, skip to the next section - you can still eliminate debt effectively using the cash flow strategy!
+            </p>
+          </div>
+
           <div>
             <h4 className="font-semibold text-gray-900 mb-2">The 3-Step Velocity Banking Cycle</h4>
             <div className="space-y-3">
@@ -433,11 +557,20 @@ function Guide() {
     },
     {
       id: 'smart-chunking-calculator',
-      title: '8. Using the Smart Chunking Calculator (Advanced)',
+      title: '8. Using the Smart Chunking Calculator (HELOC Only - Advanced)',
       icon: Target,
       color: 'bg-purple-600',
       content: (
         <div className="space-y-4">
+          <div className="bg-purple-50 border-2 border-purple-300 rounded-lg p-4 mb-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <span className="inline-block bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-xs font-bold">HELOC FEATURE</span>
+            </div>
+            <p className="text-purple-900 font-semibold">
+              This section is for homeowners with a HELOC who want to use advanced chunking strategies. If you don't have a HELOC, focus on the cash flow strategy and other sections instead!
+            </p>
+          </div>
+
           <div>
             <h4 className="font-semibold text-gray-900 mb-2">What Is the Smart Chunking Calculator?</h4>
             <p className="text-gray-700">
@@ -882,24 +1015,28 @@ function Guide() {
           <div>
             <h4 className="font-semibold text-gray-900 mb-2">Why does NOVO say not to use HELOC?</h4>
             <p className="text-gray-700">
-              If a debt has a lower interest rate than your HELOC, chunking it with the HELOC would cost you more money. NOVO color-codes these debts red to warn you.
+              If a debt has a lower interest rate than your HELOC, chunking it with the HELOC would cost you more money. NOVO color-codes these debts red to warn you. <strong>Remember: HELOC features are optional - you can eliminate debt effectively without one!</strong>
             </p>
           </div>
 
           <div>
             <h4 className="font-semibold text-gray-900 mb-2">How do I reduce my debt-free date?</h4>
-            <p className="text-gray-700 mb-2">Three main approaches:</p>
+            <p className="text-gray-700 mb-2">Main approaches (available to everyone):</p>
             <ul className="space-y-1 text-gray-700 ml-4">
               <li>1. <strong>Increase extra payments:</strong> Reduce discretionary spending and allocate more to debt</li>
               <li>2. <strong>Reduce expenses:</strong> Lower your monthly bills to free up more cash flow</li>
-              <li>3. <strong>Use HELOC strategically:</strong> Chunk high-rate debts with your HELOC if the rate difference is favorable</li>
+              <li>3. <strong>Increase income:</strong> Side hustles, overtime, or negotiating a raise</li>
+              <li>4. <strong className="inline-block bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs mr-1">HELOC FEATURE</strong><strong>Use HELOC strategically:</strong> Chunk high-rate debts with your HELOC if the rate difference is favorable (homeowners only)</li>
             </ul>
           </div>
 
           <div>
-            <h4 className="font-semibold text-gray-900 mb-2">HELOC balance not decreasing?</h4>
+            <h4 className="font-semibold text-gray-900 mb-2">
+              <span className="inline-block bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-xs mr-2">HELOC FEATURE</span>
+              HELOC balance not decreasing?
+            </h4>
             <p className="text-gray-700">
-              Make sure you're logging all payments to the HELOC and limiting new draws. Check that you're recording monthly interest charges from your lender.
+              Make sure you're logging all payments to the HELOC and limiting new draws. Check that you're recording monthly interest charges from your lender. <em>(Only applies if you have a HELOC)</em>
             </p>
           </div>
 
