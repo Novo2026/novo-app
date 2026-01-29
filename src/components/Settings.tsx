@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Trash2, Download, AlertTriangle, CheckCircle, User, DollarSign, RefreshCw, Target, Mail, Phone, Settings as SettingsIcon } from 'lucide-react';
 import { StorageService } from '../services/storage';
+import { CalculationService } from '../services/calculations';
 import LearnHELOCModal from './LearnHELOCModal';
 import type { FinancialProfile, FeaturePreferences } from '../types';
 
@@ -100,7 +101,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `novo_full_report_${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `novo_full_report_${CalculationService.getTodayDateString()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };

@@ -304,7 +304,7 @@ export const CalculationService = {
 
       monthlyProjections.push({
         month,
-        date: currentDate.toISOString().split('T')[0],
+        date: this.addMonthsToDate(new Date(), month - 1),
         debts: monthDebts,
         totalBalance,
       });
@@ -317,24 +317,21 @@ export const CalculationService = {
     const payoffTimeline = debtBalances
       .filter(d => d.paidOff)
       .map(d => {
-        const payoffDate = new Date();
-        payoffDate.setMonth(payoffDate.getMonth() + d.payoffMonth);
         return {
           debtId: d.debtId,
           debtName: d.debtName,
           payoffMonth: d.payoffMonth,
-          payoffDate: payoffDate.toISOString().split('T')[0],
+          payoffDate: this.addMonthsToDate(new Date(), d.payoffMonth),
         };
       })
       .sort((a, b) => a.payoffMonth - b.payoffMonth);
 
-    const debtFreeDate = new Date();
-    debtFreeDate.setMonth(debtFreeDate.getMonth() + month);
+    const debtFreeDateStr = this.addMonthsToDate(new Date(), month);
 
     console.log('🎯 OPTIMIZED RESULTS:');
     console.log('  Total months:', month);
     console.log('  Total interest:', totalInterestPaid);
-    console.log('  Debt-free date:', debtFreeDate.toISOString().split('T')[0]);
+    console.log('  Debt-free date:', debtFreeDateStr);
 
     return {
       strategy: {
@@ -342,7 +339,7 @@ export const CalculationService = {
         extraMonthlyPayment,
         calculatedAt: new Date().toISOString(),
       },
-      debtFreeDate: debtFreeDate.toISOString().split('T')[0],
+      debtFreeDate: debtFreeDateStr,
       totalMonths: month,
       totalInterest: Math.round(totalInterestPaid * 100) / 100,
       totalPaid: Math.round(totalPaid * 100) / 100,
@@ -368,7 +365,7 @@ export const CalculationService = {
           extraMonthlyPayment: 0,
           calculatedAt: new Date().toISOString(),
         },
-        debtFreeDate: new Date().toISOString().split('T')[0],
+        debtFreeDate: this.getTodayDateString(),
         totalMonths: 0,
         totalInterest: 0,
         totalPaid: 0,
@@ -448,7 +445,7 @@ export const CalculationService = {
 
       monthlyProjections.push({
         month,
-        date: currentDate.toISOString().split('T')[0],
+        date: this.addMonthsToDate(new Date(), month - 1),
         debts: monthDebts,
         totalBalance,
       });
@@ -462,24 +459,21 @@ export const CalculationService = {
     const payoffTimeline = debtBalances
       .filter(d => d.paidOff)
       .map(d => {
-        const payoffDate = new Date();
-        payoffDate.setMonth(payoffDate.getMonth() + d.payoffMonth);
         return {
           debtId: d.debtId,
           debtName: d.debtName,
           payoffMonth: d.payoffMonth,
-          payoffDate: payoffDate.toISOString().split('T')[0],
+          payoffDate: this.addMonthsToDate(new Date(), d.payoffMonth),
         };
       })
       .sort((a, b) => a.payoffMonth - b.payoffMonth);
 
-    const debtFreeDate = new Date();
-    debtFreeDate.setMonth(debtFreeDate.getMonth() + month);
+    const debtFreeDateStr = this.addMonthsToDate(new Date(), month);
 
     console.log('📈 BASELINE RESULTS:');
     console.log('  Total months:', month);
     console.log('  Total interest:', totalInterestPaid);
-    console.log('  Debt-free date:', debtFreeDate.toISOString().split('T')[0]);
+    console.log('  Debt-free date:', debtFreeDateStr);
 
     return {
       strategy: {
@@ -487,7 +481,7 @@ export const CalculationService = {
         extraMonthlyPayment: 0,
         calculatedAt: new Date().toISOString(),
       },
-      debtFreeDate: debtFreeDate.toISOString().split('T')[0],
+      debtFreeDate: debtFreeDateStr,
       totalMonths: month,
       totalInterest: Math.round(totalInterestPaid * 100) / 100,
       totalPaid: Math.round(totalPaid * 100) / 100,
@@ -529,8 +523,26 @@ export const CalculationService = {
     }).format(amount);
   },
 
+  getTodayDateString(): string {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  },
+
+  addMonthsToDate(baseDate: Date, monthsToAdd: number): string {
+    const newDate = new Date(baseDate);
+    newDate.setMonth(newDate.getMonth() + monthsToAdd);
+    const year = newDate.getFullYear();
+    const month = String(newDate.getMonth() + 1).padStart(2, '0');
+    const day = String(newDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  },
+
   formatDate(dateString: string): string {
-    const date = new Date(dateString);
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
@@ -539,7 +551,8 @@ export const CalculationService = {
   },
 
   formatMonthYear(dateString: string): string {
-    const date = new Date(dateString);
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short'

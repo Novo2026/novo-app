@@ -250,7 +250,7 @@ function recalculateAllBalances(transactions: Transaction[]) {
       ...debt,
       currentBalance: newBalance,
       isPaidOff,
-      paidOffDate: isPaidOff && !debt.isPaidOff ? new Date().toISOString().split('T')[0] : debt.paidOffDate,
+      paidOffDate: isPaidOff && !debt.isPaidOff ? CalculationService.getTodayDateString() : debt.paidOffDate,
     };
   });
 

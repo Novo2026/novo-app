@@ -824,7 +824,7 @@ function TransactionLedger({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `heloc_transactions_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `heloc_transactions_${CalculationService.getTodayDateString()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -945,7 +945,7 @@ function RecordDrawModal({
   editTransaction: HELOCTransaction | null;
 }) {
   const [amount, setAmount] = useState(editTransaction?.amount.toString() || '');
-  const [date, setDate] = useState(editTransaction?.date || new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(editTransaction?.date || CalculationService.getTodayDateString());
   const [purpose, setPurpose] = useState(
     editTransaction?.isTransferToChecking ? 'Transfer to Checking' :
     editTransaction?.debtLinked ? 'Pay Off Debt' : 'Other'
@@ -1441,7 +1441,7 @@ function RecordPaymentModal({
   editTransaction: HELOCTransaction | null;
 }) {
   const [amount, setAmount] = useState(editTransaction?.amount.toString() || '');
-  const [date, setDate] = useState(editTransaction?.date || new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(editTransaction?.date || CalculationService.getTodayDateString());
   const [description, setDescription] = useState(editTransaction?.description || '');
 
   const paymentAmount = parseFloat(amount) || 0;
@@ -1588,10 +1588,12 @@ function RecordInterestModal({
   const autoCalculatedInterest = currentBalance * (interestRate / 12 / 100);
   const interestAmount = useManual && manualAmount ? parseFloat(manualAmount) : autoCalculatedInterest;
 
-  const lastDayOfMonth = new Date(month + '-01');
-  lastDayOfMonth.setMonth(lastDayOfMonth.getMonth() + 1);
-  lastDayOfMonth.setDate(0);
-  const date = editTransaction?.date || lastDayOfMonth.toISOString().split('T')[0];
+  const getLastDayOfMonth = (monthStr: string) => {
+    const [year, monthNum] = monthStr.split('-').map(Number);
+    const lastDay = new Date(year, monthNum, 0).getDate();
+    return `${year}-${String(monthNum).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  };
+  const date = editTransaction?.date || getLastDayOfMonth(month);
 
   const handleSubmit = () => {
     if (!interestAmount || interestAmount <= 0) {

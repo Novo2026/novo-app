@@ -438,7 +438,7 @@ function TransactionLedger({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `checking_transactions_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `checking_transactions_${CalculationService.getTodayDateString()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -568,7 +568,7 @@ function TransactionModal({
   const debts = StorageService.getDebts().filter(d => !d.isPaidOff);
 
   const [amount, setAmount] = useState(editTransaction?.amount.toString() || '');
-  const [date, setDate] = useState(editTransaction?.date || new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(editTransaction?.date || CalculationService.getTodayDateString());
   const [description, setDescription] = useState(editTransaction?.description || '');
   const [selectedDebt, setSelectedDebt] = useState(editTransaction?.debtId || (debts.length > 0 ? debts[0].id : ''));
   const [expenseType, setExpenseType] = useState<'essential' | 'discretionary' | 'other'>(
@@ -968,7 +968,7 @@ function TransferToHelocModal({
   startingBalance: number;
 }) {
   const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(CalculationService.getTodayDateString());
   const [reason, setReason] = useState<'excess' | 'extra_payment' | 'other'>('excess');
   const [description, setDescription] = useState('');
   const [autoRecordInHeloc, setAutoRecordInHeloc] = useState(true);

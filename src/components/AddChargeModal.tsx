@@ -12,7 +12,7 @@ interface AddChargeModalProps {
 
 export default function AddChargeModal({ debtId, onClose, onSuccess }: AddChargeModalProps) {
   const [chargeAmount, setChargeAmount] = useState('');
-  const [chargeDate, setChargeDate] = useState(new Date().toISOString().split('T')[0]);
+  const [chargeDate, setChargeDate] = useState(CalculationService.getTodayDateString());
   const [description, setDescription] = useState('');
 
   const debts = StorageService.getDebts();

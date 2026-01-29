@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { StorageService } from '../services/storage';
+import { CalculationService } from '../services/calculations';
 import type { SavingsAccount, SavingsTransactionType } from '../types';
 
 interface LogSavingsTransactionModalProps {
@@ -20,7 +21,7 @@ export default function LogSavingsTransactionModal({
   const account = accounts.find(acc => acc.id === accountId);
 
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: CalculationService.getTodayDateString(),
     amount: '',
     description: '',
   });
@@ -155,7 +156,7 @@ export default function LogSavingsTransactionModal({
               type="date"
               value={formData.date}
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              max={new Date().toISOString().split('T')[0]}
+              max={CalculationService.getTodayDateString()}
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent ${
                 errors.date ? 'border-red-500' : 'border-gray-300'
               }`}

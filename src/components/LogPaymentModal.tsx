@@ -21,7 +21,7 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
   const [paymentType, setPaymentType] = useState<PaymentType>('minimum');
   const [extraAmount, setExtraAmount] = useState('');
   const [customAmount, setCustomAmount] = useState('');
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentDate, setPaymentDate] = useState(CalculationService.getTodayDateString());
   const [notes, setNotes] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
