@@ -11,6 +11,7 @@ import type {
   FeaturePreferences,
   HELOCTransaction,
   CheckingTransaction,
+  UnifiedPayment,
 } from '../types';
 
 const STORAGE_KEYS = {
@@ -27,6 +28,7 @@ const STORAGE_KEYS = {
   DATA_HASH: 'novo_data_hash',
   STRATEGY_CALC_HASH: 'novo_strategy_calc_hash',
   FEATURE_PREFERENCES: 'novo_feature_preferences',
+  UNIFIED_PAYMENTS: 'novo_unified_payments',
 };
 
 export const StorageService = {
@@ -221,5 +223,46 @@ export const StorageService = {
 
   saveCheckingTransactions(transactions: CheckingTransaction[]): void {
     localStorage.setItem(STORAGE_KEYS.CHECKING_TRANSACTIONS, JSON.stringify(transactions));
+  },
+
+  getUnifiedPayments(): UnifiedPayment[] {
+    const data = localStorage.getItem(STORAGE_KEYS.UNIFIED_PAYMENTS);
+    return data ? JSON.parse(data) : [];
+  },
+
+  saveUnifiedPayments(payments: UnifiedPayment[]): void {
+    localStorage.setItem(STORAGE_KEYS.UNIFIED_PAYMENTS, JSON.stringify(payments));
+  },
+
+  addUnifiedPayment(payment: UnifiedPayment): void {
+    const payments = this.getUnifiedPayments();
+    payments.push(payment);
+    this.saveUnifiedPayments(payments);
+  },
+
+  deleteUnifiedPayment(paymentId: string): void {
+    const payments = this.getUnifiedPayments().filter(p => p.id !== paymentId);
+    this.saveUnifiedPayments(payments);
+  },
+
+  deduplicatePayments(): void {
+    const payments = this.getUnifiedPayments();
+    const seen = new Map<string, UnifiedPayment>();
+
+    payments.forEach(payment => {
+      const key = `${payment.debtId}-${payment.date}-${payment.amount}`;
+      const existing = seen.get(key);
+
+      if (!existing) {
+        seen.set(key, payment);
+      } else {
+        if (payment.source === 'checking' || payment.source === 'heloc') {
+          seen.set(key, payment);
+        }
+      }
+    });
+
+    const deduped = Array.from(seen.values());
+    this.saveUnifiedPayments(deduped);
   },
 };

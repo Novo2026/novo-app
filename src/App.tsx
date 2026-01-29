@@ -27,6 +27,7 @@ function App() {
   const [showHelocWelcome, setShowHelocWelcome] = useState(false);
 
   useEffect(() => {
+    StorageService.deduplicatePayments();
     loadData();
     checkOnboarding();
     loadFeaturePreferences();

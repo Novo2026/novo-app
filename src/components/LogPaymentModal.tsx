@@ -4,7 +4,7 @@ import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import CelebrationModal from './CelebrationModal';
 import EditDebtModal from './EditDebtModal';
-import type { Debt, Transaction, Milestone, CheckingTransaction, HELOCTransaction } from '../types';
+import type { Debt, Transaction, Milestone, CheckingTransaction, HELOCTransaction, UnifiedPayment } from '../types';
 
 interface LogPaymentModalProps {
   preselectedDebtId: string | null;
@@ -118,28 +118,26 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
     const isExtraPayment = paymentType === 'minimum-plus' ||
       (paymentType === 'custom' && amount > debt.minimumPayment);
 
-    const transactionId = `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const transaction: Transaction = {
-      id: transactionId,
+    const paymentId = `payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const isPaidOff = calculation.newBalance === 0;
+
+    const unifiedPayment: UnifiedPayment = {
+      id: paymentId,
+      date: paymentDate,
       debtId: selectedDebtId,
       debtName: debt.accountName,
-      date: paymentDate,
-      type: 'payment',
       amount,
-      previousBalance: debt.currentBalance,
+      source: paymentSource === 'checking' ? 'checking' : paymentSource === 'heloc' ? 'heloc' : 'direct',
       interestCharged: calculation.interestCharged,
       principalPaid: calculation.principalPaid,
+      previousBalance: debt.currentBalance,
       newBalance: calculation.newBalance,
-      isExtraPayment,
-      notes: notes.trim() || undefined,
-      source: paymentSource === 'checking' ? 'checking' : paymentSource === 'heloc' ? 'heloc' : 'direct',
+      description: notes.trim() || undefined,
+      isPaidOff,
     };
 
-    const transactions = StorageService.getTransactions();
-    transactions.push(transaction);
-
+    StorageService.addUnifiedPayment(unifiedPayment);
     StorageService.saveDebts(newDebts);
-    StorageService.saveTransactions(transactions);
 
     if (paymentSource === 'checking') {
       const checkingTransactions: CheckingTransaction[] = JSON.parse(
@@ -215,7 +213,6 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
 
     const paidOff = debt.startingBalance - calculation.newBalance;
     const progress = (paidOff / debt.startingBalance) * 100;
-    const isPaidOff = calculation.newBalance === 0;
 
     let previousCashFlow: number | undefined;
     if (isPaidOff) {

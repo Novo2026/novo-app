@@ -8,6 +8,7 @@ import Accordion from './Accordion';
 import ChunkingRecommendation from './ChunkingRecommendation';
 import ChunkingScenarioComparison from './ChunkingScenarioComparison';
 import ChunkingPlanCalculator from './ChunkingPlanCalculator';
+import type { UnifiedPayment } from '../types';
 import AdvancedVelocityBanking from './AdvancedVelocityBanking';
 import ChunkingRiskAssessment from './ChunkingRiskAssessment';
 import type { Debt, HELOCTransaction } from '../types';
@@ -1091,10 +1092,11 @@ function RecordDrawModal({
         const interestCharged = previousBalance * (debt.interestRate / 12 / 100);
         const principalPaid = Math.max(0, drawAmount - interestCharged);
         const newDebtBalance = Math.max(0, previousBalance - principalPaid);
+        const isPaidOff = paymentType === 'full' || newDebtBalance === 0;
 
         debt.currentBalance = newDebtBalance;
 
-        if (paymentType === 'full' || newDebtBalance === 0) {
+        if (isPaidOff) {
           debt.isPaidOff = true;
           debt.transferredToHELOC = true;
           debt.paidOffDate = date;
@@ -1105,25 +1107,23 @@ function RecordDrawModal({
         const updated = allDebts.map(d => d.id === selectedDebt ? debt : d);
         localStorage.setItem('novo_debts', JSON.stringify(updated));
 
-        const allTransactions = JSON.parse(localStorage.getItem('novo_transactions') || '[]');
-        const debtTransaction = {
-          id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        const unifiedPayment: UnifiedPayment = {
+          id: `payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          date,
           debtId: selectedDebt,
           debtName: debt.accountName,
-          date,
-          type: 'payment',
           amount: drawAmount,
-          previousBalance,
+          source: 'heloc',
           interestCharged,
           principalPaid,
+          previousBalance,
           newBalance: newDebtBalance,
-          isExtraPayment: paymentType !== 'minimum' && drawAmount > debt.minimumPayment,
-          notes: paymentType === 'full' ? 'Paid off in full with HELOC' : 'Paid from HELOC',
-          paidWithHELOC: true,
+          description: paymentType === 'full' ? 'Paid off in full with HELOC' : 'Paid from HELOC',
+          isPaidOff,
           transferredToHELOC: paymentType === 'full',
         };
-        allTransactions.push(debtTransaction);
-        localStorage.setItem('novo_transactions', JSON.stringify(allTransactions));
+
+        StorageService.addUnifiedPayment(unifiedPayment);
       }
     }
 

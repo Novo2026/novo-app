@@ -3,6 +3,7 @@ import { Plus, Download, Edit2, X, DollarSign, CreditCard, TrendingUp, TrendingD
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CalculationService } from '../services/calculations';
 import { StorageService } from '../services/storage';
+import type { UnifiedPayment } from '../types';
 
 interface CheckingTransaction {
   id: string;
@@ -655,33 +656,32 @@ function TransactionModal({
         const interestCharged = 0;
         const principalPaid = transactionAmount;
         const newDebtBalance = Math.max(0, previousBalance - transactionAmount);
+        const isPaidOff = newDebtBalance === 0;
 
         debt.currentBalance = newDebtBalance;
 
-        if (newDebtBalance === 0 && !debt.isPaidOff) {
+        if (isPaidOff && !debt.isPaidOff) {
           debt.isPaidOff = true;
           debt.paidOffDate = date;
         }
 
-        const debtTransaction = {
-          id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        const unifiedPayment: UnifiedPayment = {
+          id: `payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          date,
           debtId: debt.id,
           debtName: debt.accountName,
-          date,
-          type: 'payment' as const,
           amount: transactionAmount,
-          previousBalance,
+          source: 'checking',
           interestCharged,
           principalPaid,
+          previousBalance,
           newBalance: newDebtBalance,
-          notes: `Paid from checking account: ${finalDescription}`
+          description: finalDescription,
+          isPaidOff,
         };
 
-        const allTransactions = StorageService.getTransactions();
-        allTransactions.push(debtTransaction);
-
+        StorageService.addUnifiedPayment(unifiedPayment);
         StorageService.saveDebts(allDebts);
-        StorageService.saveTransactions(allTransactions);
       }
     }
 
