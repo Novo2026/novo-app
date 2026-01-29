@@ -9,6 +9,8 @@ import type {
   StrategyResult,
   AppData,
   FeaturePreferences,
+  HELOCTransaction,
+  CheckingTransaction,
 } from '../types';
 
 const STORAGE_KEYS = {
@@ -21,6 +23,7 @@ const STORAGE_KEYS = {
   STRATEGY: 'novo_strategy',
   STRATEGY_RESULT: 'novo_strategy_result',
   HELOC_TRANSACTIONS: 'novo_heloc_transactions',
+  CHECKING_TRANSACTIONS: 'novo_checking_transactions',
   DATA_HASH: 'novo_data_hash',
   STRATEGY_CALC_HASH: 'novo_strategy_calc_hash',
   FEATURE_PREFERENCES: 'novo_feature_preferences',
@@ -200,5 +203,23 @@ export const StorageService = {
 
   saveFeaturePreferences(preferences: FeaturePreferences): void {
     localStorage.setItem(STORAGE_KEYS.FEATURE_PREFERENCES, JSON.stringify(preferences));
+  },
+
+  getHELOCTransactions(): HELOCTransaction[] {
+    const data = localStorage.getItem(STORAGE_KEYS.HELOC_TRANSACTIONS);
+    return data ? JSON.parse(data) : [];
+  },
+
+  saveHELOCTransactions(transactions: HELOCTransaction[]): void {
+    localStorage.setItem(STORAGE_KEYS.HELOC_TRANSACTIONS, JSON.stringify(transactions));
+  },
+
+  getCheckingTransactions(): CheckingTransaction[] {
+    const data = localStorage.getItem(STORAGE_KEYS.CHECKING_TRANSACTIONS);
+    return data ? JSON.parse(data) : [];
+  },
+
+  saveCheckingTransactions(transactions: CheckingTransaction[]): void {
+    localStorage.setItem(STORAGE_KEYS.CHECKING_TRANSACTIONS, JSON.stringify(transactions));
   },
 };

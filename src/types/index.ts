@@ -213,3 +213,21 @@ export interface AppData {
   strategyResult?: StrategyResult;
   featurePreferences?: FeaturePreferences;
 }
+
+export type UnifiedPaymentSource = 'direct' | 'heloc' | 'checking';
+
+export interface UnifiedPayment {
+  id: string;
+  date: string;
+  debtId: string;
+  debtName: string;
+  amount: number;
+  source: UnifiedPaymentSource;
+  interestCharged: number;
+  principalPaid: number;
+  previousBalance: number;
+  newBalance: number;
+  description?: string;
+  isPaidOff?: boolean;
+  transferredToHELOC?: boolean;
+}

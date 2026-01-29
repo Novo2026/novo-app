@@ -1,4 +1,5 @@
-import type { Debt, Transaction, StrategyResult, Strategy, SavingsAccount } from '../types';
+import type { Debt, Transaction, StrategyResult, Strategy, SavingsAccount, UnifiedPayment, HELOCTransaction, CheckingTransaction } from '../types';
+import { StorageService } from './storage';
 
 export interface PaymentCalculation {
   interestCharged: number;
@@ -628,5 +629,108 @@ export const CalculationService = {
     });
 
     return growthData;
+  },
+
+  getUnifiedPaymentHistory(): UnifiedPayment[] {
+    const unifiedPayments: UnifiedPayment[] = [];
+
+    const directTransactions = StorageService.getTransactions().filter(t => t.type === 'payment');
+    directTransactions.forEach(t => {
+      unifiedPayments.push({
+        id: t.id,
+        date: t.date,
+        debtId: t.debtId,
+        debtName: t.debtName,
+        amount: t.amount,
+        source: 'direct',
+        interestCharged: t.interestCharged,
+        principalPaid: t.principalPaid,
+        previousBalance: t.previousBalance,
+        newBalance: t.newBalance,
+        description: t.notes,
+        isPaidOff: t.newBalance === 0,
+        transferredToHELOC: t.transferredToHELOC || false,
+      });
+    });
+
+    const helocTransactions = StorageService.getHELOCTransactions();
+    const helocDrawsForDebt = helocTransactions.filter(t => t.type === 'draw' && t.debtLinked);
+
+    helocDrawsForDebt.forEach(t => {
+      const debts = StorageService.getDebts();
+      const debt = debts.find(d => d.accountName === t.debtLinked);
+
+      if (debt) {
+        unifiedPayments.push({
+          id: t.id,
+          date: t.date,
+          debtId: debt.id,
+          debtName: t.debtLinked!,
+          amount: t.amount,
+          source: 'heloc',
+          interestCharged: 0,
+          principalPaid: t.amount,
+          previousBalance: 0,
+          newBalance: 0,
+          description: t.description,
+          isPaidOff: true,
+          transferredToHELOC: true,
+        });
+      }
+    });
+
+    const checkingTransactions = StorageService.getCheckingTransactions();
+    const checkingDebtPayments = checkingTransactions.filter((t: any) => t.type === 'debt_payment' && t.debtId);
+
+    checkingDebtPayments.forEach((t: any) => {
+      unifiedPayments.push({
+        id: t.id,
+        date: t.date,
+        debtId: t.debtId,
+        debtName: t.debtName || 'Debt Payment',
+        amount: t.amount,
+        source: 'checking',
+        interestCharged: 0,
+        principalPaid: t.amount,
+        previousBalance: 0,
+        newBalance: 0,
+        description: t.description,
+        isPaidOff: false,
+      });
+    });
+
+    unifiedPayments.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    return unifiedPayments;
+  },
+
+  getPaymentSourceBreakdown(): {
+    direct: number;
+    heloc: number;
+    checking: number;
+    total: number;
+    directCount: number;
+    helocCount: number;
+    checkingCount: number;
+  } {
+    const payments = this.getUnifiedPaymentHistory();
+
+    const direct = payments.filter(p => p.source === 'direct').reduce((sum, p) => sum + p.principalPaid, 0);
+    const heloc = payments.filter(p => p.source === 'heloc').reduce((sum, p) => sum + p.principalPaid, 0);
+    const checking = payments.filter(p => p.source === 'checking').reduce((sum, p) => sum + p.principalPaid, 0);
+
+    const directCount = payments.filter(p => p.source === 'direct').length;
+    const helocCount = payments.filter(p => p.source === 'heloc').length;
+    const checkingCount = payments.filter(p => p.source === 'checking').length;
+
+    return {
+      direct,
+      heloc,
+      checking,
+      total: direct + heloc + checking,
+      directCount,
+      helocCount,
+      checkingCount,
+    };
   },
 };
