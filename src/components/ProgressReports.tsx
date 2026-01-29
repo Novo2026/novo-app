@@ -113,9 +113,9 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
         <h2 className="text-2xl font-bold text-gray-800">Progress Reports</h2>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-lg shadow-md p-6">
-          <p className="text-sm text-gray-600 mb-2">Total Paid Off</p>
+          <p className="text-sm text-gray-600 mb-2">Total Debt Reduced</p>
           <p className="text-3xl font-bold text-[#27AE60]">
             {CalculationService.formatCurrency(metrics.totalPaidOff)}
           </p>
@@ -123,30 +123,27 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6">
+          <p className="text-sm text-gray-600 mb-2">Principal Paid</p>
+          <p className="text-3xl font-bold text-[#27AE60]">
+            {CalculationService.formatCurrency(totalPrincipal)}
+          </p>
+          <p className="text-sm text-gray-500 mt-1">Actual debt eliminated</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <p className="text-sm text-gray-600 mb-2">Interest Paid</p>
+          <p className="text-3xl font-bold text-[#EB5757]">
+            {CalculationService.formatCurrency(totalInterest)}
+          </p>
+          <p className="text-sm text-gray-500 mt-1">{filteredPayments.length} payment{filteredPayments.length !== 1 ? 's' : ''}</p>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
           <p className="text-sm text-gray-600 mb-2">Remaining Debt</p>
           <p className="text-3xl font-bold text-[#1E3A5F]">
             {CalculationService.formatCurrency(metrics.totalCurrentBalance)}
           </p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <p className="text-sm text-gray-600 mb-2">Total Payments</p>
-          <p className="text-3xl font-bold text-[#2D9CDB]">
-            {filteredPayments.length}
-          </p>
-          <div className="text-xs text-gray-500 mt-1">
-            {paymentBreakdown.directCount > 0 && <span className="mr-2">Direct: {paymentBreakdown.directCount}</span>}
-            {paymentBreakdown.helocCount > 0 && <span className="mr-2">HELOC: {paymentBreakdown.helocCount}</span>}
-            {paymentBreakdown.checkingCount > 0 && <span>Checking: {paymentBreakdown.checkingCount}</span>}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <p className="text-sm text-gray-600 mb-2">Debts Paid Off</p>
-          <p className="text-3xl font-bold text-[#27AE60]">
-            {metrics.paidOffDebts.length}
-          </p>
-          <p className="text-sm text-gray-500 mt-1">of {debts.length} total</p>
+          <p className="text-sm text-gray-500 mt-1">{metrics.activeDebts.length} active debt{metrics.activeDebts.length !== 1 ? 's' : ''}</p>
         </div>
       </div>
 

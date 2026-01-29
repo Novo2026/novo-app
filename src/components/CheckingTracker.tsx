@@ -652,13 +652,14 @@ function TransactionModal({
 
       if (debtIndex !== -1) {
         const debt = allDebts[debtIndex];
-        const previousBalance = debt.currentBalance;
-        const interestCharged = 0;
-        const principalPaid = transactionAmount;
-        const newDebtBalance = Math.max(0, previousBalance - transactionAmount);
-        const isPaidOff = newDebtBalance === 0;
 
-        debt.currentBalance = newDebtBalance;
+        const calculation = debt.isAmortized
+          ? CalculationService.calculateAmortizedPayment(debt, transactionAmount)
+          : CalculationService.calculatePayment(debt.currentBalance, debt.interestRate, transactionAmount);
+
+        const isPaidOff = calculation.newBalance === 0;
+
+        debt.currentBalance = calculation.newBalance;
 
         if (isPaidOff && !debt.isPaidOff) {
           debt.isPaidOff = true;
@@ -672,10 +673,10 @@ function TransactionModal({
           debtName: debt.accountName,
           amount: transactionAmount,
           source: 'checking',
-          interestCharged,
-          principalPaid,
-          previousBalance,
-          newBalance: newDebtBalance,
+          interestCharged: calculation.interestCharged,
+          principalPaid: calculation.principalPaid,
+          previousBalance: debt.currentBalance,
+          newBalance: calculation.newBalance,
           description: finalDescription,
           isPaidOff,
         };
