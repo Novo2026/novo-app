@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { X, CheckCircle, AlertTriangle, Edit2 } from 'lucide-react';
+import { X, CheckCircle, AlertTriangle, Edit2, CreditCard, Home, FileText } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import CelebrationModal from './CelebrationModal';
 import EditDebtModal from './EditDebtModal';
-import type { Debt, Transaction, Milestone } from '../types';
+import type { Debt, Transaction, Milestone, CheckingTransaction, HELOCTransaction } from '../types';
 
 interface LogPaymentModalProps {
   preselectedDebtId: string | null;
@@ -13,8 +13,10 @@ interface LogPaymentModalProps {
 }
 
 type PaymentType = 'minimum' | 'minimum-plus' | 'custom';
+type PaymentSource = 'checking' | 'heloc' | 'other' | null;
 
 export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess }: LogPaymentModalProps) {
+  const [paymentSource, setPaymentSource] = useState<PaymentSource>(null);
   const [selectedDebtId, setSelectedDebtId] = useState(preselectedDebtId || '');
   const [paymentType, setPaymentType] = useState<PaymentType>('minimum');
   const [extraAmount, setExtraAmount] = useState('');
@@ -40,6 +42,19 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
 
   const debts = StorageService.getDebts().filter(d => !d.isPaidOff && d.category !== 'HELOC');
   const selectedDebt = debts.find(d => d.id === selectedDebtId);
+
+  const settings = JSON.parse(localStorage.getItem('novo_settings') || '{"useCheckingRegister":false,"useHELOC":false}');
+  const { useCheckingRegister, useHELOC } = settings;
+
+  useEffect(() => {
+    if (useCheckingRegister && !useHELOC) {
+      setPaymentSource('checking');
+    } else if (!useCheckingRegister && useHELOC) {
+      setPaymentSource('heloc');
+    } else if (!useCheckingRegister && !useHELOC) {
+      setPaymentSource('other');
+    }
+  }, []);
 
   useEffect(() => {
     if (selectedDebtId && selectedDebt) {
@@ -75,7 +90,7 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!selectedDebtId) return;
+    if (!selectedDebtId || !paymentSource) return;
 
     const debt = debts.find(d => d.id === selectedDebtId);
     if (!debt) return;
@@ -103,8 +118,9 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
     const isExtraPayment = paymentType === 'minimum-plus' ||
       (paymentType === 'custom' && amount > debt.minimumPayment);
 
+    const transactionId = `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const transaction: Transaction = {
-      id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: transactionId,
       debtId: selectedDebtId,
       debtName: debt.accountName,
       date: paymentDate,
@@ -116,6 +132,7 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
       newBalance: calculation.newBalance,
       isExtraPayment,
       notes: notes.trim() || undefined,
+      source: paymentSource === 'checking' ? 'checking' : paymentSource === 'heloc' ? 'heloc' : 'direct',
     };
 
     const transactions = StorageService.getTransactions();
@@ -123,6 +140,78 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
 
     StorageService.saveDebts(newDebts);
     StorageService.saveTransactions(transactions);
+
+    if (paymentSource === 'checking') {
+      const checkingTransactions: CheckingTransaction[] = JSON.parse(
+        localStorage.getItem('novo_checking_transactions') || '[]'
+      );
+
+      const checkingBalance = checkingTransactions.length > 0
+        ? checkingTransactions[checkingTransactions.length - 1].balance
+        : 0;
+
+      const newCheckingTransaction: CheckingTransaction = {
+        id: `checking_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        date: paymentDate,
+        type: 'withdrawal',
+        amount,
+        description: `Debt payment: ${debt.accountName}`,
+        category: 'Debt Payment',
+        balance: checkingBalance - amount,
+      };
+
+      checkingTransactions.push(newCheckingTransaction);
+      checkingTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      for (let i = checkingTransactions.length - 1; i >= 0; i--) {
+        if (i === checkingTransactions.length - 1) continue;
+        const current = checkingTransactions[i];
+        const previous = checkingTransactions[i + 1];
+
+        if (current.type === 'deposit' || current.type === 'transfer_from_heloc') {
+          current.balance = previous.balance + current.amount;
+        } else {
+          current.balance = previous.balance - current.amount;
+        }
+      }
+
+      localStorage.setItem('novo_checking_transactions', JSON.stringify(checkingTransactions));
+    } else if (paymentSource === 'heloc') {
+      const helocTransactions: HELOCTransaction[] = JSON.parse(
+        localStorage.getItem('novo_heloc_transactions') || '[]'
+      );
+
+      const helocBalance = helocTransactions.length > 0
+        ? helocTransactions[helocTransactions.length - 1].balance
+        : 0;
+
+      const newHelocTransaction: HELOCTransaction = {
+        id: `heloc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        date: paymentDate,
+        type: 'draw',
+        amount,
+        description: `Paid ${debt.accountName}`,
+        debtLinked: selectedDebtId,
+        balance: helocBalance + amount,
+      };
+
+      helocTransactions.push(newHelocTransaction);
+      helocTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      for (let i = helocTransactions.length - 1; i >= 0; i--) {
+        if (i === helocTransactions.length - 1) continue;
+        const current = helocTransactions[i];
+        const previous = helocTransactions[i + 1];
+
+        if (current.type === 'draw') {
+          current.balance = previous.balance + current.amount;
+        } else {
+          current.balance = previous.balance - current.amount;
+        }
+      }
+
+      localStorage.setItem('novo_heloc_transactions', JSON.stringify(helocTransactions));
+    }
 
     const paidOff = debt.startingBalance - calculation.newBalance;
     const progress = (paidOff / debt.startingBalance) * 100;
@@ -281,6 +370,7 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
               onClick={() => {
                 setShowSuccess(false);
                 setCalculationResult(null);
+                setPaymentSource(null);
                 setSelectedDebtId('');
                 setPaymentType('minimum');
                 setExtraAmount('');
@@ -339,6 +429,75 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
     );
   }
 
+  if (paymentSource === null && (useCheckingRegister || useHELOC)) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
+          <div className="flex justify-between items-center p-6 pb-4 border-b border-gray-200 flex-shrink-0">
+            <h3 className="text-2xl font-bold text-gray-800">How are you paying this debt?</h3>
+            <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="overflow-y-auto px-6 py-6 space-y-3 flex-1">
+            {useCheckingRegister && (
+              <button
+                type="button"
+                onClick={() => setPaymentSource('checking')}
+                className="w-full p-5 border-2 border-gray-300 rounded-lg hover:border-[#27AE60] hover:bg-green-50 transition-all text-left group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-[#27AE60] transition-colors">
+                    <CreditCard className="w-6 h-6 text-[#27AE60] group-hover:text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-bold text-gray-900 text-lg">Checking Account</div>
+                    <div className="text-sm text-gray-600">Pay from checking register</div>
+                  </div>
+                </div>
+              </button>
+            )}
+
+            {useHELOC && (
+              <button
+                type="button"
+                onClick={() => setPaymentSource('heloc')}
+                className="w-full p-5 border-2 border-gray-300 rounded-lg hover:border-[#2D9CDB] hover:bg-blue-50 transition-all text-left group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-[#2D9CDB] transition-colors">
+                    <Home className="w-6 h-6 text-[#2D9CDB] group-hover:text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-bold text-gray-900 text-lg">HELOC</div>
+                    <div className="text-sm text-gray-600">Pay from HELOC draw</div>
+                  </div>
+                </div>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setPaymentSource('other')}
+              className="w-full p-5 border-2 border-gray-300 rounded-lg hover:border-gray-500 hover:bg-gray-50 transition-all text-left group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0 w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-gray-500 transition-colors">
+                  <FileText className="w-6 h-6 text-gray-500 group-hover:text-white" />
+                </div>
+                <div className="flex-1">
+                  <div className="font-bold text-gray-900 text-lg">Other / Direct</div>
+                  <div className="text-sm text-gray-600">Just log debt reduction</div>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
@@ -351,6 +510,37 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <div className="overflow-y-auto px-6 py-4 space-y-4 flex-1">
+          {paymentSource && (useCheckingRegister || useHELOC) && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {paymentSource === 'checking' && (
+                  <>
+                    <CreditCard className="w-4 h-4 text-[#27AE60]" />
+                    <span className="text-sm font-semibold text-gray-700">Paying from: Checking Account</span>
+                  </>
+                )}
+                {paymentSource === 'heloc' && (
+                  <>
+                    <Home className="w-4 h-4 text-[#2D9CDB]" />
+                    <span className="text-sm font-semibold text-gray-700">Paying from: HELOC</span>
+                  </>
+                )}
+                {paymentSource === 'other' && (
+                  <>
+                    <FileText className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm font-semibold text-gray-700">Paying from: Other/Direct</span>
+                  </>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPaymentSource(null)}
+                className="text-xs text-[#2D9CDB] hover:text-[#1E8BBD] font-medium"
+              >
+                Change
+              </button>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Which Debt?

@@ -42,6 +42,7 @@ export interface Transaction {
   notes?: string;
   paidWithHELOC?: boolean;
   transferredToHELOC?: boolean;
+  source?: 'direct' | 'heloc' | 'checking';
 }
 
 export type SavingsAccountType =
