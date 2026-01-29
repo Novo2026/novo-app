@@ -8,6 +8,40 @@ export interface PaymentCalculation {
 }
 
 export const CalculationService = {
+  calculateCurrentStrategy(): StrategyResult | null {
+    const debts = StorageService.getDebts();
+    const activeDebts = debts.filter(d => !d.isPaidOff);
+
+    if (activeDebts.length === 0) {
+      return null;
+    }
+
+    const profile = StorageService.getFinancialProfile();
+    if (!profile) {
+      return null;
+    }
+
+    const totalMinimumPayments = activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
+    const cashFlow = this.calculateCashFlow(
+      profile.monthlyNetIncome,
+      profile.monthlyEssentialExpenses,
+      profile.monthlyDiscretionaryExpenses,
+      totalMinimumPayments
+    );
+
+    const extraPayment = Math.floor(cashFlow.recommendedExtraPayment);
+    const result = this.projectDebtPayoff(activeDebts, extraPayment);
+
+    console.log('📊 Strategy Calculated:', {
+      activeDebts: activeDebts.length,
+      extraPayment,
+      totalMonths: result.totalMonths,
+      totalInterest: result.totalInterest,
+    });
+
+    return result;
+  },
+
   calculateMonthsElapsed(loanStartDate: string): number {
     const [startMonth, startYear] = loanStartDate.split('/').map(Number);
     const startDate = new Date(startYear, startMonth - 1, 1);

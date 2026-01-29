@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { RefreshCw, TrendingDown, Calendar, DollarSign, BarChart3, AlertTriangle, Mail, Phone, CheckCircle } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
@@ -19,6 +20,41 @@ interface StrategyResultsProps {
 }
 
 export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner, isAutoCalculating }: StrategyResultsProps) {
+  const [isRecalculating, setIsRecalculating] = useState(false);
+  const [currentResult, setCurrentResult] = useState(result);
+
+  const handleRecalculate = () => {
+    setIsRecalculating(true);
+
+    setTimeout(() => {
+      const newResult = CalculationService.calculateCurrentStrategy();
+
+      if (newResult) {
+        // Validate: check if timeline changed dramatically
+        const oldMonths = currentResult.totalMonths;
+        const newMonths = newResult.totalMonths;
+        const monthsChange = Math.abs(newMonths - oldMonths);
+        const percentChange = (monthsChange / oldMonths) * 100;
+
+        if (percentChange > 50) {
+          console.warn('⚠️ WARNING: Timeline changed significantly:', {
+            oldMonths,
+            newMonths,
+            change: monthsChange,
+            percentChange: percentChange.toFixed(1) + '%'
+          });
+        }
+
+        setCurrentResult(newResult);
+        StorageService.saveStrategyResult(newResult);
+        StorageService.markStrategyCalculated();
+        console.log('✅ Strategy recalculated successfully');
+      }
+
+      setIsRecalculating(false);
+    }, 300);
+  };
+
   const allStoredDebts = StorageService.getDebts();
   const debts = allStoredDebts.filter(d => !d.isPaidOff);
   const paidOffDebts = allStoredDebts.filter(d => d.isPaidOff);
@@ -52,8 +88,8 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
   const minimumOnly = CalculationService.projectMinimumPaymentsOnly(debts);
 
   // Validate strategy comparison
-  const interestSaved = minimumOnly.totalInterest - result.totalInterest;
-  const monthsSaved = minimumOnly.totalMonths - result.totalMonths;
+  const interestSaved = minimumOnly.totalInterest - currentResult.totalInterest;
+  const monthsSaved = minimumOnly.totalMonths - currentResult.totalMonths;
   const isValidComparison = interestSaved >= 0 && monthsSaved >= 0;
 
   console.log('💰 STRATEGY COMPARISON:');
@@ -61,16 +97,16 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
   console.log('    - Months:', minimumOnly.totalMonths);
   console.log('    - Interest:', minimumOnly.totalInterest);
   console.log('  Optimized (with extra payments):');
-  console.log('    - Months:', result.totalMonths);
-  console.log('    - Interest:', result.totalInterest);
-  console.log('    - Extra payment:', result.strategy.extraMonthlyPayment);
+  console.log('    - Months:', currentResult.totalMonths);
+  console.log('    - Interest:', currentResult.totalInterest);
+  console.log('    - Extra payment:', currentResult.strategy.extraMonthlyPayment);
   console.log('  SAVINGS:');
   console.log('    - Interest saved:', interestSaved);
   console.log('    - Months saved:', monthsSaved);
   console.log('    - Valid comparison?', isValidComparison);
 
-  const chartData = result.monthlyProjections
-    .filter((_, i) => i % 3 === 0 || i === result.monthlyProjections.length - 1)
+  const chartData = currentResult.monthlyProjections
+    .filter((_, i) => i % 3 === 0 || i === currentResult.monthlyProjections.length - 1)
     .map((proj, index) => {
       const dataPoint: Record<string, string | number> = {
         month: `Mo ${proj.month}`,
@@ -89,7 +125,7 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
 
   const colors = ['#2D9CDB', '#27AE60', '#F2C94C', '#EB5757', '#9B51E0', '#FF6B35'];
 
-  const hasRateArbitrageWarnings = result.strategy.type === 'heloc-velocity' &&
+  const hasRateArbitrageWarnings = currentResult.strategy.type === 'heloc-velocity' &&
     allDebts.some(d => d.interestRate < helocRate && d.id !== 'HELOC_VIRTUAL');
 
   // Calculate cash flow after debt minimums
@@ -99,7 +135,7 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
       financialProfile.monthlyEssentialExpenses -
       financialProfile.monthlyDiscretionaryExpenses -
       totalMinimumPayments
-    : result.strategy.extraMonthlyPayment || 0;
+    : currentResult.strategy.extraMonthlyPayment || 0;
 
   const hasLowCashFlow = cashFlowAfterMinimums < 200;
 
@@ -149,13 +185,22 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
 
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-800">Your Payoff Strategy</h2>
-        <button
-          onClick={onRunNew}
-          className="flex items-center space-x-2 text-[#2D9CDB] hover:text-[#1E8BBD] font-semibold transition-colors"
-        >
-          <RefreshCw className="w-4 h-4" />
-          <span>Recalculate Strategy</span>
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleRecalculate}
+            disabled={isRecalculating}
+            className="flex items-center space-x-2 text-[#2D9CDB] hover:text-[#1E8BBD] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRecalculating ? 'animate-spin' : ''}`} />
+            <span>{isRecalculating ? 'Recalculating...' : 'Refresh Strategy'}</span>
+          </button>
+          <button
+            onClick={onRunNew}
+            className="flex items-center space-x-2 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold px-4 py-2 rounded-lg transition-colors"
+          >
+            <span>New Strategy</span>
+          </button>
+        </div>
       </div>
 
 {hasLowCashFlow ? (
@@ -443,14 +488,14 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
                   <Calendar className="w-8 h-8" />
                   <div>
                     <p className="text-2xl font-bold">
-                      {Math.floor(result.totalMonths / 12)} years, {result.totalMonths % 12} months
+                      {Math.floor(currentResult.totalMonths / 12)} years, {currentResult.totalMonths % 12} months
                     </p>
-                    <p className="text-sm opacity-90">Debt-Free: {CalculationService.formatMonthYear(result.debtFreeDate)}</p>
+                    <p className="text-sm opacity-90">Debt-Free: {CalculationService.formatMonthYear(currentResult.debtFreeDate)}</p>
                   </div>
                 </div>
                 <div className="pt-3 border-t border-white/20">
                   <p className="text-sm opacity-90">Total Interest</p>
-                  <p className="text-xl font-bold">{CalculationService.formatCurrency(result.totalInterest)}</p>
+                  <p className="text-xl font-bold">{CalculationService.formatCurrency(currentResult.totalInterest)}</p>
                 </div>
                 <div className="pt-2">
                   <p className="text-sm opacity-90">Total Paid</p>
@@ -596,7 +641,7 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
                 .sort((a, b) => b.interestRate - a.interestRate)
                 .map((debt, index) => {
                   const isTargetDebt = index === 0;
-                  const paymentAmount = debt.minimumPayment + (isTargetDebt ? (result.strategy.extraMonthlyPayment || 0) : 0);
+                  const paymentAmount = debt.minimumPayment + (isTargetDebt ? (currentResult.strategy.extraMonthlyPayment || 0) : 0);
                   const isHELOC = debt.id === 'HELOC_VIRTUAL';
 
                   return (
@@ -613,13 +658,13 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
                             {isHELOC ? (
                               <>
                                 {CalculationService.formatCurrency(0)} (no minimum) +{' '}
-                                {CalculationService.formatCurrency(result.strategy.extraMonthlyPayment || 0)} ={' '}
+                                {CalculationService.formatCurrency(currentResult.strategy.extraMonthlyPayment || 0)} ={' '}
                                 <span className="font-bold text-[#27AE60]">{CalculationService.formatCurrency(paymentAmount)}</span>
                               </>
                             ) : (
                               <>
                                 {CalculationService.formatCurrency(debt.minimumPayment)} +{' '}
-                                {CalculationService.formatCurrency(result.strategy.extraMonthlyPayment || 0)} ={' '}
+                                {CalculationService.formatCurrency(currentResult.strategy.extraMonthlyPayment || 0)} ={' '}
                                 <span className="font-bold text-[#27AE60]">{CalculationService.formatCurrency(paymentAmount)}</span>
                               </>
                             )}
@@ -652,12 +697,12 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
           <div>
             <h4 className="font-semibold text-gray-800 mb-3">Payment Priority (Automatic):</h4>
             <p className="text-sm text-gray-700 mb-3">
-              The extra {CalculationService.formatCurrency(result.strategy.extraMonthlyPayment || 0)} always goes to your highest-interest debt first.
+              The extra {CalculationService.formatCurrency(currentResult.strategy.extraMonthlyPayment || 0)} always goes to your highest-interest debt first.
             </p>
             <div className="space-y-2">
-              {result.payoffTimeline.map((item, index) => {
+              {currentResult.payoffTimeline.map((item, index) => {
                 const debt = allDebts.find(d => d.id === item.debtId);
-                const startMonth = index === 0 ? 1 : result.payoffTimeline[index - 1].payoffMonth + 1;
+                const startMonth = index === 0 ? 1 : currentResult.payoffTimeline[index - 1].payoffMonth + 1;
                 const isHELOC = item.debtId === 'HELOC_VIRTUAL';
 
                 return (
@@ -703,7 +748,7 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
                   2
                 </span>
                 <span>
-                  Add the extra {CalculationService.formatCurrency(result.strategy.extraMonthlyPayment || 0)} to the debt with highest interest
+                  Add the extra {CalculationService.formatCurrency(currentResult.strategy.extraMonthlyPayment || 0)} to the debt with highest interest
                   {helocDebt && allDebts[0].id === 'HELOC_VIRTUAL' && (
                     <span className="block mt-1 text-blue-600 font-semibold">
                       (Start with HELOC - eliminate your {CalculationService.formatCurrency(helocBalance)} balance first)
@@ -731,7 +776,7 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
         </div>
       </div>
 
-      {result.strategy.type === 'heloc-velocity' && financialProfile && homeEquity && !featurePreferences.helocEnabled && (
+      {currentResult.strategy.type === 'heloc-velocity' && financialProfile && homeEquity && !featurePreferences.helocEnabled && (
         <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-xl p-6 shadow-lg">
           <div className="flex items-start space-x-4">
             <div className="text-4xl">💡</div>
@@ -771,7 +816,7 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
         </div>
       )}
 
-      {result.strategy.type === 'heloc-velocity' && financialProfile && homeEquity && featurePreferences.helocEnabled && (
+      {currentResult.strategy.type === 'heloc-velocity' && financialProfile && homeEquity && featurePreferences.helocEnabled && (
         <div className="space-y-4">
           <Accordion
             emoji="📊"
@@ -1002,13 +1047,12 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
           <div>
             <h5 className="font-bold text-gray-800 mb-2">Can I change my strategy?</h5>
             <p className="text-gray-700 mb-2">
-              Yes! Your strategy automatically updates when you log payments or transfer debts. Click "Recalculate Strategy" at the top to manually refresh or:
+              Yes! Your strategy automatically recalculates when you log payments, add/remove debts, or update your income/expenses. Click "Refresh Strategy" at the top to manually recalculate with current data, or run a new strategy wizard to:
             </p>
             <ul className="text-gray-700 space-y-1 ml-4">
-              <li>• Update your cash flow if income/expenses changed</li>
               <li>• Switch between standard payoff and HELOC velocity banking</li>
-              <li>• Run a new calculation with different parameters</li>
-              <li>• Adjust your extra payment amount</li>
+              <li>• Adjust your extra payment amount manually</li>
+              <li>• Run different scenarios with updated parameters</li>
             </ul>
           </div>
 
@@ -1028,7 +1072,7 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
         defaultOpen={false}
       >
         <div className="pt-4 space-y-4">
-          {result.payoffTimeline.map((item, index) => (
+          {currentResult.payoffTimeline.map((item, index) => (
             <div key={item.debtId} className="flex items-center space-x-4">
               <div className="flex-shrink-0 w-12 h-12 bg-[#27AE60] text-white rounded-full flex items-center justify-center font-bold">
                 {index + 1}
@@ -1088,7 +1132,7 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
           <div className="flex justify-between">
             <span className="text-gray-600">Extra Monthly Payment:</span>
             <span className="font-semibold">
-              {CalculationService.formatCurrency(result.strategy.extraMonthlyPayment || 0)}
+              {CalculationService.formatCurrency(currentResult.strategy.extraMonthlyPayment || 0)}
             </span>
           </div>
           <div className="flex justify-between">
@@ -1106,7 +1150,7 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
           <div className="flex justify-between">
             <span className="text-gray-600">Strategy Calculated:</span>
             <span className="font-semibold">
-              {CalculationService.formatDate(result.strategy.calculatedAt)}
+              {CalculationService.formatDate(currentResult.strategy.calculatedAt)}
             </span>
           </div>
         </div>

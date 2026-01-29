@@ -31,28 +31,12 @@ export default function PaymentStrategies({ onDataUpdate }: PaymentStrategiesPro
         setIsAutoCalculating(true);
 
         setTimeout(() => {
-          const activeDebts = StorageService.getDebts().filter(d => !d.isPaidOff);
-          if (activeDebts.length === 0) {
+          const newResult = CalculationService.calculateCurrentStrategy();
+
+          if (!newResult) {
             setIsAutoCalculating(false);
             return;
           }
-
-          const profile = StorageService.getFinancialProfile();
-          if (!profile) {
-            setIsAutoCalculating(false);
-            return;
-          }
-
-          const totalMinimumPayments = activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
-          const cashFlow = CalculationService.calculateCashFlow(
-            profile.monthlyNetIncome,
-            profile.monthlyEssentialExpenses,
-            profile.monthlyDiscretionaryExpenses,
-            totalMinimumPayments
-          );
-
-          const extraPayment = Math.floor(cashFlow.recommendedExtraPayment);
-          const newResult = CalculationService.projectDebtPayoff(activeDebts, extraPayment);
 
           setStrategyResult(newResult);
           StorageService.saveStrategyResult(newResult);
