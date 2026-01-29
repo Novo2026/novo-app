@@ -1,5 +1,6 @@
 import type { Debt, Transaction, StrategyResult, Strategy, SavingsAccount, UnifiedPayment, HELOCTransaction, CheckingTransaction } from '../types';
 import { StorageService } from './storage';
+import { DebtCalculations } from './debtCalculations';
 
 export interface PaymentCalculation {
   interestCharged: number;
@@ -30,14 +31,42 @@ export const CalculationService = {
     );
 
     const extraPayment = Math.floor(cashFlow.recommendedExtraPayment);
-    const result = this.projectDebtPayoff(activeDebts, extraPayment);
 
-    console.log('📊 Strategy Calculated:', {
-      activeDebts: activeDebts.length,
-      extraPayment,
-      totalMonths: result.totalMonths,
-      totalInterest: result.totalInterest,
-    });
+    // Use new unified calculation engine
+    const baseline = DebtCalculations.calculateBaselineTimeline(activeDebts);
+    const optimized = DebtCalculations.calculateOptimizedTimeline(activeDebts, extraPayment);
+
+    // Validate results
+    const validation = DebtCalculations.validateResults(baseline, optimized);
+    if (!validation.isValid) {
+      console.error('❌ Calculation validation failed:', validation.errors);
+      validation.errors.forEach(err => console.error('  -', err));
+    }
+    if (validation.warnings.length > 0) {
+      console.warn('⚠️ Calculation warnings:', validation.warnings);
+      validation.warnings.forEach(warn => console.warn('  -', warn));
+    }
+
+    console.log('📊 Strategy Calculated:');
+    console.log('  Baseline:', DebtCalculations.formatTimeline(baseline.totalMonths));
+    console.log('  Optimized:', DebtCalculations.formatTimeline(optimized.totalMonths));
+    console.log('  Interest Saved:', DebtCalculations.formatCurrency(baseline.totalInterest - optimized.totalInterest));
+    console.log('  Months Saved:', baseline.totalMonths - optimized.totalMonths);
+
+    // Convert to StrategyResult format
+    const result: StrategyResult = {
+      strategy: {
+        type: 'extra-payment',
+        extraMonthlyPayment: extraPayment,
+        calculatedAt: new Date().toISOString(),
+      },
+      debtFreeDate: optimized.monthlyProjections[optimized.monthlyProjections.length - 1]?.date || new Date().toISOString(),
+      totalMonths: optimized.totalMonths,
+      totalInterest: optimized.totalInterest,
+      totalPaid: optimized.totalPaid,
+      payoffTimeline: optimized.payoffTimeline,
+      monthlyProjections: optimized.monthlyProjections,
+    };
 
     return result;
   },
@@ -85,11 +114,47 @@ export const CalculationService = {
     debt: Debt,
     paymentAmount: number
   ): PaymentCalculation {
-    // For amortized debts, calculate based on current balance
-    // We don't need to re-simulate the entire loan history for each payment
+    // Use new unified calculation engine
+    const breakdown = DebtCalculations.processPayment(debt, paymentAmount);
+
+    return {
+      interestCharged: breakdown.interest,
+      principalPaid: breakdown.principal,
+      newBalance: breakdown.newBalance,
+    };
+  },
+
+  calculatePayment(balance: number, rate: number, payment: number): PaymentCalculation {
+    // Create temporary debt object for calculation
+    const tempDebt: Debt = {
+      id: 'temp',
+      accountName: 'temp',
+      category: 'Other',
+      startingBalance: balance,
+      currentBalance: balance,
+      interestRate: rate,
+      minimumPayment: payment,
+      isPaidOff: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Use new unified calculation engine
+    const breakdown = DebtCalculations.processPayment(tempDebt, payment);
+
+    return {
+      interestCharged: breakdown.interest,
+      principalPaid: breakdown.principal,
+      newBalance: breakdown.newBalance,
+    };
+  },
+
+  calculateAmortizedPaymentOLD(
+    debt: Debt,
+    paymentAmount: number
+  ): PaymentCalculation {
+    // OLD METHOD - KEPT FOR REFERENCE ONLY
     const balance = debt.currentBalance;
 
-    // If payment covers the full balance, no interest is charged
     if (paymentAmount >= balance) {
       return {
         interestCharged: 0,
@@ -102,33 +167,6 @@ export const CalculationService = {
     const interestCharged = balance * monthlyRate;
     const principalPaid = paymentAmount - interestCharged;
     const newBalance = Math.max(0, balance - principalPaid);
-
-    return {
-      interestCharged: Math.round(interestCharged * 100) / 100,
-      principalPaid: Math.round(principalPaid * 100) / 100,
-      newBalance: Math.round(newBalance * 100) / 100,
-    };
-  },
-
-  calculatePayment(
-    currentBalance: number,
-    interestRate: number,
-    paymentAmount: number
-  ): PaymentCalculation {
-    // If payment covers the full balance, no interest is charged
-    if (paymentAmount >= currentBalance) {
-      return {
-        interestCharged: 0,
-        principalPaid: Math.round(currentBalance * 100) / 100,
-        newBalance: 0,
-      };
-    }
-
-    const annualRate = interestRate;
-    const monthlyInterestRate = annualRate / 12 / 100;
-    const interestCharged = currentBalance * monthlyInterestRate;
-    const principalPaid = paymentAmount - interestCharged;
-    const newBalance = Math.max(0, currentBalance + interestCharged - paymentAmount);
 
     return {
       interestCharged: Math.round(interestCharged * 100) / 100,
@@ -256,123 +294,34 @@ export const CalculationService = {
 
     // Include HELOC in debts if it has a balance
     const allDebts = helocDebt ? [...debts, helocDebt] : debts;
+    const activeDebts = allDebts.filter(d => !d.isPaidOff);
 
-    const sortedDebts = [...allDebts]
-      .filter(d => !d.isPaidOff)
-      .sort((a, b) => b.interestRate - a.interestRate);
-
-    console.log('Debts sorted by rate (highest first):');
-    sortedDebts.forEach(d => console.log(`  ${d.accountName}: ${d.interestRate}% - $${d.currentBalance}`));
-
-    const debtBalances = sortedDebts.map(d => ({
-      debtId: d.id,
-      debtName: d.accountName,
-      balance: d.currentBalance,
-      rate: d.interestRate,
-      minPayment: d.minimumPayment,
-      paidOff: false,
-      payoffMonth: 0,
-      debt: d,
-      isHELOC: d.id === 'HELOC_VIRTUAL',
-    }));
-
-    const monthlyProjections: StrategyResult['monthlyProjections'] = [];
-    let month = 0;
-    let totalInterestPaid = 0;
-    let totalMinPayments = sortedDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
-
-    while (month < maxMonths && debtBalances.some(d => !d.paidOff)) {
-      month++;
-      const currentDate = new Date();
-      currentDate.setMonth(currentDate.getMonth() + month);
-
-      const monthDebts: StrategyResult['monthlyProjections'][0]['debts'] = [];
-      let extraPaymentRemaining = extraMonthlyPayment;
-
-      // Find the highest-rate unpaid debt
-      const highestRateDebt = debtBalances
-        .filter(d => !d.paidOff)
-        .sort((a, b) => b.rate - a.rate)[0];
-
-      for (const debt of debtBalances) {
-        if (debt.paidOff) {
-          monthDebts.push({
-            debtId: debt.debtId,
-            balance: 0,
-            payment: 0,
-            interest: 0,
-            principal: 0,
-          });
-          continue;
-        }
-
-        // Start with minimum payment
-        let payment = debt.minPayment;
-
-        // Add ALL extra payment to the highest-interest debt
-        if (debt === highestRateDebt && extraPaymentRemaining > 0) {
-          payment += extraPaymentRemaining;
-          extraPaymentRemaining = 0;
-        }
-
-        const calculation = debt.debt.isAmortized
-          ? this.calculateAmortizedPayment({ ...debt.debt, currentBalance: debt.balance }, payment)
-          : this.calculatePayment(debt.balance, debt.rate, payment);
-
-        const interest = calculation.interestCharged;
-        const principal = calculation.principalPaid;
-        const newBalance = calculation.newBalance;
-
-        totalInterestPaid += interest;
-        debt.balance = newBalance;
-
-        if (newBalance === 0 && !debt.paidOff) {
-          debt.paidOff = true;
-          debt.payoffMonth = month;
-          console.log(`✅ ${debt.debtName} PAID OFF in month ${month}!`);
-        }
-
-        monthDebts.push({
-          debtId: debt.debtId,
-          balance: newBalance,
-          payment,
-          interest,
-          principal,
-        });
-      }
-
-      const totalBalance = debtBalances.reduce((sum, d) => sum + d.balance, 0);
-
-      monthlyProjections.push({
-        month,
-        date: this.addMonthsToDate(new Date(), month - 1),
-        debts: monthDebts,
-        totalBalance,
-      });
-
-      if (totalBalance === 0) break;
+    if (activeDebts.length === 0) {
+      return {
+        strategy: {
+          type: 'extra-payment',
+          extraMonthlyPayment,
+          calculatedAt: new Date().toISOString(),
+        },
+        debtFreeDate: this.getTodayDateString(),
+        totalMonths: 0,
+        totalInterest: 0,
+        totalPaid: 0,
+        payoffTimeline: [],
+        monthlyProjections: [],
+      };
     }
 
-    const totalPaid = (totalMinPayments + extraMonthlyPayment) * month;
-
-    const payoffTimeline = debtBalances
-      .filter(d => d.paidOff)
-      .map(d => {
-        return {
-          debtId: d.debtId,
-          debtName: d.debtName,
-          payoffMonth: d.payoffMonth,
-          payoffDate: this.addMonthsToDate(new Date(), d.payoffMonth),
-        };
-      })
-      .sort((a, b) => a.payoffMonth - b.payoffMonth);
-
-    const debtFreeDateStr = this.addMonthsToDate(new Date(), month);
+    // Use new unified calculation engine
+    const optimized = DebtCalculations.calculateOptimizedTimeline(activeDebts, extraMonthlyPayment, maxMonths);
 
     console.log('🎯 OPTIMIZED RESULTS:');
-    console.log('  Total months:', month);
-    console.log('  Total interest:', totalInterestPaid);
-    console.log('  Debt-free date:', debtFreeDateStr);
+    console.log('  Total months:', optimized.totalMonths);
+    console.log('  Total interest:', DebtCalculations.formatCurrency(optimized.totalInterest));
+    console.log('  Payoff order:');
+    optimized.payoffTimeline.forEach((p, i) => {
+      console.log(`    ${i + 1}. ${p.debtName} - Month ${p.payoffMonth}`);
+    });
 
     return {
       strategy: {
@@ -380,12 +329,12 @@ export const CalculationService = {
         extraMonthlyPayment,
         calculatedAt: new Date().toISOString(),
       },
-      debtFreeDate: debtFreeDateStr,
-      totalMonths: month,
-      totalInterest: Math.round(totalInterestPaid * 100) / 100,
-      totalPaid: Math.round(totalPaid * 100) / 100,
-      payoffTimeline,
-      monthlyProjections,
+      debtFreeDate: optimized.monthlyProjections[optimized.monthlyProjections.length - 1]?.date || this.getTodayDateString(),
+      totalMonths: optimized.totalMonths,
+      totalInterest: optimized.totalInterest,
+      totalPaid: optimized.totalPaid,
+      payoffTimeline: optimized.payoffTimeline,
+      monthlyProjections: optimized.monthlyProjections,
     };
   },
 
@@ -457,12 +406,7 @@ export const CalculationService = {
   projectMinimumPaymentsOnly(debts: Debt[]): StrategyResult {
     console.log('📊 BASELINE CALCULATION START (minimum payments only)');
 
-    // CRITICAL: For baseline, use ONLY the debts without HELOC virtual debt
-    // This represents what would happen if user just paid minimums on actual debts
     const activeDebts = debts.filter(d => !d.isPaidOff);
-
-    console.log('Active debts for baseline:');
-    activeDebts.forEach(d => console.log(`  ${d.accountName}: ${d.interestRate}% - $${d.currentBalance} (min: $${d.minimumPayment})`));
 
     if (activeDebts.length === 0) {
       return {
@@ -480,136 +424,20 @@ export const CalculationService = {
       };
     }
 
-    // Calculate remaining months for each debt individually
-    console.log('Calculating individual debt payoff timelines:');
-    const debtTimelines = activeDebts.map(debt => ({
-      debt,
-      months: this.calculateDebtRemainingMonths(debt),
-    }));
+    // Use new unified calculation engine
+    const baseline = DebtCalculations.calculateBaselineTimeline(activeDebts);
 
-    // Check for debts that won't pay off with minimum payments
-    const problemDebts = debtTimelines.filter(dt => dt.months >= 600);
-    if (problemDebts.length > 0) {
-      console.warn('⚠️ WARNING: The following debts have minimum payments too low to pay off:');
-      problemDebts.forEach(pd => {
-        const monthlyInterest = (pd.debt.currentBalance * pd.debt.interestRate / 12 / 100);
-        console.warn(`  - ${pd.debt.accountName}: Min payment $${pd.debt.minimumPayment} ≤ Monthly interest $${monthlyInterest.toFixed(2)}`);
-      });
-    }
-
-    // Baseline timeline = MAX of all individual debt timelines (debts pay off in parallel)
-    const baselineMonths = Math.max(...debtTimelines.map(dt => dt.months));
-    console.log(`\n✅ BASELINE TIMELINE: ${baselineMonths} months (${(baselineMonths / 12).toFixed(1)} years)`);
-    console.log('Individual debt timelines:');
-    debtTimelines.forEach(dt => {
-      console.log(`  - ${dt.debt.accountName}: ${dt.months} months (${(dt.months / 12).toFixed(1)} years)`);
+    console.log('Baseline calculation results:');
+    console.log(`  Longest debt: ${baseline.longestDebtName}`);
+    console.log(`  Total months: ${baseline.totalMonths} (${DebtCalculations.formatTimeline(baseline.totalMonths)})`);
+    console.log(`  Total interest: ${DebtCalculations.formatCurrency(baseline.totalInterest)}`);
+    console.log('  Individual debt timelines:');
+    baseline.debtTimelines.forEach(dt => {
+      console.log(`    ${dt.debtName}: ${dt.monthsToPayoff} months, ${DebtCalculations.formatCurrency(dt.totalInterest)} interest`);
     });
 
-    // Validate: baseline should never exceed 50 years
-    if (baselineMonths >= 600) {
-      console.warn('⚠️ WARNING: Baseline timeline exceeds 50 years. One or more debts have minimum payments that are too low.');
-    }
-
-    // Sort by interest rate (highest first) for avalanche method
-    const sortedDebts = [...activeDebts].sort((a, b) => b.interestRate - a.interestRate);
-
-    const debtBalances = sortedDebts.map(d => ({
-      debtId: d.id,
-      debtName: d.accountName,
-      balance: d.currentBalance,
-      rate: d.interestRate,
-      minPayment: d.minimumPayment,
-      paidOff: false,
-      payoffMonth: 0,
-      debt: d,
-    }));
-
-    const monthlyProjections: StrategyResult['monthlyProjections'] = [];
-    let month = 0;
-    let totalInterestPaid = 0;
-    const maxMonths = Math.min(baselineMonths + 12, 600); // Use calculated baseline + buffer, max 50 years
-
-    // Simulate minimum payments only (for detailed projections)
-    while (month < maxMonths && debtBalances.some(d => !d.paidOff)) {
-      month++;
-      const currentDate = new Date();
-      currentDate.setMonth(currentDate.getMonth() + month);
-
-      const monthDebts: StrategyResult['monthlyProjections'][0]['debts'] = [];
-
-      for (const debt of debtBalances) {
-        if (debt.paidOff) {
-          monthDebts.push({
-            debtId: debt.debtId,
-            balance: 0,
-            payment: 0,
-            interest: 0,
-            principal: 0,
-          });
-          continue;
-        }
-
-        // Use ONLY minimum payment for baseline
-        const payment = debt.minPayment;
-
-        const calculation = debt.debt.isAmortized
-          ? this.calculateAmortizedPayment({ ...debt.debt, currentBalance: debt.balance }, payment)
-          : this.calculatePayment(debt.balance, debt.rate, payment);
-
-        const interest = calculation.interestCharged;
-        const principal = calculation.principalPaid;
-        const newBalance = calculation.newBalance;
-
-        totalInterestPaid += interest;
-        debt.balance = newBalance;
-
-        if (newBalance === 0 && !debt.paidOff) {
-          debt.paidOff = true;
-          debt.payoffMonth = month;
-        }
-
-        monthDebts.push({
-          debtId: debt.debtId,
-          balance: newBalance,
-          payment,
-          interest,
-          principal,
-        });
-      }
-
-      const totalBalance = debtBalances.reduce((sum, d) => sum + d.balance, 0);
-
-      monthlyProjections.push({
-        month,
-        date: this.addMonthsToDate(new Date(), month - 1),
-        debts: monthDebts,
-        totalBalance,
-      });
-
-      if (totalBalance === 0) break;
-    }
-
-    const totalMinimumPayments = sortedDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
-    const totalPaid = totalMinimumPayments * month;
-
-    const payoffTimeline = debtBalances
-      .filter(d => d.paidOff)
-      .map(d => {
-        return {
-          debtId: d.debtId,
-          debtName: d.debtName,
-          payoffMonth: d.payoffMonth,
-          payoffDate: this.addMonthsToDate(new Date(), d.payoffMonth),
-        };
-      })
-      .sort((a, b) => a.payoffMonth - b.payoffMonth);
-
-    const debtFreeDateStr = this.addMonthsToDate(new Date(), month);
-
-    console.log('📈 BASELINE RESULTS:');
-    console.log('  Total months:', month);
-    console.log('  Total interest:', totalInterestPaid);
-    console.log('  Debt-free date:', debtFreeDateStr);
+    // Convert to StrategyResult format (using optimized format but with baseline data)
+    const optimizedFormat = DebtCalculations.calculateOptimizedTimeline(activeDebts, 0);
 
     return {
       strategy: {
@@ -617,12 +445,12 @@ export const CalculationService = {
         extraMonthlyPayment: 0,
         calculatedAt: new Date().toISOString(),
       },
-      debtFreeDate: debtFreeDateStr,
-      totalMonths: month,
-      totalInterest: Math.round(totalInterestPaid * 100) / 100,
-      totalPaid: Math.round(totalPaid * 100) / 100,
-      payoffTimeline,
-      monthlyProjections,
+      debtFreeDate: optimizedFormat.monthlyProjections[optimizedFormat.monthlyProjections.length - 1]?.date || this.getTodayDateString(),
+      totalMonths: baseline.totalMonths,
+      totalInterest: baseline.totalInterest,
+      totalPaid: baseline.totalPaid,
+      payoffTimeline: optimizedFormat.payoffTimeline,
+      monthlyProjections: optimizedFormat.monthlyProjections,
     };
   },
 
