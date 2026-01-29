@@ -952,7 +952,7 @@ function RecordDrawModal({
   );
   const [selectedDebt, setSelectedDebt] = useState(editTransaction?.debtLinked || '');
   const [description, setDescription] = useState(editTransaction?.description || '');
-  const [paymentType, setPaymentType] = useState<'minimum' | 'full' | 'custom'>('minimum');
+  const [paymentType, setPaymentType] = useState<'minimum' | 'recommended' | 'full' | 'custom'>('minimum');
   const [autoRecordInChecking, setAutoRecordInChecking] = useState(true);
 
   const debts = StorageService.getDebts().filter(d => !d.isPaidOff);
@@ -965,6 +965,12 @@ function RecordDrawModal({
         if (paymentType === 'minimum') {
           setAmount(debt.minimumPayment.toString());
           setDescription(`Paid ${debt.accountName} minimum payment`);
+        } else if (paymentType === 'recommended') {
+          const guidance = CalculationService.getPaymentGuidance(debtId);
+          if (guidance) {
+            setAmount(guidance.recommendedPayment.toFixed(2));
+            setDescription(`Paid ${debt.accountName} recommended amount`);
+          }
         } else if (paymentType === 'full') {
           setAmount(debt.currentBalance.toString());
           setDescription(`Paid off ${debt.accountName} in full`);
@@ -976,7 +982,7 @@ function RecordDrawModal({
     }
   };
 
-  const handlePaymentTypeChange = (type: 'minimum' | 'full' | 'custom') => {
+  const handlePaymentTypeChange = (type: 'minimum' | 'recommended' | 'full' | 'custom') => {
     setPaymentType(type);
     if (selectedDebt) {
       const debt = debts.find(d => d.id === selectedDebt);
@@ -984,6 +990,12 @@ function RecordDrawModal({
         if (type === 'minimum') {
           setAmount(debt.minimumPayment.toString());
           setDescription(`Paid ${debt.accountName} minimum payment`);
+        } else if (type === 'recommended') {
+          const guidance = CalculationService.getPaymentGuidance(selectedDebt);
+          if (guidance) {
+            setAmount(guidance.recommendedPayment.toFixed(2));
+            setDescription(`Paid ${debt.accountName} recommended amount`);
+          }
         } else if (type === 'full') {
           setAmount(debt.currentBalance.toString());
           setDescription(`Paid off ${debt.accountName} in full`);
@@ -1197,24 +1209,76 @@ function RecordDrawModal({
                 </select>
               </div>
 
-              {selectedDebt && (
-                <div className="mt-5 pt-5 border-t-2 border-gray-200">
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Wallet className="w-5 h-5 text-[#2D9CDB]" />
-                      <h3 className="text-lg font-bold text-gray-900">
-                        How much do you want to pay on {debts.find(d => d.id === selectedDebt)?.accountName}?
-                      </h3>
-                    </div>
-                    <p className="text-xs text-gray-600 ml-7">
-                      Select one of the options below:
-                    </p>
-                  </div>
+              {selectedDebt && (() => {
+                const selectedDebtObj = debts.find(d => d.id === selectedDebt);
+                const guidance = selectedDebtObj ? CalculationService.getPaymentGuidance(selectedDebtObj.id) : null;
 
-                  <div className="space-y-2">
-                    {debts.find(d => d.id === selectedDebt) && (
-                      <>
-                        <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-[#2D9CDB] has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
+                return (
+                  <>
+                    {guidance && (
+                      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r mt-3">
+                        <h4 className="font-semibold text-blue-900 mb-3 flex items-center">
+                          <span className="mr-2">💡</span>
+                          Payment Strategy Guidance
+                        </h4>
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-blue-800">Minimum payment:</span>
+                            <span className="font-semibold text-blue-900">
+                              {CalculationService.formatCurrency(guidance.minimumPayment)}
+                            </span>
+                          </div>
+                          {guidance.hasStrategy && guidance.recommendedPayment > guidance.minimumPayment && (
+                            <>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-blue-800">Recommended:</span>
+                                <span className="font-bold text-blue-900">
+                                  {CalculationService.formatCurrency(guidance.recommendedPayment)}
+                                </span>
+                              </div>
+                              <p className="text-xs text-blue-700 italic">
+                                (minimum + {CalculationService.formatCurrency(guidance.extraAmount)} extra cash flow)
+                              </p>
+                            </>
+                          )}
+                          {guidance.availableCashFlow > 0 && (
+                            <div className="flex justify-between text-sm pt-2 border-t border-blue-200">
+                              <span className="text-blue-800">Your available cash flow:</span>
+                              <span className="font-semibold text-blue-900">
+                                {CalculationService.formatCurrency(guidance.availableCashFlow)}
+                              </span>
+                            </div>
+                          )}
+                          <div className={`mt-3 p-2 rounded ${
+                            guidance.isPriority ? 'bg-yellow-100 border border-yellow-300' : 'bg-blue-100'
+                          }`}>
+                            <p className={`text-xs font-semibold ${
+                              guidance.isPriority ? 'text-yellow-900' : 'text-blue-900'
+                            }`}>
+                              {guidance.priorityReason}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-5 pt-5 border-t-2 border-gray-200">
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Wallet className="w-5 h-5 text-[#2D9CDB]" />
+                          <h3 className="text-lg font-bold text-gray-900">
+                            How much do you want to pay on {selectedDebtObj?.accountName}?
+                          </h3>
+                        </div>
+                        <p className="text-xs text-gray-600 ml-7">
+                          Select one of the options below:
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        {selectedDebtObj && (
+                          <>
+                            <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-[#2D9CDB] has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
                           <input
                             type="radio"
                             name="paymentType"
@@ -1234,6 +1298,37 @@ function RecordDrawModal({
                             </div>
                           </div>
                         </label>
+
+                        {guidance && guidance.hasStrategy && guidance.recommendedPayment > guidance.minimumPayment && guidance.recommendedPayment < selectedDebtObj.currentBalance && (
+                          <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-[#2D9CDB] has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
+                            <input
+                              type="radio"
+                              name="paymentType"
+                              checked={paymentType === 'recommended'}
+                              onChange={() => {
+                                setPaymentType('recommended' as any);
+                                setAmount(guidance.recommendedPayment.toFixed(2));
+                              }}
+                              className="mr-3 h-5 w-5 text-[#2D9CDB] focus:ring-[#2D9CDB] focus:ring-2"
+                            />
+                            <div className="flex items-center gap-2.5 flex-1">
+                              <div className="flex-shrink-0 w-9 h-9 bg-purple-100 rounded-lg flex items-center justify-center group-has-[:checked]:bg-purple-600">
+                                <TrendingUp className="w-4 h-4 text-purple-600 group-has-[:checked]:text-white" />
+                              </div>
+                              <div className="flex-1">
+                                <div className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                                  Pay recommended amount
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-purple-100 text-purple-800">
+                                    Strategy
+                                  </span>
+                                </div>
+                                <div className="text-sm text-gray-700 font-semibold">
+                                  {CalculationService.formatCurrency(guidance.recommendedPayment)}
+                                </div>
+                              </div>
+                            </div>
+                          </label>
+                        )}
 
                         <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-[#2D9CDB] has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
                           <input
@@ -1278,7 +1373,9 @@ function RecordDrawModal({
                     )}
                   </div>
                 </div>
-              )}
+                  </>
+                );
+              })()}
             </>
           )}
 

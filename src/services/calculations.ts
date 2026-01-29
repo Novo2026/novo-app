@@ -733,4 +733,76 @@ export const CalculationService = {
       checkingCount,
     };
   },
+
+  getPaymentGuidance(debtId: string): {
+    minimumPayment: number;
+    recommendedPayment: number;
+    extraAmount: number;
+    availableCashFlow: number;
+    isPriority: boolean;
+    priorityReason: string;
+    hasStrategy: boolean;
+  } | null {
+    const debt = StorageService.getDebts().find(d => d.id === debtId);
+    if (!debt) return null;
+
+    const strategyResult = StorageService.getStrategyResult();
+    const financialProfile = StorageService.getFinancialProfile();
+
+    const minimumPayment = debt.minimumPayment;
+    const availableCashFlow = financialProfile?.monthlyCashFlow || 0;
+
+    if (!strategyResult || !strategyResult.monthlyProjections || strategyResult.monthlyProjections.length === 0) {
+      return {
+        minimumPayment,
+        recommendedPayment: minimumPayment,
+        extraAmount: 0,
+        availableCashFlow,
+        isPriority: false,
+        priorityReason: 'No payment strategy configured',
+        hasStrategy: false,
+      };
+    }
+
+    const currentMonthProjection = strategyResult.monthlyProjections[0];
+    const debtProjection = currentMonthProjection?.debts.find(d => d.debtId === debtId);
+
+    if (!debtProjection) {
+      return {
+        minimumPayment,
+        recommendedPayment: minimumPayment,
+        extraAmount: 0,
+        availableCashFlow,
+        isPriority: false,
+        priorityReason: 'Make minimum payment only',
+        hasStrategy: true,
+      };
+    }
+
+    const recommendedPayment = debtProjection.payment;
+    const extraAmount = Math.max(0, recommendedPayment - minimumPayment);
+
+    const allDebts = StorageService.getDebts().filter(d => !d.isPaidOff && d.category !== 'HELOC');
+    const sortedByRate = [...allDebts].sort((a, b) => b.interestRate - a.interestRate);
+    const isPriority = sortedByRate.length > 0 && sortedByRate[0].id === debtId;
+
+    let priorityReason = '';
+    if (isPriority) {
+      priorityReason = `FOCUS HERE - Highest interest rate (${debt.interestRate.toFixed(2)}%)`;
+    } else if (extraAmount > 0) {
+      priorityReason = 'Extra payment allocated by strategy';
+    } else {
+      priorityReason = 'Minimum payment only';
+    }
+
+    return {
+      minimumPayment,
+      recommendedPayment,
+      extraAmount,
+      availableCashFlow,
+      isPriority,
+      priorityReason,
+      hasStrategy: true,
+    };
+  },
 };
