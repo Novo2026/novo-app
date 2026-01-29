@@ -355,6 +355,71 @@ export const CalculationService = {
     };
   },
 
+  calculateDebtRemainingMonths(debt: Debt): number {
+    // Calculate how many months it will take to pay off this debt using only minimum payments
+
+    const balance = debt.currentBalance;
+    const rate = debt.interestRate;
+    const minPayment = debt.minimumPayment;
+    const monthlyRate = rate / 12 / 100;
+
+    // For amortizing loans with loan term info, calculate remaining months
+    if (debt.isAmortized && debt.loanTerm && debt.loanStartDate) {
+      const startDate = new Date(debt.loanStartDate);
+      const today = new Date();
+      const monthsElapsed = (today.getFullYear() - startDate.getFullYear()) * 12 +
+                           (today.getMonth() - startDate.getMonth());
+      const remainingMonths = Math.max(0, debt.loanTerm - monthsElapsed);
+
+      console.log(`  ${debt.accountName}: Amortized loan, ${debt.loanTerm} month term, ${monthsElapsed} elapsed, ${remainingMonths} remaining`);
+      return remainingMonths;
+    }
+
+    // For revolving debt or loans without term info, calculate based on minimum payment
+    const monthlyInterest = balance * monthlyRate;
+
+    // Check if minimum payment is too low (would never pay off)
+    if (minPayment <= monthlyInterest) {
+      console.warn(`  ⚠️ ${debt.accountName}: Minimum payment ($${minPayment}) ≤ monthly interest ($${monthlyInterest.toFixed(2)}). Debt will never pay off!`);
+      return 600; // Return max months (50 years) as flag
+    }
+
+    // Calculate months to payoff using standard formula
+    // Formula: n = -log(1 - (r * P / M)) / log(1 + r)
+    // Where: P = principal, r = monthly rate, M = monthly payment
+    if (monthlyRate > 0) {
+      const numerator = Math.log(1 - (monthlyRate * balance / minPayment));
+      const denominator = Math.log(1 + monthlyRate);
+      const months = -numerator / denominator;
+
+      // Validate result
+      if (months > 0 && months < 600 && !isNaN(months) && isFinite(months)) {
+        console.log(`  ${debt.accountName}: Calculated ${Math.ceil(months)} months to payoff with minimum ($${minPayment}/mo)`);
+        return Math.ceil(months);
+      }
+    }
+
+    // Fallback: simulate month by month (for edge cases)
+    console.log(`  ${debt.accountName}: Using simulation fallback`);
+    let simBalance = balance;
+    let simMonths = 0;
+    const maxSimMonths = 600;
+
+    while (simBalance > 0 && simMonths < maxSimMonths) {
+      const interest = simBalance * monthlyRate;
+      const principal = Math.min(minPayment - interest, simBalance);
+      simBalance -= principal;
+      simMonths++;
+
+      if (principal <= 0) {
+        console.warn(`  ⚠️ ${debt.accountName}: Simulation shows debt won't pay off`);
+        return 600;
+      }
+    }
+
+    return simMonths;
+  },
+
   projectMinimumPaymentsOnly(debts: Debt[]): StrategyResult {
     console.log('📊 BASELINE CALCULATION START (minimum payments only)');
 
@@ -381,6 +446,36 @@ export const CalculationService = {
       };
     }
 
+    // Calculate remaining months for each debt individually
+    console.log('Calculating individual debt payoff timelines:');
+    const debtTimelines = activeDebts.map(debt => ({
+      debt,
+      months: this.calculateDebtRemainingMonths(debt),
+    }));
+
+    // Check for debts that won't pay off with minimum payments
+    const problemDebts = debtTimelines.filter(dt => dt.months >= 600);
+    if (problemDebts.length > 0) {
+      console.warn('⚠️ WARNING: The following debts have minimum payments too low to pay off:');
+      problemDebts.forEach(pd => {
+        const monthlyInterest = (pd.debt.currentBalance * pd.debt.interestRate / 12 / 100);
+        console.warn(`  - ${pd.debt.accountName}: Min payment $${pd.debt.minimumPayment} ≤ Monthly interest $${monthlyInterest.toFixed(2)}`);
+      });
+    }
+
+    // Baseline timeline = MAX of all individual debt timelines (debts pay off in parallel)
+    const baselineMonths = Math.max(...debtTimelines.map(dt => dt.months));
+    console.log(`\n✅ BASELINE TIMELINE: ${baselineMonths} months (${(baselineMonths / 12).toFixed(1)} years)`);
+    console.log('Individual debt timelines:');
+    debtTimelines.forEach(dt => {
+      console.log(`  - ${dt.debt.accountName}: ${dt.months} months (${(dt.months / 12).toFixed(1)} years)`);
+    });
+
+    // Validate: baseline should never exceed 50 years
+    if (baselineMonths >= 600) {
+      console.warn('⚠️ WARNING: Baseline timeline exceeds 50 years. One or more debts have minimum payments that are too low.');
+    }
+
     // Sort by interest rate (highest first) for avalanche method
     const sortedDebts = [...activeDebts].sort((a, b) => b.interestRate - a.interestRate);
 
@@ -398,9 +493,9 @@ export const CalculationService = {
     const monthlyProjections: StrategyResult['monthlyProjections'] = [];
     let month = 0;
     let totalInterestPaid = 0;
-    const maxMonths = 600; // 50 years max
+    const maxMonths = Math.min(baselineMonths + 12, 600); // Use calculated baseline + buffer, max 50 years
 
-    // Simulate minimum payments only
+    // Simulate minimum payments only (for detailed projections)
     while (month < maxMonths && debtBalances.some(d => !d.paidOff)) {
       month++;
       const currentDate = new Date();
