@@ -26,13 +26,62 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
 
-    <!-- PWA Service Worker -->
+    <!-- PWA Service Worker with Auto-Update -->
     <script>
       if ('serviceWorker' in navigator) {
+        let refreshing = false;
+
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/service-worker.js')
-            .then(reg => console.log('NOVO Service Worker registered'))
-            .catch(err => console.log('Service Worker registration failed:', err));
+            .then((reg) => {
+              console.log('NOVO Service Worker registered');
+
+              // Check for updates on every app launch
+              reg.update();
+
+              // Check for updates every 5 minutes (better for beta testing)
+              setInterval(() => {
+                console.log('Checking for NOVO updates...');
+                reg.update();
+              }, 5 * 60 * 1000);
+
+              // Detect when new service worker is waiting
+              reg.addEventListener('updatefound', () => {
+                const newWorker = reg.installing;
+
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // New version available
+                    if (!refreshing) {
+                      console.log('NOVO update available!');
+
+                      // Show update banner
+                      const banner = document.createElement('div');
+                      banner.textContent = '📱 NOVO update available - reloading...';
+                      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#10b981;color:white;padding:12px;text-align:center;z-index:9999;font-family:system-ui,-apple-system,sans-serif;font-size:14px;font-weight:500;box-shadow:0 2px 8px rgba(0,0,0,0.1)';
+                      document.body.appendChild(banner);
+
+                      // Wait 2 seconds, then reload
+                      setTimeout(() => {
+                        refreshing = true;
+                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                      }, 2000);
+                    }
+                  }
+                });
+              });
+            })
+            .catch((err) => {
+              console.log('Service Worker registration failed:', err);
+            });
+        });
+
+        // Auto-reload when new service worker takes control
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshing) return;
+          refreshing = true;
+          console.log('New NOVO version loaded, reloading page...');
+          window.location.reload();
         });
       }
     </script>
