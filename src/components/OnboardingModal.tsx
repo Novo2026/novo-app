@@ -239,7 +239,8 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         value={data.userName}
         onChange={(e) => setData({ ...data, userName: e.target.value })}
         placeholder="Enter your name"
-        className="w-full px-4 py-3 text-lg border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all min-h-[48px]"
+        style={{ fontSize: '16px' }}
         autoFocus
         maxLength={50}
       />
@@ -262,13 +263,14 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         </label>
         <p className="text-xs text-gray-500 mb-2">Your total income before taxes and deductions</p>
         <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg">$</span>
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
           <input
             type="text"
             value={data.grossIncome}
             onChange={(e) => handleCurrencyChange('grossIncome', e.target.value)}
             placeholder="7,000"
-            className="w-full pl-8 pr-4 py-3 text-lg border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+            className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all min-h-[48px]"
+            style={{ fontSize: '16px' }}
           />
         </div>
       </div>
@@ -279,13 +281,14 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         </label>
         <p className="text-xs text-gray-500 mb-2">Your take-home pay after taxes and deductions</p>
         <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg">$</span>
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
           <input
             type="text"
             value={data.monthlyIncome}
             onChange={(e) => handleCurrencyChange('monthlyIncome', e.target.value)}
             placeholder="5,000"
-            className="w-full pl-8 pr-4 py-3 text-lg border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+            className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all min-h-[48px]"
+            style={{ fontSize: '16px' }}
           />
         </div>
       </div>
@@ -307,13 +310,14 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         </label>
         <p className="text-xs text-gray-500 mb-2">Fixed costs you cannot easily reduce</p>
         <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg">$</span>
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
           <input
             type="text"
             value={data.essentialExpenses}
             onChange={(e) => handleCurrencyChange('essentialExpenses', e.target.value)}
             placeholder="Enter amount"
-            className="w-full pl-8 pr-4 py-3 text-lg border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+            className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all min-h-[48px]"
+            style={{ fontSize: '16px' }}
           />
         </div>
         <p className="text-xs text-gray-600 mt-2 italic">Examples: Rent (if renting), utilities, groceries, insurance, childcare, transportation</p>
@@ -325,13 +329,14 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         </label>
         <p className="text-xs text-gray-500 mb-2">Flexible spending you could reduce if needed</p>
         <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-lg">$</span>
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
           <input
             type="text"
             value={data.discretionaryExpenses}
             onChange={(e) => handleCurrencyChange('discretionaryExpenses', e.target.value)}
             placeholder="Enter amount"
-            className="w-full pl-8 pr-4 py-3 text-lg border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+            className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all min-h-[48px]"
+            style={{ fontSize: '16px' }}
           />
         </div>
         <p className="text-xs text-gray-600 mt-2 italic">Examples: Dining out, entertainment, subscriptions, hobbies, shopping, travel, luxury items</p>
@@ -365,7 +370,8 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
           value={data.address}
           onChange={(e) => setData({ ...data, address: e.target.value })}
           placeholder="123 Main St, City, State ZIP"
-          className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+          className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all min-h-[48px]"
+          style={{ fontSize: '16px' }}
         />
       </div>
 
@@ -774,24 +780,26 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-gray-900/50 backdrop-blur-sm" />
 
-        <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 my-8 animate-in fade-in zoom-in duration-300">
-          {renderProgressBar()}
+        <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8 animate-in fade-in zoom-in duration-300 flex flex-col max-h-[90vh]">
+          <div className="p-8 pb-4">
+            {renderProgressBar()}
+          </div>
 
-          <div className="mb-8">
+          <div className="flex-1 overflow-y-auto px-8 pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             {step === 1 && renderStep1()}
             {step === 2 && renderStep2()}
             {step === 3 && renderStep3()}
             {step === 4 && renderStep4()}
           </div>
 
-          <div className="flex items-center justify-between space-x-4">
+          <div className="flex items-center justify-between space-x-4 p-8 pt-4 border-t border-gray-200 bg-white rounded-b-2xl">
             {step > 1 && (
               <button
                 onClick={handleBack}
-                className="flex items-center space-x-2 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors"
+                className="flex items-center space-x-2 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors min-h-[48px]"
               >
                 <ChevronLeft className="w-5 h-5" />
                 <span>Back</span>
@@ -801,7 +809,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
             <button
               onClick={handleNext}
               disabled={!canProceed()}
-              className={`flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold py-3 px-6 rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] ${
+              className={`flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold py-3 px-6 rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] min-h-[48px] ${
                 step === 1 ? 'w-full' : ''
               }`}
             >
