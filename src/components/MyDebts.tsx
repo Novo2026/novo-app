@@ -221,7 +221,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                   >
                     View Details
                   </button>
-                  {!debt.isPaidOff && (
+                  {(!debt.isPaidOff || debt.category === 'Credit Card') && (
                     <button
                       onClick={() => handleAddCharge(debt.id)}
                       className="bg-[#F2C94C] hover:bg-[#E0B73C] text-gray-800 text-sm font-semibold py-2 px-4 rounded transition-colors"

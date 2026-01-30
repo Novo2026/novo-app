@@ -39,6 +39,9 @@ export default function AddChargeModal({ debtId, onClose, onSuccess }: AddCharge
         return {
           ...d,
           currentBalance: d.currentBalance + amount,
+          isPaidOff: false,
+          paidOffDate: undefined,
+          transferredToHELOC: undefined,
         };
       }
       return d;
@@ -79,13 +82,25 @@ export default function AddChargeModal({ debtId, onClose, onSuccess }: AddCharge
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <div className="overflow-y-auto px-6 py-4 space-y-4 flex-1">
-            <div className="bg-[#F2C94C]/20 border border-[#F2C94C] rounded-lg p-4 flex items-start space-x-3">
-              <AlertCircle className="w-5 h-5 text-[#F2C94C] flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-gray-700">
-                <p className="font-semibold mb-1">Adding a charge to: {debt.accountName}</p>
-                <p>This will increase the balance on this debt.</p>
+            {debt.isPaidOff ? (
+              <div className="bg-orange-50 border-2 border-orange-400 rounded-lg p-4 flex items-start space-x-3">
+                <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-gray-800">
+                  <p className="font-bold mb-2">⚠️ This card was paid off{debt.paidOffDate ? ` on ${new Date(debt.paidOffDate).toLocaleDateString()}` : ''}.</p>
+                  <p className="mb-2">Adding a charge will move it back to active debts.</p>
+                  <p className="mb-2">If you're using this card responsibly and paying it off monthly, that's great! NOVO will continue tracking it.</p>
+                  <p className="font-semibold">If this is new debt that you're carrying, make sure it fits your debt elimination strategy.</p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-[#F2C94C]/20 border border-[#F2C94C] rounded-lg p-4 flex items-start space-x-3">
+                <AlertCircle className="w-5 h-5 text-[#F2C94C] flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-gray-700">
+                  <p className="font-semibold mb-1">Adding a charge to: {debt.accountName}</p>
+                  <p>This will increase the balance on this debt.</p>
+                </div>
+              </div>
+            )}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Charge Amount
