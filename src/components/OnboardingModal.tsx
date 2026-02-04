@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DollarSign, CreditCard, CheckCircle, ChevronLeft, Plus, X, Info } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
 import CashFlowWarningModal from './CashFlowWarningModal';
@@ -39,6 +39,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const [step, setStep] = useState(1);
   const [showCashFlowWarning, setShowCashFlowWarning] = useState(false);
   const [showLearnHELOCModal, setShowLearnHELOCModal] = useState(false);
+  const [isResuming, setIsResuming] = useState(false);
   const [data, setData] = useState<OnboardingData>({
     userName: '',
     grossIncome: '',
@@ -53,6 +54,28 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
     helocBalance: '',
     helocMinPayment: '',
   });
+
+  // Load saved onboarding progress on mount
+  useEffect(() => {
+    const savedProgress = localStorage.getItem('onboardingProgress');
+    if (savedProgress) {
+      try {
+        const { step: savedStep, data: savedData } = JSON.parse(savedProgress);
+        setStep(savedStep);
+        setData(savedData);
+        setIsResuming(true);
+      } catch (error) {
+        console.error('Failed to load onboarding progress:', error);
+      }
+    }
+  }, []);
+
+  // Save onboarding progress whenever step or data changes
+  useEffect(() => {
+    if (step > 0 && step < 4) {
+      localStorage.setItem('onboardingProgress', JSON.stringify({ step, data }));
+    }
+  }, [step, data]);
 
   const formatCurrency = (value: string): string => {
     const num = value.replace(/[^0-9.]/g, '');
@@ -168,6 +191,8 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const handleNext = () => {
     if (canProceed()) {
       if (step === 4) {
+        // Clear onboarding progress when complete
+        localStorage.removeItem('onboardingProgress');
         onComplete(data);
       } else if (step === 2) {
         // Check cash flow after step 2 before proceeding
@@ -202,6 +227,26 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
     if (step > 1) {
       setStep(step - 1);
     }
+  };
+
+  const handleStartOver = () => {
+    localStorage.removeItem('onboardingProgress');
+    setStep(1);
+    setData({
+      userName: '',
+      grossIncome: '',
+      monthlyIncome: '',
+      essentialExpenses: '',
+      discretionaryExpenses: '',
+      address: '',
+      debts: [{ id: '1', name: '', type: 'Credit Card', balance: '', interestRate: '', minPayment: '' }],
+      hasHELOC: false,
+      helocLimit: '',
+      helocRate: '',
+      helocBalance: '',
+      helocMinPayment: '',
+    });
+    setIsResuming(false);
   };
 
   const renderProgressBar = () => (
@@ -786,6 +831,22 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full my-8 animate-in fade-in zoom-in duration-300 flex flex-col max-h-[90vh]">
           <div className="p-8 pb-4">
             {renderProgressBar()}
+
+            {isResuming && (
+              <div className="mb-4 bg-blue-50 border-2 border-blue-300 rounded-lg p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <p className="text-blue-900 font-semibold">Welcome back! Let's pick up where you left off.</p>
+                  </div>
+                  <button
+                    onClick={handleStartOver}
+                    className="text-sm text-blue-700 hover:text-blue-800 font-semibold underline whitespace-nowrap"
+                  >
+                    Start Over
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto px-8 pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
