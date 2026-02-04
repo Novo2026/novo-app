@@ -180,7 +180,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
             parseCurrency(data.helocLimit) > 0 &&
             parseFloat(data.helocRate) >= 0 &&
             (helocBalance === 0 || helocMinPayment > 0);
-          return hasValidDebts && helocValid;
+          return helocValid;
         }
         return hasValidDebts;
       default:
@@ -589,7 +589,12 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       {/* Debts Section */}
       <div className="border-t-2 border-gray-200 pt-6">
         <h3 className="text-lg font-bold text-gray-800 mb-4 text-center">Add Your Debts</h3>
-        <p className="text-sm text-gray-600 mb-4 text-center">Add at least one debt to continue</p>
+        <p className="text-sm text-gray-600 mb-4 text-center">
+          {data.hasHELOC
+            ? "Add debts you want to eliminate, or proceed to start tracking your HELOC"
+            : "Add at least one debt to continue"
+          }
+        </p>
       </div>
 
       <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
