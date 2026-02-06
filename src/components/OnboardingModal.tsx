@@ -158,7 +158,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       case 2:
         return parseCurrency(data.grossIncome) > 0 && parseCurrency(data.monthlyIncome) > 0 && parseCurrency(data.essentialExpenses) >= 0 && parseCurrency(data.discretionaryExpenses) >= 0;
       case 3:
-        const hasValidDebts = data.debts.some(d => {
+        const hasValidDebt = data.debts.some(d => {
           const basicValid = d.name.trim() !== '' &&
             parseCurrency(d.balance) > 0 &&
             parseFloat(d.interestRate) >= 0 &&
@@ -173,16 +173,16 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
           return basicValid;
         });
-        if (data.hasHELOC) {
+
+        const hasValidHELOC = data.hasHELOC && (() => {
           const helocBalance = parseCurrency(data.helocBalance);
           const helocMinPayment = parseCurrency(data.helocMinPayment);
-          const helocValid =
-            parseCurrency(data.helocLimit) > 0 &&
+          return parseCurrency(data.helocLimit) > 0 &&
             parseFloat(data.helocRate) >= 0 &&
             (helocBalance === 0 || helocMinPayment > 0);
-          return helocValid;
-        }
-        return hasValidDebts;
+        })();
+
+        return hasValidHELOC || hasValidDebt;
       default:
         return true;
     }
@@ -434,15 +434,56 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
     </div>
   );
 
-  const renderStep3 = () => (
-    <div className="space-y-6">
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full mb-4">
-          <CreditCard className="w-8 h-8 text-white" />
+  const getStep3HelperText = (): { text: string; className: string } => {
+    const hasValidDebt = data.debts.some(d => {
+      const basicValid = d.name.trim() !== '' &&
+        parseCurrency(d.balance) > 0 &&
+        parseFloat(d.interestRate) >= 0 &&
+        parseCurrency(d.minPayment) > 0;
+
+      if (d.type === 'Mortgage') {
+        return basicValid &&
+          parseCurrency(d.originalAmount || '0') > 0 &&
+          (d.loanStartDate || '').match(/^\d{2}\/\d{4}$/) !== null &&
+          (d.loanTerm || '') !== '';
+      }
+
+      return basicValid;
+    });
+
+    const hasValidHELOC = data.hasHELOC && (() => {
+      const helocBalance = parseCurrency(data.helocBalance);
+      const helocMinPayment = parseCurrency(data.helocMinPayment);
+      return parseCurrency(data.helocLimit) > 0 &&
+        parseFloat(data.helocRate) >= 0 &&
+        (helocBalance === 0 || helocMinPayment > 0);
+    })();
+
+    if (hasValidHELOC && hasValidDebt) {
+      return { text: "Looking good! You can proceed when ready.", className: "text-emerald-600" };
+    } else if (hasValidHELOC && !hasValidDebt) {
+      return { text: "You can proceed to explore HELOC features, or add debts to track", className: "text-emerald-600" };
+    } else if (!data.hasHELOC && hasValidDebt) {
+      return { text: "Looking good! You can proceed when ready.", className: "text-emerald-600" };
+    } else if (data.hasHELOC && !hasValidHELOC) {
+      return { text: "Complete HELOC details or add at least one debt to continue", className: "text-gray-600" };
+    } else {
+      return { text: "Add at least one debt to continue", className: "text-gray-600" };
+    }
+  };
+
+  const renderStep3 = () => {
+    const helperInfo = getStep3HelperText();
+
+    return (
+      <div className="space-y-6">
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full mb-4">
+            <CreditCard className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Now let's add your debts</h1>
+          <p className="text-gray-600">First, tell us about your HELOC situation</p>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Now let's add your debts</h1>
-        <p className="text-gray-600">First, tell us about your HELOC situation</p>
-      </div>
 
       {/* HELOC Question Section */}
       <div className="space-y-4 mb-8">
@@ -589,11 +630,8 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       {/* Debts Section */}
       <div className="border-t-2 border-gray-200 pt-6">
         <h3 className="text-lg font-bold text-gray-800 mb-4 text-center">Add Your Debts</h3>
-        <p className="text-sm text-gray-600 mb-4 text-center">
-          {data.hasHELOC
-            ? "Add debts you want to eliminate, or proceed to start tracking your HELOC"
-            : "Add at least one debt to continue"
-          }
+        <p className={`text-sm font-semibold mb-4 text-center ${helperInfo.className}`}>
+          {helperInfo.text}
         </p>
       </div>
 
@@ -765,8 +803,9 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         <Plus className="w-5 h-5" />
         <span>Add Another Debt</span>
       </button>
-    </div>
-  );
+      </div>
+    );
+  };
 
   const renderStep4 = () => {
     const totalDebt = getTotalDebt();
