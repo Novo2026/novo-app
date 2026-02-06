@@ -158,31 +158,12 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       case 2:
         return parseCurrency(data.grossIncome) > 0 && parseCurrency(data.monthlyIncome) > 0 && parseCurrency(data.essentialExpenses) >= 0 && parseCurrency(data.discretionaryExpenses) >= 0;
       case 3:
-        const hasValidDebt = data.debts.some(d => {
-          const basicValid = d.name.trim() !== '' &&
-            parseCurrency(d.balance) > 0 &&
-            parseFloat(d.interestRate) >= 0 &&
-            parseCurrency(d.minPayment) > 0;
+        const hasHELOC = data.hasHELOC === true;
+        const debtCount = data.debts.filter(d =>
+          d.name.trim() !== '' && parseCurrency(d.balance) > 0
+        ).length;
 
-          if (d.type === 'Mortgage') {
-            return basicValid &&
-              parseCurrency(d.originalAmount || '0') > 0 &&
-              (d.loanStartDate || '').match(/^\d{2}\/\d{4}$/) !== null &&
-              (d.loanTerm || '') !== '';
-          }
-
-          return basicValid;
-        });
-
-        const hasValidHELOC = data.hasHELOC && (() => {
-          const helocBalance = parseCurrency(data.helocBalance);
-          const helocMinPayment = parseCurrency(data.helocMinPayment);
-          return parseCurrency(data.helocLimit) > 0 &&
-            parseFloat(data.helocRate) >= 0 &&
-            (helocBalance === 0 || helocMinPayment > 0);
-        })();
-
-        return hasValidHELOC || hasValidDebt;
+        return hasHELOC || debtCount >= 1;
       default:
         return true;
     }
@@ -435,40 +416,19 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
   );
 
   const getStep3HelperText = (): { text: string; className: string } => {
-    const hasValidDebt = data.debts.some(d => {
-      const basicValid = d.name.trim() !== '' &&
-        parseCurrency(d.balance) > 0 &&
-        parseFloat(d.interestRate) >= 0 &&
-        parseCurrency(d.minPayment) > 0;
+    const hasHELOC = data.hasHELOC === true;
+    const debtCount = data.debts.filter(d =>
+      d.name.trim() !== '' && parseCurrency(d.balance) > 0
+    ).length;
 
-      if (d.type === 'Mortgage') {
-        return basicValid &&
-          parseCurrency(d.originalAmount || '0') > 0 &&
-          (d.loanStartDate || '').match(/^\d{2}\/\d{4}$/) !== null &&
-          (d.loanTerm || '') !== '';
-      }
-
-      return basicValid;
-    });
-
-    const hasValidHELOC = data.hasHELOC && (() => {
-      const helocBalance = parseCurrency(data.helocBalance);
-      const helocMinPayment = parseCurrency(data.helocMinPayment);
-      return parseCurrency(data.helocLimit) > 0 &&
-        parseFloat(data.helocRate) >= 0 &&
-        (helocBalance === 0 || helocMinPayment > 0);
-    })();
-
-    if (hasValidHELOC && hasValidDebt) {
+    if (hasHELOC && debtCount > 0) {
       return { text: "Looking good! You can proceed when ready.", className: "text-emerald-600" };
-    } else if (hasValidHELOC && !hasValidDebt) {
+    } else if (hasHELOC && debtCount === 0) {
       return { text: "You can proceed to explore HELOC features, or add debts to track", className: "text-emerald-600" };
-    } else if (!data.hasHELOC && hasValidDebt) {
+    } else if (!hasHELOC && debtCount > 0) {
       return { text: "Looking good! You can proceed when ready.", className: "text-emerald-600" };
-    } else if (data.hasHELOC && !hasValidHELOC) {
-      return { text: "Complete HELOC details or add at least one debt to continue", className: "text-gray-600" };
     } else {
-      return { text: "Add at least one debt to continue", className: "text-gray-600" };
+      return { text: "Please add at least one debt or enable HELOC to continue", className: "text-red-600" };
     }
   };
 
