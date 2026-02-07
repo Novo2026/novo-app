@@ -9,6 +9,7 @@ import ProgressReports from './components/ProgressReports';
 import Guide from './components/Guide';
 import Settings from './components/Settings';
 import OnboardingModal from './components/OnboardingModal';
+import WelcomeTourModal from './components/WelcomeTourModal';
 import { StorageService } from './services/storage';
 import type { Debt, Transaction, FeaturePreferences } from './types';
 
@@ -20,17 +21,22 @@ function App() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showWelcomeTour, setShowWelcomeTour] = useState(false);
+  const [welcomeTourData, setWelcomeTourData] = useState<{ userName: string; hasHELOC: boolean }>({ userName: '', hasHELOC: false });
   const [featurePreferences, setFeaturePreferences] = useState<FeaturePreferences>({
     helocEnabled: false,
     checkingEnabled: true,
   });
   const [showHelocWelcome, setShowHelocWelcome] = useState(false);
+  const [askNovoClicked, setAskNovoClicked] = useState(false);
 
   useEffect(() => {
     StorageService.deduplicatePayments();
     loadData();
     checkOnboarding();
     loadFeaturePreferences();
+    const clicked = localStorage.getItem('askNovoClicked') === 'true';
+    setAskNovoClicked(clicked);
   }, []);
 
   const loadFeaturePreferences = () => {
@@ -118,6 +124,15 @@ function App() {
 
     setShowOnboarding(false);
     loadData();
+
+    const shouldShowTour = localStorage.getItem('welcomeTourCompleted') !== 'true';
+    if (shouldShowTour) {
+      setWelcomeTourData({
+        userName: data.userName,
+        hasHELOC: data.hasHELOC || false,
+      });
+      setShowWelcomeTour(true);
+    }
   };
 
   const loadData = () => {
@@ -138,6 +153,26 @@ function App() {
     setTimeout(() => {
       setShowHelocWelcome(false);
     }, 5000);
+  };
+
+  const handleWelcomeTourNavigate = (section: 'dashboard' | 'strategies', scrollTo?: string) => {
+    setCurrentSection(section);
+    if (scrollTo) {
+      setTimeout(() => {
+        const element = document.getElementById(scrollTo);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    }
+  };
+
+  const handleAskNovoClick = () => {
+    if (!askNovoClicked) {
+      localStorage.setItem('askNovoClicked', 'true');
+      setAskNovoClicked(true);
+    }
+    window.open('https://chatgpt.com/g/g-68c32b52752c819199d83ce4a6d6435e-novo-gpt', '_blank');
   };
 
   const renderSection = () => {
@@ -166,24 +201,40 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       {showOnboarding && <OnboardingModal onComplete={handleOnboardingComplete} />}
+      {showWelcomeTour && (
+        <WelcomeTourModal
+          userName={welcomeTourData.userName}
+          hasHELOC={welcomeTourData.hasHELOC}
+          onNavigate={handleWelcomeTourNavigate}
+          onAskNovo={handleAskNovoClick}
+          onClose={() => setShowWelcomeTour(false)}
+        />
+      )}
 
       <header className="bg-[#1E3A5F] text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <div className="text-2xl font-bold text-[#FF6B35]">NOVO</div>
+            <button
+              onClick={() => setCurrentSection('dashboard')}
+              className="flex items-center space-x-3 group cursor-pointer"
+            >
+              <img
+                src="/novo_primary.png"
+                alt="NOVO Logo"
+                className="h-10 w-auto transition-transform duration-200 group-hover:scale-105"
+              />
               <div className="hidden sm:block text-sm text-gray-300">Debt Payoff Calculator</div>
-            </div>
-            <a
-              href="https://chatgpt.com/g/g-68c32b52752c819199d83ce4a6d6435e-novo-gpt"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group flex items-center space-x-2 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md hover:shadow-lg"
+            </button>
+            <button
+              onClick={handleAskNovoClick}
+              className={`group flex items-center space-x-2 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md hover:shadow-lg ${
+                !askNovoClicked ? 'animate-gentle-pulse' : ''
+              }`}
               title="Get personalized debt coaching from NOVO's AI assistant"
             >
               <MessageCircle className="w-5 h-5" />
               <span className="hidden sm:inline">Ask NOVO</span>
-            </a>
+            </button>
           </div>
         </div>
       </header>

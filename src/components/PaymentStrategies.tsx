@@ -152,7 +152,7 @@ export default function PaymentStrategies({ onDataUpdate }: PaymentStrategiesPro
       </div>
 
       {!featurePreferences.helocEnabled && (
-        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-xl p-6 shadow-lg max-w-3xl mx-auto">
+        <div id="heloc-section" className="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-xl p-6 shadow-lg max-w-3xl mx-auto">
           <div className="flex items-start space-x-4">
             <div className="text-4xl">💡</div>
             <div className="flex-1">

@@ -480,7 +480,7 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div id="strategy-comparison" className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-gradient-to-br from-[#27AE60] to-[#229954] text-white rounded-lg shadow-lg p-6">
               <h3 className="text-sm font-semibold mb-2 opacity-90">Your Strategy (Optimized)</h3>
               <div className="space-y-3">
