@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
-import { Plus, Download, Edit2, X, DollarSign, CreditCard, TrendingUp, TrendingDown, Link2, ArrowRightLeft } from 'lucide-react';
+import { Plus, Download, CreditCard as Edit2, X, DollarSign, CreditCard, TrendingUp, TrendingDown, Link2, ArrowRightLeft } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CalculationService } from '../services/calculations';
 import { StorageService } from '../services/storage';
+import DatePicker from './DatePicker';
 import type { UnifiedPayment } from '../types';
 
 interface CheckingTransaction {
@@ -815,15 +816,12 @@ function TransactionModal({
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Date</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#27AE60] focus:border-transparent"
-            />
-          </div>
+          <DatePicker
+            label="Date"
+            value={date}
+            onChange={setDate}
+            demoMode={JSON.parse(localStorage.getItem('novo_demo_mode') || 'false')}
+          />
 
           {type === 'withdrawal' && (
             <>
@@ -1096,15 +1094,12 @@ function TransferToHelocModal({
             <p className="text-xs text-gray-500 mt-1">Available: {CalculationService.formatCurrency(currentBalance)}</p>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Date</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#9B59B6] focus:border-transparent"
-            />
-          </div>
+          <DatePicker
+            label="Date"
+            value={date}
+            onChange={setDate}
+            demoMode={JSON.parse(localStorage.getItem('novo_demo_mode') || 'false')}
+          />
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-3">Reason</label>

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { TrendingUp, Plus, Download, Edit2, X, CreditCard, Wallet, PenLine, Link2, Zap } from 'lucide-react';
+import { TrendingUp, Plus, Download, CreditCard as Edit2, X, CreditCard, Wallet, PenLine, Link2, Zap } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
@@ -8,6 +8,7 @@ import Accordion from './Accordion';
 import ChunkingRecommendation from './ChunkingRecommendation';
 import ChunkingScenarioComparison from './ChunkingScenarioComparison';
 import ChunkingPlanCalculator from './ChunkingPlanCalculator';
+import DatePicker from './DatePicker';
 import type { UnifiedPayment } from '../types';
 import AdvancedVelocityBanking from './AdvancedVelocityBanking';
 import ChunkingRiskAssessment from './ChunkingRiskAssessment';
@@ -1144,15 +1145,12 @@ function RecordDrawModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Date</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
-            />
-          </div>
+          <DatePicker
+            label="Date"
+            value={date}
+            onChange={setDate}
+            demoMode={JSON.parse(localStorage.getItem('novo_demo_mode') || 'false')}
+          />
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Purpose</label>
@@ -1509,15 +1507,12 @@ function RecordPaymentModal({
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Date</label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
-            />
-          </div>
+          <DatePicker
+            label="Date"
+            value={date}
+            onChange={setDate}
+            demoMode={JSON.parse(localStorage.getItem('novo_demo_mode') || 'false')}
+          />
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>

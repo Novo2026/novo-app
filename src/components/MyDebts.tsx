@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Plus, ArrowLeft, DollarSign, Pencil, Trash2 } from 'lucide-react';
+import { Plus, ArrowLeft, DollarSign, Pencil, Trash2, Calendar } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import AddDebtModal from './AddDebtModal';
 import AddChargeModal from './AddChargeModal';
 import DebtDetailView from './DebtDetailView';
 import EditDebtModal from './EditDebtModal';
+import BatchEntryModal from './BatchEntryModal';
 import type { Debt } from '../types';
 
 interface MyDebtsProps {
@@ -21,6 +22,8 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingDebt, setDeletingDebt] = useState<Debt | null>(null);
+  const [showBatchEntry, setShowBatchEntry] = useState(false);
+  const [batchEntryDebt, setBatchEntryDebt] = useState<Debt | null>(null);
 
   const debts = StorageService.getDebts().filter(d => d.category !== 'HELOC');
 
@@ -214,19 +217,33 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                   </div>
                 )}
 
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handleViewDetail(debt)}
-                    className="flex-1 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white text-sm font-semibold py-2 px-4 rounded transition-colors"
-                  >
-                    View Details
-                  </button>
-                  {(!debt.isPaidOff || debt.category === 'Credit Card') && (
+                <div className="flex flex-col space-y-2">
+                  <div className="flex space-x-2">
                     <button
-                      onClick={() => handleAddCharge(debt.id)}
-                      className="bg-[#F2C94C] hover:bg-[#E0B73C] text-gray-800 text-sm font-semibold py-2 px-4 rounded transition-colors"
+                      onClick={() => handleViewDetail(debt)}
+                      className="flex-1 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white text-sm font-semibold py-2 px-4 rounded transition-colors"
                     >
-                      Add Charge
+                      View Details
+                    </button>
+                    {(!debt.isPaidOff || debt.category === 'Credit Card') && (
+                      <button
+                        onClick={() => handleAddCharge(debt.id)}
+                        className="bg-[#F2C94C] hover:bg-[#E0B73C] text-gray-800 text-sm font-semibold py-2 px-4 rounded transition-colors"
+                      >
+                        Add Charge
+                      </button>
+                    )}
+                  </div>
+                  {!debt.isPaidOff && (
+                    <button
+                      onClick={() => {
+                        setBatchEntryDebt(debt);
+                        setShowBatchEntry(true);
+                      }}
+                      className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-semibold py-2 px-4 rounded transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <Calendar className="w-4 h-4" />
+                      <span>Batch Entry (Demo)</span>
                     </button>
                   )}
                 </div>
@@ -262,6 +279,22 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
             setEditingDebt(null);
           }}
           onSuccess={handleDebtEdited}
+        />
+      )}
+
+      {showBatchEntry && batchEntryDebt && (
+        <BatchEntryModal
+          debtId={batchEntryDebt.id}
+          debtName={batchEntryDebt.accountName}
+          currentBalance={batchEntryDebt.currentBalance}
+          minimumPayment={batchEntryDebt.minimumPayment}
+          onClose={() => {
+            setShowBatchEntry(false);
+            setBatchEntryDebt(null);
+          }}
+          onComplete={() => {
+            onDataUpdate();
+          }}
         />
       )}
 

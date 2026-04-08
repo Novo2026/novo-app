@@ -32,6 +32,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
     helocEnabled: false,
     checkingEnabled: true,
   });
+  const [demoMode, setDemoMode] = useState(false);
 
   // Strategy Readiness Assessment state
   const [readinessAnswers, setReadinessAnswers] = useState<Record<number, boolean>>(() => {
@@ -56,6 +57,9 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
     } else {
       setQuizStatus('not-taken');
     }
+
+    const demoModeStored = localStorage.getItem('novo_demo_mode') === 'true';
+    setDemoMode(demoModeStored);
   }, []);
 
   const handleExportPaymentHistory = () => {
@@ -177,6 +181,14 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
     setTimeout(() => {
       setShowFeaturesSuccess(false);
     }, 3000);
+  };
+
+  const handleToggleDemoMode = () => {
+    const newDemoMode = !demoMode;
+    setDemoMode(newDemoMode);
+    localStorage.setItem('novo_demo_mode', newDemoMode.toString());
+    setShowFeaturesSuccess(true);
+    setTimeout(() => setShowFeaturesSuccess(false), 3000);
   };
 
   const handleClearAllData = () => {
@@ -540,6 +552,43 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
                 <span
                   className={`${
                     featurePreferences.checkingEnabled ? 'translate-x-7' : 'translate-x-1'
+                  } inline-block h-6 w-6 transform rounded-full bg-white transition-transform shadow-lg`}
+                />
+              </button>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-gray-300">
+            <div className="flex items-center justify-between">
+              <div className="flex items-start space-x-3 flex-1">
+                <div className="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                  <span className="text-lg">⚙️</span>
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-gray-800">Demo Mode</h4>
+                  <p className="text-sm text-gray-600">
+                    Allow unrestricted date entry for demonstrations and testing
+                  </p>
+                  {demoMode && (
+                    <div className="mt-2 bg-amber-50 border border-amber-300 rounded-md px-3 py-2">
+                      <p className="text-xs text-amber-800 font-medium">
+                        ⚠️ Demo Mode Active - Any date can be entered for transactions
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={handleToggleDemoMode}
+                className={`ml-4 flex-shrink-0 relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                  demoMode ? 'bg-amber-500' : 'bg-gray-300'
+                }`}
+                role="switch"
+                aria-checked={demoMode}
+              >
+                <span
+                  className={`${
+                    demoMode ? 'translate-x-7' : 'translate-x-1'
                   } inline-block h-6 w-6 transform rounded-full bg-white transition-transform shadow-lg`}
                 />
               </button>

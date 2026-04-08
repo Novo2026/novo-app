@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, CheckCircle } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
+import DatePicker from './DatePicker';
 import type { Debt, Transaction } from '../types';
 
 interface EditPaymentModalProps {
@@ -140,18 +141,12 @@ export default function EditPaymentModal({ transaction, onClose, onSuccess }: Ed
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Payment Date
-            </label>
-            <input
-              type="date"
-              value={paymentDate}
-              onChange={(e) => setPaymentDate(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
-              required
-            />
-          </div>
+          <DatePicker
+            label="Payment Date"
+            value={paymentDate}
+            onChange={setPaymentDate}
+            demoMode={JSON.parse(localStorage.getItem('novo_demo_mode') || 'false')}
+          />
 
           <div>
             <label className="flex items-center space-x-2 cursor-pointer">
