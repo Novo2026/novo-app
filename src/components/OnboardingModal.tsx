@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, CreditCard, CheckCircle, ChevronLeft, Plus, X, Info } from 'lucide-react';
+import { DollarSign, CreditCard, CheckCircle, ChevronLeft, Plus, X, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
 import CashFlowWarningModal from './CashFlowWarningModal';
 import LearnHELOCModal from './LearnHELOCModal';
@@ -40,6 +40,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const [showCashFlowWarning, setShowCashFlowWarning] = useState(false);
   const [showLearnHELOCModal, setShowLearnHELOCModal] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
+  const [showStrategyExplanation, setShowStrategyExplanation] = useState(false);
   const [data, setData] = useState<OnboardingData>({
     userName: '',
     grossIncome: '',
@@ -441,73 +442,111 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full mb-4">
             <CreditCard className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Now let's add your debts</h1>
-          <p className="text-gray-600">First, tell us about your HELOC situation</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">NOVO works for everyone</h1>
+          <p className="text-gray-600">With or without a HELOC</p>
         </div>
 
-      {/* HELOC Question Section */}
+      {/* Strategy Selection Section */}
       <div className="space-y-4 mb-8">
-        <h3 className="text-lg font-bold text-gray-800 text-center">Do you have a Home Equity Line of Credit (HELOC)?</h3>
+        <div className="text-center mb-6">
+          <h3 className="text-xl font-bold text-gray-800 mb-2">Choose your debt elimination approach</h3>
+          <p className="text-sm text-gray-600">Most users eliminate debt using cash flow strategies alone. HELOC is an advanced option for homeowners.</p>
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* YES Card */}
-          <button
-            type="button"
-            onClick={() => setData({ ...data, hasHELOC: true })}
-            className={`relative p-6 rounded-xl border-2 transition-all duration-200 text-left ${
-              data.hasHELOC
-                ? 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-500 shadow-lg scale-105'
-                : 'bg-white border-gray-300 hover:border-blue-300 hover:shadow-md'
-            }`}
-          >
-            <div className="flex items-start space-x-3">
-              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg ${
-                data.hasHELOC ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
-              }`}>
-                {data.hasHELOC ? '✓' : '○'}
-              </div>
-              <div className="flex-1">
-                <h4 className="font-bold text-gray-900 mb-2 text-lg">Yes, I have a HELOC</h4>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  I want to use velocity banking strategies to accelerate debt payoff
-                </p>
-              </div>
-            </div>
-          </button>
-
-          {/* NO Card */}
+        <div className="space-y-4">
+          {/* Cash Flow Strategies Card */}
           <button
             type="button"
             onClick={() => setData({ ...data, hasHELOC: false })}
-            className={`relative p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+            className={`w-full p-6 rounded-xl border-2 transition-all duration-200 text-left ${
               !data.hasHELOC
-                ? 'bg-gradient-to-br from-gray-50 to-slate-50 border-gray-500 shadow-lg scale-105'
-                : 'bg-white border-gray-300 hover:border-gray-400 hover:shadow-md'
+                ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-500 shadow-lg'
+                : 'bg-white border-gray-300 hover:border-emerald-300 hover:shadow-md'
             }`}
           >
-            <div className="flex items-start space-x-3">
-              <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg ${
-                !data.hasHELOC ? 'bg-gray-600 text-white' : 'bg-gray-200 text-gray-600'
+            <div className="flex items-start space-x-4">
+              <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl ${
+                !data.hasHELOC ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-600'
               }`}>
-                {!data.hasHELOC ? '✓' : '○'}
+                {!data.hasHELOC ? '●' : '○'}
               </div>
               <div className="flex-1">
-                <h4 className="font-bold text-gray-900 mb-2 text-lg">No, I don't have a HELOC</h4>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  I'll use cash flow strategies to eliminate debt
+                <h4 className="font-bold text-gray-900 mb-2 text-lg">Cash Flow Strategies</h4>
+                <p className="text-sm text-gray-700 leading-relaxed mb-3">
+                  I'll use my income and budget to eliminate debt (works for everyone)
                 </p>
+                <div className="inline-flex items-center space-x-1 bg-emerald-100 text-emerald-700 text-xs font-semibold px-3 py-1 rounded-full">
+                  <CheckCircle className="w-3 h-3" />
+                  <span>Recommended for most users</span>
+                </div>
+              </div>
+            </div>
+          </button>
+
+          {/* Cash Flow + HELOC Card */}
+          <button
+            type="button"
+            onClick={() => setData({ ...data, hasHELOC: true })}
+            className={`w-full p-6 rounded-xl border-2 transition-all duration-200 text-left ${
+              data.hasHELOC
+                ? 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-500 shadow-lg'
+                : 'bg-white border-gray-300 hover:border-blue-300 hover:shadow-md'
+            }`}
+          >
+            <div className="flex items-start space-x-4">
+              <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-xl ${
+                data.hasHELOC ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-600'
+              }`}>
+                {data.hasHELOC ? '●' : '○'}
+              </div>
+              <div className="flex-1">
+                <h4 className="font-bold text-gray-900 mb-2 text-lg">Cash Flow + HELOC Strategies</h4>
+                <p className="text-sm text-gray-700 leading-relaxed mb-3">
+                  I'm a homeowner with a HELOC and want to explore velocity banking (advanced)
+                </p>
+                <div className="text-xs text-gray-600 font-medium">
+                  Optional - for homeowners only
+                </div>
               </div>
             </div>
           </button>
         </div>
 
-        <div className="text-center">
+        {/* Expandable Explanation */}
+        <div className="border-t border-gray-200 pt-4">
           <button
-            onClick={() => setShowLearnHELOCModal(true)}
-            className="text-sm text-blue-600 hover:text-blue-700 font-semibold underline"
+            type="button"
+            onClick={() => setShowStrategyExplanation(!showStrategyExplanation)}
+            className="w-full flex items-center justify-center space-x-2 text-sm text-blue-600 hover:text-blue-700 font-semibold transition-colors"
           >
-            What's a HELOC and should I get one?
+            <Info className="w-4 h-4" />
+            <span>What's the difference between these options?</span>
+            {showStrategyExplanation ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
+
+          {showStrategyExplanation && (
+            <div className="mt-4 bg-gray-50 border border-gray-200 rounded-lg p-5 space-y-4 text-sm">
+              <div>
+                <h5 className="font-bold text-gray-900 mb-2">Cash Flow Strategies:</h5>
+                <p className="text-gray-700 leading-relaxed">
+                  Attack highest-interest debt first with extra payments from your budget. Works for everyone - renters and homeowners.
+                </p>
+              </div>
+
+              <div>
+                <h5 className="font-bold text-gray-900 mb-2">HELOC Strategies:</h5>
+                <p className="text-gray-700 leading-relaxed">
+                  Use home equity to pay off high-interest debt, then pay down HELOC aggressively. Advanced option for homeowners with equity and stable income.
+                </p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                <p className="text-gray-800 font-medium">
+                  <span className="font-bold">Not sure?</span> Start with Cash Flow Strategies - you can always enable HELOC features later in Settings.
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* HELOC Input Fields */}
