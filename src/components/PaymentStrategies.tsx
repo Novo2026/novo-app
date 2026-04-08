@@ -113,6 +113,58 @@ export default function PaymentStrategies({ onDataUpdate }: PaymentStrategiesPro
         </button>
       </div>
 
+      {!featurePreferences.helocEnabled && (
+        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-300 rounded-xl p-8 shadow-md max-w-3xl mx-auto">
+          <div className="flex items-start space-x-4">
+            <div className="flex-shrink-0">
+              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-7 h-7 text-white" />
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                Good News: You Don't Need a HELOC to Succeed
+              </h3>
+              <p className="text-gray-700 leading-relaxed mb-4">
+                Most NOVO users eliminate debt using the debt avalanche method with regular cash flow.
+              </p>
+
+              <div className="bg-white/60 border border-blue-200 rounded-lg p-5 mb-4">
+                <p className="font-semibold text-gray-900 mb-2">
+                  Example: Sarah had $38K in debt (credit cards, auto loan, student loans)
+                </p>
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li className="flex items-start">
+                    <span className="text-emerald-600 mr-2 font-bold">•</span>
+                    <span>Used debt avalanche (highest interest first)</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-emerald-600 mr-2 font-bold">•</span>
+                    <span>Freed up $520/month as debts paid off</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-emerald-600 mr-2 font-bold">•</span>
+                    <span>Debt-free in 5 years vs. 14 years</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-emerald-600 mr-2 font-bold">•</span>
+                    <span>Saved $22K in interest</span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-emerald-600 mr-2 font-bold">•</span>
+                    <span className="font-semibold">No HELOC required - just discipline</span>
+                  </li>
+                </ul>
+              </div>
+
+              <p className="text-gray-800 font-semibold text-lg">
+                Your strategy below shows YOUR fastest path.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-md p-6 text-center">
           <div className="w-12 h-12 bg-[#2D9CDB]/20 rounded-full flex items-center justify-center mx-auto mb-3">
