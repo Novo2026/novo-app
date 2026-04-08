@@ -25,6 +25,13 @@ export default function PaymentStrategies({ onDataUpdate }: PaymentStrategiesPro
   const financialProfile = StorageService.getFinancialProfile();
   const featurePreferences = StorageService.getFeaturePreferences();
 
+  // Track strategy page view
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('event', 'strategy_viewed');
+    }
+  }, []);
+
   useEffect(() => {
     const checkAndAutoRecalculate = () => {
       if (StorageService.shouldAutoRecalculate()) {

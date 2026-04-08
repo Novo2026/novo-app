@@ -278,6 +278,11 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
     } else {
       setShowSuccess(true);
     }
+
+    // Track payment logged event in Google Analytics
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('event', 'payment_logged');
+    }
   };
 
   const handleClose = () => {

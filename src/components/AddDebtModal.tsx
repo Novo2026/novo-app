@@ -51,6 +51,11 @@ export default function AddDebtModal({ onClose, onSuccess }: AddDebtModalProps) 
     debts.push(newDebt);
     StorageService.saveDebts(debts);
 
+    // Track debt added event in Google Analytics
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('event', 'debt_added');
+    }
+
     onSuccess();
   };
 

@@ -172,6 +172,12 @@ function App() {
       localStorage.setItem('askNovoClicked', 'true');
       setAskNovoClicked(true);
     }
+
+    // Track Ask NOVO button click in Google Analytics
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('event', 'ask_novo_clicked');
+    }
+
     window.open('https://chatgpt.com/g/g-68c32b52752c819199d83ce4a6d6435e-novo-gpt', '_blank');
   };
 

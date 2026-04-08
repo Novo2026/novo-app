@@ -175,6 +175,12 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       if (step === 4) {
         // Clear onboarding progress when complete
         localStorage.removeItem('onboardingProgress');
+
+        // Track onboarding completion in Google Analytics
+        if (typeof window !== 'undefined' && (window as any).gtag) {
+          (window as any).gtag('event', 'onboarding_complete');
+        }
+
         onComplete(data);
       } else if (step === 2) {
         // Check cash flow after step 2 before proceeding
