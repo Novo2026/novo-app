@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Home, CreditCard, TrendingUp, BarChart3, Settings as SettingsIcon, Wallet, PiggyBank, MessageCircle, BookOpen, CheckCircle, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Home, CreditCard, TrendingUp, BarChart3, Settings as SettingsIcon, Wallet, PiggyBank, MessageCircle, BookOpen, CheckCircle, X, Menu } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import MyDebts from './components/MyDebts';
 import PaymentStrategies from './components/PaymentStrategies';
@@ -29,6 +29,11 @@ function App() {
   });
   const [showHelocWelcome, setShowHelocWelcome] = useState(false);
   const [askNovoClicked, setAskNovoClicked] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [menuOpenCount, setMenuOpenCount] = useState(() => {
+    return parseInt(localStorage.getItem('menuOpenCount') || '0', 10);
+  });
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     StorageService.deduplicatePayments();
@@ -167,6 +172,26 @@ function App() {
     }
   };
 
+  const openMobileMenu = () => {
+    const newCount = menuOpenCount + 1;
+    setMenuOpenCount(newCount);
+    localStorage.setItem('menuOpenCount', String(newCount));
+    setMobileMenuOpen(true);
+    setTimeout(() => {
+      if (menuRef.current) {
+        const firstFocusable = menuRef.current.querySelector<HTMLElement>('button, [href]');
+        firstFocusable?.focus();
+      }
+    }, 50);
+  };
+
+  const closeMobileMenu = () => setMobileMenuOpen(false);
+
+  const handleMobileNavClick = (section: Section) => {
+    setCurrentSection(section);
+    closeMobileMenu();
+  };
+
   const handleAskNovoClick = () => {
     if (!askNovoClicked) {
       localStorage.setItem('askNovoClicked', 'true');
@@ -217,20 +242,104 @@ function App() {
         />
       )}
 
+      {/* Mobile slide-out menu overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={closeMobileMenu}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Mobile slide-out drawer */}
+      <div
+        ref={menuRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation menu"
+        className={`fixed top-0 left-0 h-full w-[280px] bg-white z-50 shadow-2xl flex flex-col md:hidden transition-transform duration-300 ease-in-out ${
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+        onKeyDown={(e) => { if (e.key === 'Escape') closeMobileMenu(); }}
+      >
+        <div className="flex items-center justify-between px-4 py-4 bg-[#1E3A5F]">
+          <img src="/novo_primary.png" alt="NOVO Logo" className="h-8 w-auto" />
+          <button
+            onClick={closeMobileMenu}
+            aria-label="Close navigation menu"
+            className="text-white hover:text-gray-300 transition-colors p-1 rounded"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto py-2">
+          {([
+            { section: 'dashboard' as Section, label: 'Dashboard', icon: Home },
+            { section: 'debts' as Section, label: 'My Debts', icon: CreditCard },
+            { section: 'strategies' as Section, label: 'Payment Strategies', icon: TrendingUp },
+            ...((featurePreferences.helocEnabled || featurePreferences.checkingEnabled)
+              ? [{ section: 'tracker' as Section, label: 'Cash Flow', icon: Wallet }]
+              : []),
+            { section: 'savings' as Section, label: 'Savings Tracker', icon: PiggyBank },
+            { section: 'progress' as Section, label: 'Progress Reports', icon: BarChart3 },
+            { section: 'guide' as Section, label: 'How to Use', icon: BookOpen },
+            { section: 'settings' as Section, label: 'Settings', icon: SettingsIcon },
+          ] as Array<{ section: Section; label: string; icon: any }>).map(({ section, label, icon: Icon }) => (
+            <button
+              key={section}
+              onClick={() => handleMobileNavClick(section)}
+              className={`w-full flex items-center gap-3 px-5 py-4 text-left transition-colors min-h-[48px] ${
+                currentSection === section
+                  ? 'bg-[#FF6B35]/10 text-[#FF6B35] font-semibold border-l-4 border-[#FF6B35]'
+                  : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent'
+              }`}
+            >
+              <Icon className="w-5 h-5 flex-shrink-0" />
+              <span className="text-base">{label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="px-4 py-4 border-t border-gray-100">
+          <button
+            onClick={() => { handleAskNovoClick(); closeMobileMenu(); }}
+            className="w-full flex items-center justify-center gap-2 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold px-4 py-3 rounded-lg transition-colors"
+          >
+            <MessageCircle className="w-5 h-5" />
+            Ask NOVO
+          </button>
+        </div>
+      </div>
+
       <header className="bg-[#1E3A5F] text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <button
-              onClick={() => setCurrentSection('dashboard')}
-              className="flex items-center space-x-3 group cursor-pointer"
-            >
-              <img
-                src="/novo_primary.png"
-                alt="NOVO Logo"
-                className="h-10 w-auto transition-transform duration-200 group-hover:scale-105"
-              />
-              <div className="hidden sm:block text-sm text-gray-300">Debt Payoff Calculator</div>
-            </button>
+            {/* Mobile: hamburger + logo | Desktop: logo + subtitle */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={openMobileMenu}
+                aria-label="Open navigation menu"
+                className="relative md:hidden flex items-center justify-center w-10 h-10 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0"
+              >
+                <Menu className="w-6 h-6 text-white" />
+                {menuOpenCount < 3 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" aria-hidden="true" />
+                )}
+              </button>
+              <button
+                onClick={() => setCurrentSection('dashboard')}
+                className="flex items-center space-x-3 group cursor-pointer"
+              >
+                <img
+                  src="/novo_primary.png"
+                  alt="NOVO Logo"
+                  className="h-10 w-auto transition-transform duration-200 group-hover:scale-105"
+                />
+                <div className="hidden sm:block text-sm text-gray-300">Debt Payoff Calculator</div>
+              </button>
+            </div>
+
             <button
               onClick={handleAskNovoClick}
               className={`group flex items-center space-x-2 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md hover:shadow-lg ${
@@ -245,7 +354,7 @@ function App() {
         </div>
       </header>
 
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+      <nav className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm hidden md:block">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex overflow-x-auto">
             <button
