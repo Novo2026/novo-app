@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, DollarSign, Pencil, Trash2, Calendar, RefreshCw, ArrowRightLeft } from 'lucide-react';
+import { Plus, DollarSign, Pencil, Trash2, Calendar, RefreshCw, ArrowRightLeft, Home } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import AddDebtModal from './AddDebtModal';
@@ -8,7 +8,10 @@ import DebtDetailView from './DebtDetailView';
 import EditDebtModal from './EditDebtModal';
 import BatchEntryModal from './BatchEntryModal';
 import RefinanceModal from './RefinanceModal';
-import type { Debt } from '../types';
+import SoldHomeModal from './SoldHomeModal';
+import HomeSaleCelebrationModal from './HomeSaleCelebrationModal';
+import AddReplacementMortgageModal from './AddReplacementMortgageModal';
+import type { Debt, Transaction, Milestone } from '../types';
 
 interface MyDebtsProps {
   onDataUpdate: () => void;
@@ -27,6 +30,16 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
   const [batchEntryDebt, setBatchEntryDebt] = useState<Debt | null>(null);
   const [showRefinance, setShowRefinance] = useState(false);
   const [refinancingDebt, setRefinancingDebt] = useState<Debt | null>(null);
+  const [showSoldHome, setShowSoldHome] = useState(false);
+  const [soldHomeDebt, setSoldHomeDebt] = useState<Debt | null>(null);
+  const [showHomeSaleCelebration, setShowHomeSaleCelebration] = useState(false);
+  const [homeSaleCelebrationData, setHomeSaleCelebrationData] = useState<{
+    mortgageName: string;
+    mortgageId: string;
+    saleDate: string;
+    netProceeds: number | null;
+  } | null>(null);
+  const [showAddReplacementMortgage, setShowAddReplacementMortgage] = useState(false);
 
   const debts = StorageService.getDebts().filter(d => d.category !== 'HELOC');
 
@@ -90,6 +103,85 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
   const handleRefinanceDone = () => {
     setShowRefinance(false);
     setRefinancingDebt(null);
+    onDataUpdate();
+  };
+
+  const handleSoldHomeClick = (debt: Debt, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSoldHomeDebt(debt);
+    setShowSoldHome(true);
+  };
+
+  const handleSoldHomeConfirm = (data: {
+    saleDate: string;
+    payoffAmount: number;
+    salePrice: number | null;
+    netProceeds: number | null;
+  }) => {
+    if (!soldHomeDebt) return;
+
+    const debts = StorageService.getDebts();
+    const idx = debts.findIndex(d => d.id === soldHomeDebt.id);
+    if (idx === -1) return;
+
+    debts[idx] = {
+      ...debts[idx],
+      currentBalance: 0,
+      isPaidOff: true,
+      paidOffDate: data.saleDate,
+      homeSold: true,
+      homeSaleDate: data.saleDate,
+      homeSalePrice: data.salePrice ?? undefined,
+      homeSaleNetProceeds: data.netProceeds ?? undefined,
+    };
+    StorageService.saveDebts(debts);
+
+    const saleTxn: Transaction = {
+      id: `txn_homesale_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      debtId: soldHomeDebt.id,
+      debtName: soldHomeDebt.accountName,
+      date: data.saleDate,
+      type: 'payment',
+      amount: data.payoffAmount,
+      previousBalance: soldHomeDebt.currentBalance,
+      interestCharged: 0,
+      principalPaid: data.payoffAmount,
+      newBalance: 0,
+      notes: `Final payoff from home sale${data.salePrice ? ` - Sale price: ${CalculationService.formatCurrency(data.salePrice)}` : ''}`,
+    };
+    const transactions = StorageService.getTransactions();
+    transactions.push(saleTxn);
+    StorageService.saveTransactions(transactions);
+
+    const milestone: Milestone = {
+      id: `milestone_homesale_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'debt_payoff',
+      title: `Sold home - Paid off ${soldHomeDebt.accountName}`,
+      description: `Home sold on ${CalculationService.formatDate(data.saleDate)}. Mortgage fully paid off from sale proceeds.${data.netProceeds && data.netProceeds > 0 ? ` Net proceeds: ${CalculationService.formatCurrency(data.netProceeds)}.` : ''}`,
+      date: data.saleDate,
+      debtId: soldHomeDebt.id,
+      debtName: soldHomeDebt.accountName,
+      amount: data.payoffAmount,
+      freedPayment: soldHomeDebt.minimumPayment,
+    };
+    StorageService.addMilestone(milestone);
+
+    setShowSoldHome(false);
+    setHomeSaleCelebrationData({
+      mortgageName: soldHomeDebt.accountName,
+      mortgageId: soldHomeDebt.id,
+      saleDate: data.saleDate,
+      netProceeds: data.netProceeds,
+    });
+    setSoldHomeDebt(null);
+    setShowHomeSaleCelebration(true);
+    onDataUpdate();
+  };
+
+  const handleAddReplacementMortgageSuccess = () => {
+    setShowAddReplacementMortgage(false);
+    setShowHomeSaleCelebration(false);
+    setHomeSaleCelebrationData(null);
     onDataUpdate();
   };
 
@@ -203,10 +295,16 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                       </span>
                     )}
                     {debt.isPaidOff ? (
-                      <span className={`text-white text-xs font-bold px-3 py-1 rounded-full ${
+                      <span className={`flex items-center space-x-1 text-white text-xs font-bold px-3 py-1 rounded-full ${
+                        debt.homeSold ? 'bg-amber-500' :
                         debt.transferredToHELOC ? 'bg-[#F2994A]' : 'bg-[#27AE60]'
                       }`}>
-                        {debt.transferredToHELOC ? 'TRANSFERRED' : 'PAID OFF'}
+                        {debt.homeSold && <Home className="w-3 h-3" />}
+                        <span>
+                          {debt.homeSold
+                            ? `Home Sold${debt.homeSaleDate ? ' ' + CalculationService.formatDate(debt.homeSaleDate) : ''}`
+                            : debt.transferredToHELOC ? 'TRANSFERRED' : 'PAID OFF'}
+                        </span>
                       </span>
                     ) : (
                       <span className="bg-red-100 text-red-700 text-xs font-semibold px-2 py-1 rounded">
@@ -245,6 +343,17 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                     <p className="text-xs text-[#F2994A] font-semibold mt-2">
                       Transferred to HELOC
                     </p>
+                  )}
+                  {debt.homeSold && debt.homeSaleNetProceeds != null && debt.homeSaleNetProceeds > 0 && (
+                    <p className="text-xs text-amber-600 font-semibold mt-2">
+                      Net proceeds: {CalculationService.formatCurrency(debt.homeSaleNetProceeds)}
+                    </p>
+                  )}
+                  {debt.replacedByDebtId && !debt.isPaidOff && (
+                    <p className="text-xs text-gray-500 mt-1">Replaced by new mortgage</p>
+                  )}
+                  {debt.replacedDebtName && (
+                    <p className="text-xs text-amber-600 mt-1">Replaced {debt.replacedDebtName}</p>
                   )}
                 </div>
 
@@ -294,6 +403,15 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                     >
                       {getRefinanceIcon(debt)}
                       <span>{getRefinanceButtonLabel(debt)}</span>
+                    </button>
+                  )}
+                  {!debt.isPaidOff && debt.category === 'Mortgage' && (
+                    <button
+                      onClick={(e) => handleSoldHomeClick(debt, e)}
+                      className="w-full bg-amber-50 hover:bg-amber-100 text-amber-700 text-sm font-semibold py-2 px-4 rounded transition-colors flex items-center justify-center space-x-2"
+                    >
+                      <Home className="w-3.5 h-3.5" />
+                      <span>Sold Home</span>
                     </button>
                   )}
                   {!debt.isPaidOff && (
@@ -368,6 +486,46 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
             setRefinancingDebt(null);
           }}
           onSuccess={handleRefinanceDone}
+        />
+      )}
+
+      {showSoldHome && soldHomeDebt && (
+        <SoldHomeModal
+          debt={soldHomeDebt}
+          onClose={() => {
+            setShowSoldHome(false);
+            setSoldHomeDebt(null);
+          }}
+          onConfirm={handleSoldHomeConfirm}
+        />
+      )}
+
+      {showHomeSaleCelebration && homeSaleCelebrationData && (
+        <HomeSaleCelebrationModal
+          mortgageName={homeSaleCelebrationData.mortgageName}
+          saleDate={homeSaleCelebrationData.saleDate}
+          netProceeds={homeSaleCelebrationData.netProceeds}
+          onAddNewMortgage={() => {
+            setShowHomeSaleCelebration(false);
+            setShowAddReplacementMortgage(true);
+          }}
+          onClose={() => {
+            setShowHomeSaleCelebration(false);
+            setHomeSaleCelebrationData(null);
+          }}
+        />
+      )}
+
+      {showAddReplacementMortgage && homeSaleCelebrationData && (
+        <AddReplacementMortgageModal
+          previousMortgageName={homeSaleCelebrationData.mortgageName}
+          previousMortgageId={homeSaleCelebrationData.mortgageId}
+          previousSaleDate={homeSaleCelebrationData.saleDate}
+          onClose={() => {
+            setShowAddReplacementMortgage(false);
+            setHomeSaleCelebrationData(null);
+          }}
+          onSuccess={handleAddReplacementMortgageSuccess}
         />
       )}
 

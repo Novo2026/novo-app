@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw, Home } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -70,8 +70,11 @@ export default function DebtDetailView({ debt, onBack }: DebtDetailViewProps) {
             <p className="text-gray-600">{debt.category}</p>
           </div>
           {debt.isPaidOff ? (
-            <span className="bg-[#27AE60] text-white text-sm font-bold px-4 py-2 rounded-full">
-              PAID OFF
+            <span className={`flex items-center space-x-1.5 text-white text-sm font-bold px-4 py-2 rounded-full ${
+              debt.homeSold ? 'bg-amber-500' : 'bg-[#27AE60]'
+            }`}>
+              {debt.homeSold && <Home className="w-4 h-4" />}
+              <span>{debt.homeSold ? 'Home Sold' : 'PAID OFF'}</span>
             </span>
           ) : (
             <span className="bg-red-100 text-red-700 text-sm font-semibold px-3 py-2 rounded">
@@ -122,6 +125,57 @@ export default function DebtDetailView({ debt, onBack }: DebtDetailViewProps) {
           </div>
         )}
       </div>
+
+      {debt.homeSold && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-5">
+          <div className="flex items-center space-x-2 mb-4">
+            <Home className="w-5 h-5 text-amber-600" />
+            <h3 className="text-lg font-bold text-amber-800">Home Sale Details</h3>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+            {debt.homeSaleDate && (
+              <div>
+                <p className="text-amber-600 font-medium mb-0.5">Sale Date</p>
+                <p className="font-bold text-gray-800">{CalculationService.formatDate(debt.homeSaleDate)}</p>
+              </div>
+            )}
+            {debt.homeSalePrice && (
+              <div>
+                <p className="text-amber-600 font-medium mb-0.5">Sale Price</p>
+                <p className="font-bold text-gray-800">{CalculationService.formatCurrency(debt.homeSalePrice)}</p>
+              </div>
+            )}
+            {debt.homeSaleNetProceeds != null && debt.homeSaleNetProceeds > 0 && (
+              <div>
+                <p className="text-amber-600 font-medium mb-0.5">Net Proceeds</p>
+                <p className="font-bold text-emerald-700 text-base">{CalculationService.formatCurrency(debt.homeSaleNetProceeds)}</p>
+              </div>
+            )}
+            {debt.replacedByDebtId && (
+              <div className="col-span-2 md:col-span-3 pt-2 border-t border-amber-200">
+                <p className="text-amber-600 font-medium">Replaced by new mortgage</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {debt.replacedDebtName && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center space-x-3">
+          <Home className="w-5 h-5 text-amber-500 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-amber-800">Replacement Mortgage</p>
+            <p className="text-sm text-amber-700">
+              Replaced {debt.replacedDebtName}
+              {debt.replacementRelationship && (
+                <span className="ml-1 capitalize">
+                  ({debt.replacementRelationship === 'investment' ? 'investment property' : debt.replacementRelationship})
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
 
       {chartData.length > 1 && (
         <div className="bg-white rounded-lg shadow-md p-6">

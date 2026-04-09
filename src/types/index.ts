@@ -27,6 +27,14 @@ export interface Debt {
   introRate?: number;
   introEndDate?: string;
   rateAfterIntro?: number;
+  homeSold?: boolean;
+  homeSaleDate?: string;
+  homeSalePrice?: number;
+  homeSaleNetProceeds?: number;
+  replacedByDebtId?: string;
+  replacedDebtId?: string;
+  replacedDebtName?: string;
+  replacementRelationship?: 'upgraded' | 'downsized' | 'relocated' | 'investment';
 }
 
 export interface RefinanceRecord {
