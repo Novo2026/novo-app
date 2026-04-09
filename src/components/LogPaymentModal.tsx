@@ -371,13 +371,19 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
             </button>
             <button
               onClick={() => {
+                const nextSource: PaymentSource =
+                  useCheckingRegister && !useHELOC ? 'checking'
+                  : !useCheckingRegister && useHELOC ? 'heloc'
+                  : !useCheckingRegister && !useHELOC ? 'other'
+                  : null;
                 setShowSuccess(false);
                 setCalculationResult(null);
-                setPaymentSource(null);
-                setSelectedDebtId('');
+                setPaymentSource(nextSource);
+                setSelectedDebtId(preselectedDebtId || '');
                 setPaymentType('minimum');
                 setExtraAmount('');
                 setCustomAmount('');
+                setPaymentDate(CalculationService.getTodayDateString());
                 setNotes('');
               }}
               className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-4 rounded-lg transition-colors"
