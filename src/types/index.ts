@@ -23,9 +23,33 @@ export interface Debt {
   loanTerm?: number;
   isAmortized?: boolean;
   transferredToHELOC?: boolean;
+  refinanceHistory?: RefinanceRecord[];
+  introRate?: number;
+  introEndDate?: string;
+  rateAfterIntro?: number;
 }
 
-export type TransactionType = 'payment' | 'charge';
+export interface RefinanceRecord {
+  id: string;
+  date: string;
+  type: 'refinance' | 'balance_transfer' | 'consolidation' | 'cash_out';
+  previousBalance: number;
+  newBalance: number;
+  previousRate: number;
+  newRate: number;
+  previousPayment: number;
+  newPayment: number;
+  previousTerm?: number;
+  newTerm?: number;
+  newLender?: string;
+  newAccountName?: string;
+  introRate?: number;
+  introEndDate?: string;
+  rateAfterIntro?: number;
+  notes?: string;
+}
+
+export type TransactionType = 'payment' | 'charge' | 'refinance';
 
 export interface Transaction {
   id: string;

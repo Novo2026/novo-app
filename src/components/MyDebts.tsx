@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, ArrowLeft, DollarSign, Pencil, Trash2, Calendar } from 'lucide-react';
+import { Plus, DollarSign, Pencil, Trash2, Calendar, RefreshCw, ArrowRightLeft } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import AddDebtModal from './AddDebtModal';
@@ -7,6 +7,7 @@ import AddChargeModal from './AddChargeModal';
 import DebtDetailView from './DebtDetailView';
 import EditDebtModal from './EditDebtModal';
 import BatchEntryModal from './BatchEntryModal';
+import RefinanceModal from './RefinanceModal';
 import type { Debt } from '../types';
 
 interface MyDebtsProps {
@@ -24,6 +25,8 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
   const [deletingDebt, setDeletingDebt] = useState<Debt | null>(null);
   const [showBatchEntry, setShowBatchEntry] = useState(false);
   const [batchEntryDebt, setBatchEntryDebt] = useState<Debt | null>(null);
+  const [showRefinance, setShowRefinance] = useState(false);
+  const [refinancingDebt, setRefinancingDebt] = useState<Debt | null>(null);
 
   const debts = StorageService.getDebts().filter(d => d.category !== 'HELOC');
 
@@ -76,6 +79,41 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
     setShowEditDebt(false);
     setEditingDebt(null);
     onDataUpdate();
+  };
+
+  const handleRefinanceClick = (debt: Debt, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRefinancingDebt(debt);
+    setShowRefinance(true);
+  };
+
+  const handleRefinanceDone = () => {
+    setShowRefinance(false);
+    setRefinancingDebt(null);
+    onDataUpdate();
+  };
+
+  const getRefinanceButtonLabel = (debt: Debt): string => {
+    if (debt.category === 'Credit Card') return 'Transfer Balance';
+    if (debt.category === 'Student Loan') return 'Refinance/Consolidate';
+    return 'Refinance This Loan';
+  };
+
+  const getRefinanceIcon = (debt: Debt) => {
+    if (debt.category === 'Credit Card') return <ArrowRightLeft className="w-3.5 h-3.5" />;
+    return <RefreshCw className="w-3.5 h-3.5" />;
+  };
+
+  const getLastRefinanceDate = (debt: Debt): string | null => {
+    if (!debt.refinanceHistory || debt.refinanceHistory.length === 0) return null;
+    const last = debt.refinanceHistory[debt.refinanceHistory.length - 1];
+    return CalculationService.formatDate(last.date);
+  };
+
+  const didRateImprove = (debt: Debt): boolean => {
+    if (!debt.refinanceHistory || debt.refinanceHistory.length === 0) return false;
+    const last = debt.refinanceHistory[debt.refinanceHistory.length - 1];
+    return last.newRate < last.previousRate;
   };
 
   if (selectedDebt) {
@@ -148,7 +186,22 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                     <h3 className="font-bold text-xl text-gray-800 mb-1">{debt.accountName}</h3>
                     <p className="text-sm text-gray-500">{debt.category}</p>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                    {debt.refinanceHistory && debt.refinanceHistory.length > 0 && !debt.isPaidOff && (
+                      <span
+                        className={`flex items-center space-x-1 text-xs font-semibold px-2 py-1 rounded-full ${
+                          didRateImprove(debt)
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-blue-100 text-blue-700'
+                        }`}
+                        title={`Refinanced on ${getLastRefinanceDate(debt)}`}
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>
+                          {didRateImprove(debt) ? 'Rate Improved' : 'Refinanced'} {getLastRefinanceDate(debt)}
+                        </span>
+                      </span>
+                    )}
                     {debt.isPaidOff ? (
                       <span className={`text-white text-xs font-bold px-3 py-1 rounded-full ${
                         debt.transferredToHELOC ? 'bg-[#F2994A]' : 'bg-[#27AE60]'
@@ -236,6 +289,15 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                   </div>
                   {!debt.isPaidOff && (
                     <button
+                      onClick={(e) => handleRefinanceClick(debt, e)}
+                      className="w-full bg-[#1E3A5F]/5 hover:bg-[#1E3A5F]/10 text-[#1E3A5F] text-sm font-semibold py-2 px-4 rounded transition-colors flex items-center justify-center space-x-2"
+                    >
+                      {getRefinanceIcon(debt)}
+                      <span>{getRefinanceButtonLabel(debt)}</span>
+                    </button>
+                  )}
+                  {!debt.isPaidOff && (
+                    <button
                       onClick={() => {
                         setBatchEntryDebt(debt);
                         setShowBatchEntry(true);
@@ -295,6 +357,17 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
           onComplete={() => {
             onDataUpdate();
           }}
+        />
+      )}
+
+      {showRefinance && refinancingDebt && (
+        <RefinanceModal
+          debt={refinancingDebt}
+          onClose={() => {
+            setShowRefinance(false);
+            setRefinancingDebt(null);
+          }}
+          onSuccess={handleRefinanceDone}
         />
       )}
 

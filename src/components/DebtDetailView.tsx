@@ -1,4 +1,4 @@
-import { ArrowLeft, Download } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -165,38 +165,43 @@ export default function DebtDetailView({ debt, onBack }: DebtDetailViewProps) {
                 </tr>
               </thead>
               <tbody>
-                {transactions.map(t => (
-                  <tr key={t.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-2 text-sm text-gray-800">
-                      {CalculationService.formatDate(t.date)}
-                    </td>
-                    <td className="py-3 px-2">
-                      <span className={`text-xs font-semibold px-2 py-1 rounded ${
-                        t.type === 'payment' ? 'bg-[#2D9CDB]/20 text-[#2D9CDB]' : 'bg-[#F2C94C]/20 text-[#F2C94C]'
+                {transactions.map(t => {
+                  const isRefinance = t.type === 'refinance';
+                  return (
+                    <tr key={t.id} className={`border-b border-gray-100 hover:bg-gray-50 ${isRefinance ? 'bg-blue-50/40' : ''}`}>
+                      <td className="py-3 px-2 text-sm text-gray-800">
+                        {CalculationService.formatDate(t.date)}
+                      </td>
+                      <td className="py-3 px-2">
+                        <span className={`inline-flex items-center space-x-1 text-xs font-semibold px-2 py-1 rounded ${
+                          isRefinance ? 'bg-blue-100 text-blue-700' :
+                          t.type === 'payment' ? 'bg-[#2D9CDB]/20 text-[#2D9CDB]' : 'bg-[#F2C94C]/20 text-yellow-700'
+                        }`}>
+                          {isRefinance && <RefreshCw className="w-3 h-3" />}
+                          <span>{isRefinance ? 'refinance' : t.type}</span>
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 text-sm text-right text-gray-800 font-mono">
+                        {CalculationService.formatCurrencyDetailed(t.previousBalance)}
+                      </td>
+                      <td className="py-3 px-2 text-sm text-right text-red-600 font-mono">
+                        {t.type === 'payment' ? CalculationService.formatCurrencyDetailed(t.interestCharged) : '-'}
+                      </td>
+                      <td className="py-3 px-2 text-sm text-right text-[#27AE60] font-mono">
+                        {t.type === 'payment' ? CalculationService.formatCurrencyDetailed(t.principalPaid) : '-'}
+                      </td>
+                      <td className={`py-3 px-2 text-sm text-right font-mono font-semibold ${
+                        isRefinance ? 'text-blue-600' :
+                        t.type === 'payment' ? 'text-[#2D9CDB]' : 'text-red-600'
                       }`}>
-                        {t.type}
-                      </span>
-                    </td>
-                    <td className="py-3 px-2 text-sm text-right text-gray-800 font-mono">
-                      {CalculationService.formatCurrencyDetailed(t.previousBalance)}
-                    </td>
-                    <td className="py-3 px-2 text-sm text-right text-red-600 font-mono">
-                      {t.type === 'payment' ? CalculationService.formatCurrencyDetailed(t.interestCharged) : '-'}
-                    </td>
-                    <td className="py-3 px-2 text-sm text-right text-[#27AE60] font-mono">
-                      {t.type === 'payment' ? CalculationService.formatCurrencyDetailed(t.principalPaid) : '-'}
-                    </td>
-                    <td className={`py-3 px-2 text-sm text-right font-mono font-semibold ${
-                      t.type === 'payment' ? 'text-[#2D9CDB]' : 'text-red-600'
-                    }`}>
-                      {t.type === 'payment' ? '-' : '+'}
-                      {CalculationService.formatCurrencyDetailed(t.amount)}
-                    </td>
-                    <td className="py-3 px-2 text-sm text-right text-gray-800 font-mono font-semibold">
-                      {CalculationService.formatCurrencyDetailed(t.newBalance)}
-                    </td>
-                  </tr>
-                ))}
+                        {isRefinance ? '—' : (t.type === 'payment' ? '-' : '+') + CalculationService.formatCurrencyDetailed(t.amount)}
+                      </td>
+                      <td className="py-3 px-2 text-sm text-right text-gray-800 font-mono font-semibold">
+                        {CalculationService.formatCurrencyDetailed(t.newBalance)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -219,6 +224,93 @@ export default function DebtDetailView({ debt, onBack }: DebtDetailViewProps) {
       {transactions.length === 0 && (
         <div className="bg-white rounded-lg shadow-md p-8 text-center">
           <p className="text-gray-500">No payment history yet. Log your first payment to see it here.</p>
+        </div>
+      )}
+
+      {debt.refinanceHistory && debt.refinanceHistory.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <RefreshCw className="w-5 h-5 text-[#2D9CDB]" />
+            <h3 className="text-xl font-bold text-gray-800">Refinance History</h3>
+          </div>
+          <div className="space-y-3">
+            {debt.refinanceHistory.map((r, i) => {
+              const rateImproved = r.newRate < r.previousRate;
+              const balanceChanged = r.newBalance !== r.previousBalance;
+              const typeLabel =
+                r.type === 'balance_transfer' ? 'Balance Transfer' :
+                r.type === 'consolidation' ? 'Consolidation' :
+                r.type === 'cash_out' ? 'Cash-Out Refinance' :
+                'Refinanced';
+              return (
+                <div key={r.id} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-semibold text-gray-800">{typeLabel}</span>
+                      {i === 0 && (
+                        <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">First</span>
+                      )}
+                      {i === (debt.refinanceHistory!.length - 1) && debt.refinanceHistory!.length > 1 && (
+                        <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full">Current</span>
+                      )}
+                    </div>
+                    <span className="text-sm text-gray-500">{CalculationService.formatDate(r.date)}</span>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <p className="text-gray-500 text-xs">Balance</p>
+                      <p className="font-semibold text-gray-800">
+                        {CalculationService.formatCurrency(r.previousBalance)}
+                        <span className="text-gray-400 mx-1">→</span>
+                        <span className={balanceChanged ? (r.newBalance > r.previousBalance ? 'text-amber-600' : 'text-[#27AE60]') : ''}>
+                          {CalculationService.formatCurrency(r.newBalance)}
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs">Rate</p>
+                      <p className="font-semibold text-gray-800">
+                        {r.previousRate}%
+                        <span className="text-gray-400 mx-1">→</span>
+                        <span className={rateImproved ? 'text-[#27AE60]' : r.newRate > r.previousRate ? 'text-amber-600' : ''}>
+                          {r.newRate}%
+                        </span>
+                        {rateImproved && (
+                          <span className="ml-1 text-xs text-[#27AE60]">(-{(r.previousRate - r.newRate).toFixed(2)}%)</span>
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs">Monthly Payment</p>
+                      <p className="font-semibold text-gray-800">
+                        {CalculationService.formatCurrency(r.previousPayment)}
+                        <span className="text-gray-400 mx-1">→</span>
+                        {CalculationService.formatCurrency(r.newPayment)}
+                      </p>
+                    </div>
+                    {r.newLender && (
+                      <div>
+                        <p className="text-gray-500 text-xs">Lender</p>
+                        <p className="font-semibold text-gray-800">{r.newLender}</p>
+                      </div>
+                    )}
+                    {r.newTerm && (
+                      <div>
+                        <p className="text-gray-500 text-xs">Term</p>
+                        <p className="font-semibold text-gray-800">{r.newTerm} years</p>
+                      </div>
+                    )}
+                    {r.introEndDate && (
+                      <div>
+                        <p className="text-gray-500 text-xs">Intro Rate Ends</p>
+                        <p className="font-semibold text-amber-600">{CalculationService.formatDate(r.introEndDate)}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
