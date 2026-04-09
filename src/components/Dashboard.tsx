@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, Edit2, Pencil, Trash2, TrendingUp } from 'lucide-react';
+import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, CreditCard as Edit2, Pencil, Trash2, TrendingUp } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import LogPaymentModal from './LogPaymentModal';
 import EditPaymentModal from './EditPaymentModal';
 import EditDebtModal from './EditDebtModal';
+import DailyTip from './DailyTip';
 import type { Debt, Transaction } from '../types';
 
 interface DashboardProps {
@@ -283,6 +284,8 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
           <p className="text-gray-600 mt-1">Here's your debt freedom progress</p>
         </div>
       )}
+
+      <DailyTip debts={debts} />
 
       <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2D5A8A] text-white rounded-xl shadow-lg p-8">
         <h2 className="text-2xl font-bold mb-4">Total Debt Progress</h2>
