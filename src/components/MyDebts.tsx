@@ -50,6 +50,8 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
     debtAmount: number;
     freedPayment: number;
     previousCashFlow?: number;
+    nextDebtName?: string;
+    monthsSavedByAcceleration?: number;
   } | null>(null);
 
   const allDebts = StorageService.getDebts().filter(d => d.category !== 'HELOC');
@@ -210,12 +212,12 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
 
     const today = CalculationService.getTodayDateString();
     const allDebtsRaw = StorageService.getDebts();
-    const updatedDebts = allDebtsRaw.map(d => {
-      if (d.id === markingPaidOffDebt.id) {
-        return { ...d, isPaidOff: true, paidOffDate: today };
-      }
-      return d;
-    });
+
+    const previousStrategyResult = StorageService.getStrategyResult();
+
+    const updatedDebts = allDebtsRaw.map(d =>
+      d.id === markingPaidOffDebt.id ? { ...d, isPaidOff: true, paidOffDate: today } : d
+    );
     StorageService.saveDebts(updatedDebts);
 
     const milestone: Milestone = {
@@ -232,30 +234,42 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
     StorageService.addMilestone(milestone);
 
     const profile = StorageService.getFinancialProfile();
-    if (profile) {
-      profile.monthlyNetIncome += markingPaidOffDebt.minimumPayment;
-      StorageService.saveFinancialProfile(profile);
-    }
-
-    const remainingActive = updatedDebts.filter(d => !d.isPaidOff && d.id !== markingPaidOffDebt.id && d.category !== 'HELOC');
-    if (remainingActive.length > 0) {
-      const strategy = StorageService.getStrategy();
-      if (strategy && strategy.extraMonthlyPayment !== undefined) {
-        strategy.extraMonthlyPayment += markingPaidOffDebt.minimumPayment;
-        StorageService.saveStrategy(strategy);
-        const strategyResult = CalculationService.projectDebtPayoff(remainingActive, strategy.extraMonthlyPayment);
-        StorageService.saveStrategyResult(strategyResult);
-      }
-    }
 
     let previousCashFlow: number | undefined;
     if (profile) {
-      const activeBeforePayoff = allDebtsRaw.filter(d => !d.isPaidOff && d.id !== markingPaidOffDebt.id && d.category !== 'HELOC');
+      const activeBeforePayoff = allDebtsRaw.filter(d => !d.isPaidOff && d.category !== 'HELOC');
       previousCashFlow = profile.monthlyNetIncome -
-        markingPaidOffDebt.minimumPayment -
         profile.monthlyEssentialExpenses -
         profile.monthlyDiscretionaryExpenses -
         activeBeforePayoff.reduce((sum, d) => sum + d.minimumPayment, 0);
+    }
+
+    const remainingActive = updatedDebts.filter(d => !d.isPaidOff && d.category !== 'HELOC');
+    let nextDebtName: string | undefined;
+    let monthsSavedByAcceleration: number | undefined;
+
+    if (remainingActive.length > 0) {
+      const newStrategyResult = CalculationService.calculateCurrentStrategy();
+
+      if (newStrategyResult) {
+        StorageService.saveStrategyResult(newStrategyResult);
+        StorageService.markStrategyCalculated();
+
+        const sortedByRate = [...remainingActive].sort((a, b) => b.interestRate - a.interestRate);
+        nextDebtName = sortedByRate[0]?.accountName;
+
+        if (previousStrategyResult && nextDebtName) {
+          const prevItem = previousStrategyResult.payoffTimeline.find(
+            t => t.debtName === nextDebtName
+          );
+          const newItem = newStrategyResult.payoffTimeline.find(
+            t => t.debtName === nextDebtName
+          );
+          if (prevItem && newItem) {
+            monthsSavedByAcceleration = Math.max(0, prevItem.payoffMonth - newItem.payoffMonth);
+          }
+        }
+      }
     }
 
     setCelebrationData({
@@ -263,6 +277,8 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
       debtAmount: markingPaidOffDebt.startingBalance,
       freedPayment: markingPaidOffDebt.minimumPayment,
       previousCashFlow,
+      nextDebtName,
+      monthsSavedByAcceleration,
     });
 
     setShowMarkPaidOffConfirm(false);
@@ -318,6 +334,8 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
         debtAmount={celebrationData.debtAmount}
         freedPayment={celebrationData.freedPayment}
         previousCashFlow={celebrationData.previousCashFlow}
+        nextDebtName={celebrationData.nextDebtName}
+        monthsSavedByAcceleration={celebrationData.monthsSavedByAcceleration}
         onViewPlan={() => {
           setShowCelebration(false);
           setCelebrationData(null);

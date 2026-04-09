@@ -1,4 +1,4 @@
-import { PartyPopper, TrendingUp } from 'lucide-react';
+import { PartyPopper, TrendingUp, Zap } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
 
 interface CelebrationModalProps {
@@ -6,6 +6,8 @@ interface CelebrationModalProps {
   debtAmount: number;
   freedPayment: number;
   previousCashFlow?: number;
+  nextDebtName?: string;
+  monthsSavedByAcceleration?: number;
   onViewPlan: () => void;
 }
 
@@ -14,6 +16,8 @@ export default function CelebrationModal({
   debtAmount,
   freedPayment,
   previousCashFlow,
+  nextDebtName,
+  monthsSavedByAcceleration,
   onViewPlan,
 }: CelebrationModalProps) {
   return (
@@ -70,11 +74,36 @@ export default function CelebrationModal({
               </div>
             )}
 
-            <div className="bg-gradient-to-r from-[#2D9CDB]/10 to-[#27AE60]/10 rounded-lg p-4 text-center">
-              <p className="text-sm text-gray-700 font-semibold">
-                Your <span className="text-[#2D9CDB]">{CalculationService.formatCurrency(freedPayment)}</span> monthly payment now goes toward your next debt using the debt snowball method!
-              </p>
-            </div>
+            {nextDebtName && (
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-4 border-2 border-amber-300">
+                <div className="flex items-start gap-3">
+                  <Zap className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-bold text-amber-900 mb-1">Snowball Acceleration Applied!</p>
+                    <p className="text-sm text-amber-800">
+                      <span className="font-semibold">{CalculationService.formatCurrency(freedPayment)}/month</span> is now being applied to{' '}
+                      <span className="font-semibold">{nextDebtName}</span>
+                      {monthsSavedByAcceleration && monthsSavedByAcceleration > 0 ? (
+                        <>
+                          {' '}— which now pays off{' '}
+                          <span className="font-bold text-amber-900">
+                            {monthsSavedByAcceleration} month{monthsSavedByAcceleration !== 1 ? 's' : ''} sooner!
+                          </span>
+                        </>
+                      ) : '.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!nextDebtName && (
+              <div className="bg-gradient-to-r from-[#2D9CDB]/10 to-[#27AE60]/10 rounded-lg p-4 text-center">
+                <p className="text-sm text-gray-700 font-semibold">
+                  Your <span className="text-[#2D9CDB]">{CalculationService.formatCurrency(freedPayment)}</span> monthly payment now goes toward your next debt using the debt snowball method!
+                </p>
+              </div>
+            )}
           </div>
         </div>
 

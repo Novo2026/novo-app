@@ -636,13 +636,26 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
 
           <div>
             <h4 className="font-semibold text-gray-800 mb-3">Payment Breakdown This Month:</h4>
+            {paidOffDebts.length > 0 && (
+              <div className="mb-3 bg-amber-50 border-2 border-amber-300 rounded-lg p-3 flex items-start gap-2">
+                <span className="text-amber-600 font-bold text-base flex-shrink-0">&#9889;</span>
+                <p className="text-sm text-amber-800">
+                  <span className="font-bold">Snowball active:</span>{' '}
+                  {CalculationService.formatCurrency(paidOffDebts.reduce((s, d) => s + d.minimumPayment, 0))}/month freed from{' '}
+                  {paidOffDebts.length} paid-off debt{paidOffDebts.length !== 1 ? 's' : ''} is rolled into your target debt payment automatically.
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               {allDebts
                 .sort((a, b) => b.interestRate - a.interestRate)
                 .map((debt, index) => {
                   const isTargetDebt = index === 0;
-                  const paymentAmount = debt.minimumPayment + (isTargetDebt ? (currentResult.strategy.extraMonthlyPayment || 0) : 0);
+                  const extraPayment = currentResult.strategy.extraMonthlyPayment || 0;
+                  const paymentAmount = debt.minimumPayment + (isTargetDebt ? extraPayment : 0);
                   const isHELOC = debt.id === 'HELOC_VIRTUAL';
+                  const freedMinimums = paidOffDebts.reduce((s, d) => s + d.minimumPayment, 0);
+                  const baseCashFlow = extraPayment - freedMinimums;
 
                   return (
                     <div
@@ -654,21 +667,33 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
                       <div className="flex-1">
                         <span className="font-medium text-gray-800">{debt.accountName}:</span>
                         {isTargetDebt ? (
-                          <span className="ml-2 text-gray-700">
+                          <div className="mt-1 text-sm text-gray-700 space-y-0.5">
                             {isHELOC ? (
-                              <>
+                              <span>
                                 {CalculationService.formatCurrency(0)} (no minimum) +{' '}
-                                {CalculationService.formatCurrency(currentResult.strategy.extraMonthlyPayment || 0)} ={' '}
+                                {CalculationService.formatCurrency(extraPayment)} extra ={' '}
                                 <span className="font-bold text-[#27AE60]">{CalculationService.formatCurrency(paymentAmount)}</span>
-                              </>
+                              </span>
                             ) : (
                               <>
-                                {CalculationService.formatCurrency(debt.minimumPayment)} +{' '}
-                                {CalculationService.formatCurrency(currentResult.strategy.extraMonthlyPayment || 0)} ={' '}
-                                <span className="font-bold text-[#27AE60]">{CalculationService.formatCurrency(paymentAmount)}</span>
+                                <div className="flex flex-wrap gap-x-1 items-center">
+                                  <span>{CalculationService.formatCurrency(debt.minimumPayment)} min</span>
+                                  {freedMinimums > 0 && (
+                                    <span className="text-amber-700 font-semibold">
+                                      + {CalculationService.formatCurrency(freedMinimums)} freed
+                                    </span>
+                                  )}
+                                  {baseCashFlow > 0 && (
+                                    <span className="text-[#2D9CDB] font-semibold">
+                                      + {CalculationService.formatCurrency(baseCashFlow)} extra
+                                    </span>
+                                  )}
+                                  <span className="text-gray-500">=</span>
+                                  <span className="font-bold text-[#27AE60]">{CalculationService.formatCurrency(paymentAmount)} total</span>
+                                </div>
                               </>
                             )}
-                          </span>
+                          </div>
                         ) : (
                           <span className="ml-2 text-gray-700">
                             {CalculationService.formatCurrency(debt.minimumPayment)} <span className="text-gray-500">(minimum only)</span>
@@ -676,7 +701,7 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
                         )}
                       </div>
                       {isTargetDebt && (
-                        <span className="ml-3 bg-[#27AE60] text-white text-xs font-bold px-3 py-1 rounded-full">
+                        <span className="ml-3 bg-[#27AE60] text-white text-xs font-bold px-3 py-1 rounded-full flex-shrink-0">
                           FOCUS HERE
                         </span>
                       )}
