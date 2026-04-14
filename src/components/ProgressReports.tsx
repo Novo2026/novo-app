@@ -27,11 +27,14 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
   const [filterDebtId, setFilterDebtId] = useState<string>('all');
   const [pendingDelete, setPendingDelete] = useState<UnifiedPayment | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
+  const [deletedPaymentIds, setDeletedPaymentIds] = useState<Set<string>>(new Set());
 
   const debts = StorageService.getDebts();
   const allTransactions = StorageService.getTransactions();
   const strategyResult = StorageService.getStrategyResult();
-  const unifiedPayments = CalculationService.getUnifiedPaymentHistory();
+  const unifiedPayments = CalculationService
+    .getUnifiedPaymentHistory()
+    .filter(payment => !deletedPaymentIds.has(payment.id));
   const paymentBreakdown = CalculationService.getPaymentSourceBreakdown();
   const homeEquity = StorageService.getHomeEquity();
   const helocTransactions = StorageService.getHELOCTransactions();
@@ -78,6 +81,8 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
   const handleConfirmDelete = () => {
     if (!pendingDelete) return;
     StorageService.deleteTransaction(pendingDelete.id);
+    StorageService.deleteUnifiedPayment(pendingDelete.id);
+    setDeletedPaymentIds(prev => new Set(prev).add(pendingDelete.id));
     setPendingDelete(null);
     setDeleteSuccess(true);
     setTimeout(() => setDeleteSuccess(false), 3000);

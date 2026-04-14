@@ -32,6 +32,10 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings, onNavigat
   const financialProfile = StorageService.getFinancialProfile();
   const featurePreferences = StorageService.getFeaturePreferences();
   const homeEquity = StorageService.getHomeEquity();
+  const helocTransactions = StorageService.getHELOCTransactions();
+  const currentHelocBalance = helocTransactions.length > 0
+    ? helocTransactions[helocTransactions.length - 1].balance
+    : (homeEquity?.helocBalance ?? 0);
 
   const metrics = CalculationService.calculateTotalDebtMetrics(debts, transactions);
   const savingsMetrics = CalculationService.calculateSavingsMetrics(savingsAccounts);
@@ -399,14 +403,14 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings, onNavigat
             <div className="bg-white/10 rounded-lg p-3 text-center">
               <p className="text-emerald-100 text-xs mb-1">Balance</p>
               <p className="font-bold text-white text-sm">
-                {`$${(homeEquity.helocBalance ?? 0).toLocaleString()}`}
+                {`$${currentHelocBalance.toLocaleString()}`}
               </p>
             </div>
             <div className="bg-white/10 rounded-lg p-3 text-center">
               <p className="text-emerald-100 text-xs mb-1">Available</p>
               <p className="font-bold text-white text-sm">
                 {homeEquity.helocLimit
-                  ? `$${((homeEquity.helocLimit) - (homeEquity.helocBalance ?? 0)).toLocaleString()}`
+                  ? `$${((homeEquity.helocLimit) - currentHelocBalance).toLocaleString()}`
                   : '—'}
               </p>
             </div>
