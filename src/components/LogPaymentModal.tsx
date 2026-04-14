@@ -9,6 +9,7 @@ import type { Debt, Transaction, Milestone, CheckingTransaction, HELOCTransactio
 
 interface LogPaymentModalProps {
   preselectedDebtId: string | null;
+  preselectedAmount?: number;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -16,12 +17,12 @@ interface LogPaymentModalProps {
 type PaymentType = 'minimum' | 'minimum-plus' | 'custom';
 type PaymentSource = 'checking' | 'heloc' | 'other' | null;
 
-export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess }: LogPaymentModalProps) {
+export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, onClose, onSuccess }: LogPaymentModalProps) {
   const [paymentSource, setPaymentSource] = useState<PaymentSource>(null);
   const [selectedDebtId, setSelectedDebtId] = useState(preselectedDebtId || '');
-  const [paymentType, setPaymentType] = useState<PaymentType>('minimum');
+  const [paymentType, setPaymentType] = useState<PaymentType>(preselectedAmount ? 'custom' : 'minimum');
   const [extraAmount, setExtraAmount] = useState('');
-  const [customAmount, setCustomAmount] = useState('');
+  const [customAmount, setCustomAmount] = useState(preselectedAmount ? String(preselectedAmount) : '');
   const [paymentDate, setPaymentDate] = useState(CalculationService.getTodayDateString());
   const [notes, setNotes] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -57,8 +58,9 @@ export default function LogPaymentModal({ preselectedDebtId, onClose, onSuccess 
     }
   }, []);
 
+  const [initialDebtId] = useState(preselectedDebtId || '');
   useEffect(() => {
-    if (selectedDebtId && selectedDebt) {
+    if (selectedDebtId && selectedDebt && selectedDebtId !== initialDebtId) {
       setPaymentType('minimum');
       setExtraAmount('');
       setCustomAmount('');

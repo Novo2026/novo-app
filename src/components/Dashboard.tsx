@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, CreditCard as Edit2, Pencil, Trash2, TrendingUp } from 'lucide-react';
+import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, CreditCard as Edit2, Pencil, Trash2, TrendingUp, Target, Zap } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import LogPaymentModal from './LogPaymentModal';
@@ -16,6 +16,7 @@ interface DashboardProps {
 export default function Dashboard({ onDataUpdate, onNavigateToSavings }: DashboardProps) {
   const [showLogPayment, setShowLogPayment] = useState(false);
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
+  const [quickPayAmount, setQuickPayAmount] = useState<number | undefined>(undefined);
   const [showEditPayment, setShowEditPayment] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [showEditDebt, setShowEditDebt] = useState(false);
@@ -51,6 +52,30 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
     };
   }
 
+  const extraForDebtPayoff = financialProfile
+    ? Math.max(0,
+        financialProfile.monthlyNetIncome -
+        financialProfile.monthlyEssentialExpenses -
+        financialProfile.monthlyDiscretionaryExpenses -
+        totalMinimumPayments
+      )
+    : 0;
+
+  const nonHelocActive = activeDebts.filter(d => d.category !== 'HELOC');
+  const targetDebt: Debt | null = (() => {
+    if (strategyResult && strategyResult.payoffTimeline.length > 0) {
+      const firstPayoffId = strategyResult.payoffTimeline[0].debtId;
+      const found = nonHelocActive.find(d => d.id === firstPayoffId);
+      if (found) return found;
+    }
+    if (nonHelocActive.length === 0) return null;
+    return [...nonHelocActive].sort((a, b) => b.interestRate - a.interestRate)[0];
+  })();
+
+  const targetTotalPayment = targetDebt
+    ? targetDebt.minimumPayment + extraForDebtPayoff
+    : 0;
+
   const getGreeting = (): string => {
     const userName = localStorage.getItem('userName');
     const lastVisit = localStorage.getItem('lastVisit');
@@ -85,6 +110,14 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
 
   const handleLogPaymentClick = (debtId?: string) => {
     setSelectedDebtId(debtId || null);
+    setQuickPayAmount(undefined);
+    setShowLogPayment(true);
+  };
+
+  const handleQuickPay = () => {
+    if (!targetDebt) return;
+    setSelectedDebtId(targetDebt.id);
+    setQuickPayAmount(Math.round(targetTotalPayment));
     setShowLogPayment(true);
   };
 
@@ -364,29 +397,82 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
             <div className="flex justify-between">
               <span className="opacity-90">Minimum debt payments:</span>
               <span className="font-semibold">
-                {CalculationService.formatCurrency(
-                  metrics.activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
-                )}
+                {CalculationService.formatCurrency(totalMinimumPayments)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="opacity-90">Extra for debt payoff:</span>
               <span className="font-semibold">
-                {CalculationService.formatCurrency(
-                  financialProfile.monthlyNetIncome -
-                  financialProfile.monthlyEssentialExpenses -
-                  financialProfile.monthlyDiscretionaryExpenses -
-                  metrics.activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
-                )}
+                {CalculationService.formatCurrency(extraForDebtPayoff)}
               </span>
             </div>
           </div>
+
           {metrics.paidOffDebts.length > 0 && (
-            <div className="bg-[#27AE60]/20 border-2 border-[#27AE60] rounded-lg p-3">
-              <p className="text-sm font-semibold">
-                {CalculationService.formatCurrency(
-                  metrics.paidOffDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
-                )} freed from {metrics.paidOffDebts.length} paid-off debt{metrics.paidOffDebts.length !== 1 ? 's' : ''} now accelerating payoff!
+            <div className="bg-[#27AE60]/20 border border-[#27AE60]/60 rounded-lg p-3 mb-3">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-[#4ADE80] flex-shrink-0" />
+                <p className="text-sm font-semibold">
+                  {CalculationService.formatCurrency(
+                    metrics.paidOffDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
+                  )} freed from {metrics.paidOffDebts.length} paid-off debt{metrics.paidOffDebts.length !== 1 ? 's' : ''} now accelerating payoff!
+                </p>
+              </div>
+            </div>
+          )}
+
+          {targetDebt && extraForDebtPayoff > 0 && (
+            <div className="bg-white rounded-xl p-4 mt-2">
+              <div className="flex items-center gap-2 mb-3">
+                <Target className="w-5 h-5 text-[#27AE60]" />
+                <span className="font-bold text-gray-800 text-sm uppercase tracking-wide">Focus This Month</span>
+              </div>
+              <p className="text-gray-700 text-sm mb-3">
+                Apply extra{' '}
+                <span className="font-bold text-[#1E8BBD]">{CalculationService.formatCurrency(extraForDebtPayoff)}</span>
+                {' '}to{' '}
+                <span className="font-bold text-gray-900">{targetDebt.accountName}</span>
+                <span className="ml-1.5 text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-semibold">
+                  {targetDebt.interestRate}% APR
+                </span>
+              </p>
+              <div className="bg-gray-50 rounded-lg p-3 mb-3 border border-gray-200">
+                <div className="flex justify-between text-xs text-gray-600 mb-1">
+                  <span>Minimum payment</span>
+                  <span className="font-semibold text-gray-800">{CalculationService.formatCurrency(targetDebt.minimumPayment)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-600 mb-1">
+                  <span>Extra cash flow</span>
+                  <span className="font-semibold text-[#27AE60]">+ {CalculationService.formatCurrency(extraForDebtPayoff)}</span>
+                </div>
+                <div className="flex justify-between text-sm font-bold pt-1.5 border-t border-gray-300 mt-1">
+                  <span className="text-gray-800">Total to pay</span>
+                  <span className="text-[#27AE60]">{CalculationService.formatCurrency(targetTotalPayment)}</span>
+                </div>
+              </div>
+              <button
+                onClick={handleQuickPay}
+                className="w-full flex items-center justify-center gap-2 bg-[#FF6B35] hover:bg-[#E55A25] text-white font-bold py-2.5 px-4 rounded-lg transition-colors text-sm"
+              >
+                <Plus className="w-4 h-4" />
+                Quick Pay {CalculationService.formatCurrency(targetTotalPayment)} to {targetDebt.accountName}
+              </button>
+            </div>
+          )}
+
+          {targetDebt && extraForDebtPayoff <= 0 && nonHelocActive.length > 0 && (
+            <div className="bg-white/10 border border-white/20 rounded-xl p-4 mt-2">
+              <div className="flex items-center gap-2 mb-1">
+                <Target className="w-5 h-5 text-white/80" />
+                <span className="font-bold text-sm uppercase tracking-wide">Focus This Month</span>
+              </div>
+              <p className="text-sm opacity-90">
+                Pay minimum on{' '}
+                <span className="font-bold">{targetDebt.accountName}</span>
+                <span className="ml-1.5 text-xs bg-white/20 px-1.5 py-0.5 rounded">
+                  {targetDebt.interestRate}% APR
+                </span>
+                <span className="ml-1"> — {CalculationService.formatCurrency(targetDebt.minimumPayment)}</span>
               </p>
             </div>
           )}
@@ -581,9 +667,11 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
       {showLogPayment && (
         <LogPaymentModal
           preselectedDebtId={selectedDebtId}
+          preselectedAmount={quickPayAmount}
           onClose={() => {
             setShowLogPayment(false);
             setSelectedDebtId(null);
+            setQuickPayAmount(undefined);
           }}
           onSuccess={handlePaymentLogged}
         />
