@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Trash2, Download, AlertTriangle, CheckCircle, User, DollarSign, RefreshCw, Target, Mail, Phone, Settings as SettingsIcon } from 'lucide-react';
+import { Trash2, Download, AlertTriangle, CheckCircle, User, DollarSign, RefreshCw, Target, Mail, Phone, Settings as SettingsIcon, Home } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import LearnHELOCModal from './LearnHELOCModal';
-import type { FinancialProfile, FeaturePreferences } from '../types';
+import type { FinancialProfile, FeaturePreferences, HomeEquity } from '../types';
 
 interface SettingsProps {
   onDataUpdate: () => void;
@@ -22,6 +22,15 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
   const [showFeaturesSuccess, setShowFeaturesSuccess] = useState(false);
   const [showHelocDisableConfirm, setShowHelocDisableConfirm] = useState(false);
   const [showLearnHELOCModal, setShowLearnHELOCModal] = useState(false);
+  const [showHelocSuccess, setShowHelocSuccess] = useState(false);
+  const [helocDetails, setHelocDetails] = useState({
+    creditLimit: '',
+    currentBalance: '',
+    interestRate: '',
+    openedDate: '',
+    lender: '',
+  });
+  const [helocErrors, setHelocErrors] = useState<Record<string, string>>({});
   const [financialProfile, setFinancialProfile] = useState<FinancialProfile>({
     monthlyGrossIncome: 0,
     monthlyNetIncome: 0,
@@ -60,6 +69,17 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
 
     const demoModeStored = localStorage.getItem('novo_demo_mode') === 'true';
     setDemoMode(demoModeStored);
+
+    const homeEquity = StorageService.getHomeEquity();
+    if (homeEquity && homeEquity.hasHELOC) {
+      setHelocDetails({
+        creditLimit: homeEquity.helocLimit ? String(homeEquity.helocLimit) : '',
+        currentBalance: homeEquity.helocBalance ? String(homeEquity.helocBalance) : '',
+        interestRate: homeEquity.helocRate ? String(homeEquity.helocRate) : '',
+        openedDate: (homeEquity as any).helocOpenedDate || '',
+        lender: (homeEquity as any).helocLender || '',
+      });
+    }
   }, []);
 
   const handleExportPaymentHistory = () => {
@@ -181,6 +201,43 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
     setTimeout(() => {
       setShowFeaturesSuccess(false);
     }, 3000);
+  };
+
+  const handleSaveHelocDetails = () => {
+    const errors: Record<string, string> = {};
+    const creditLimit = parseFloat(helocDetails.creditLimit);
+    const interestRate = parseFloat(helocDetails.interestRate);
+    const currentBalance = parseFloat(helocDetails.currentBalance) || 0;
+
+    if (!helocDetails.creditLimit || isNaN(creditLimit) || creditLimit <= 0) {
+      errors.creditLimit = 'Credit limit is required and must be greater than $0';
+    }
+    if (!helocDetails.interestRate || isNaN(interestRate) || interestRate < 0 || interestRate > 25) {
+      errors.interestRate = 'Interest rate is required and must be between 0% and 25%';
+    }
+    if (helocDetails.currentBalance && !isNaN(parseFloat(helocDetails.currentBalance)) && currentBalance > creditLimit) {
+      errors.currentBalance = 'Current balance cannot exceed credit limit';
+    }
+
+    setHelocErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    const existing: HomeEquity = StorageService.getHomeEquity() || { ownsHome: true };
+    const updated: HomeEquity & { helocOpenedDate?: string; helocLender?: string } = {
+      ...existing,
+      ownsHome: true,
+      hasHELOC: true,
+      helocLimit: creditLimit,
+      helocBalance: currentBalance,
+      helocRate: interestRate,
+    };
+    (updated as any).helocOpenedDate = helocDetails.openedDate;
+    (updated as any).helocLender = helocDetails.lender;
+
+    StorageService.saveHomeEquity(updated);
+    setShowHelocSuccess(true);
+    onDataUpdate();
+    setTimeout(() => setShowHelocSuccess(false), 4000);
   };
 
   const handleToggleDemoMode = () => {
@@ -492,11 +549,11 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
         </p>
 
         <div className="space-y-4">
-          <div className="bg-gray-50 rounded-lg p-5 border-2 border-gray-200">
+          <div className={`rounded-lg p-5 border-2 transition-colors ${featurePreferences.helocEnabled ? 'bg-emerald-50 border-emerald-300' : 'bg-gray-50 border-gray-200'}`}>
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-2">
-                  <span className="text-2xl">🏠</span>
+                  <Home className={`w-6 h-6 ${featurePreferences.helocEnabled ? 'text-emerald-600' : 'text-gray-500'}`} />
                   <h4 className="font-bold text-gray-800 text-lg">HELOC / Home Equity Line of Credit</h4>
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed">
@@ -518,6 +575,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
                 />
               </button>
             </div>
+
             {!featurePreferences.helocEnabled && (
               <div className="mt-3 pt-3 border-t border-gray-300">
                 <button
@@ -526,6 +584,139 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
                 >
                   Learn About HELOC Strategy →
                 </button>
+              </div>
+            )}
+
+            {featurePreferences.helocEnabled && (
+              <div className="mt-4 pt-4 border-t border-emerald-200">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full" />
+                  <h5 className="font-bold text-gray-800">HELOC Details</h5>
+                  <span className="text-xs text-gray-500">(enter your HELOC information below)</span>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">
+                        Credit Limit <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                        <input
+                          type="number"
+                          value={helocDetails.creditLimit}
+                          onChange={(e) => {
+                            setHelocDetails({ ...helocDetails, creditLimit: e.target.value });
+                            if (helocErrors.creditLimit) setHelocErrors({ ...helocErrors, creditLimit: '' });
+                          }}
+                          placeholder="100,000"
+                          className={`w-full pl-7 pr-3 py-2 border-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all ${helocErrors.creditLimit ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-white'}`}
+                          min="0"
+                          step="1000"
+                        />
+                      </div>
+                      {helocErrors.creditLimit && (
+                        <p className="text-red-600 text-xs mt-1">{helocErrors.creditLimit}</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">Maximum amount you can borrow</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">
+                        Current Balance
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                        <input
+                          type="number"
+                          value={helocDetails.currentBalance}
+                          onChange={(e) => {
+                            setHelocDetails({ ...helocDetails, currentBalance: e.target.value });
+                            if (helocErrors.currentBalance) setHelocErrors({ ...helocErrors, currentBalance: '' });
+                          }}
+                          placeholder="0"
+                          className={`w-full pl-7 pr-3 py-2 border-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all ${helocErrors.currentBalance ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-white'}`}
+                          min="0"
+                          step="100"
+                        />
+                      </div>
+                      {helocErrors.currentBalance && (
+                        <p className="text-red-600 text-xs mt-1">{helocErrors.currentBalance}</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">Leave blank or $0 if no draws yet</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">
+                        Interest Rate (APR) <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={helocDetails.interestRate}
+                          onChange={(e) => {
+                            setHelocDetails({ ...helocDetails, interestRate: e.target.value });
+                            if (helocErrors.interestRate) setHelocErrors({ ...helocErrors, interestRate: '' });
+                          }}
+                          placeholder="8.5"
+                          className={`w-full pl-3 pr-8 py-2 border-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all ${helocErrors.interestRate ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-white'}`}
+                          min="0"
+                          max="25"
+                          step="0.1"
+                        />
+                        <span className="absolute right-3 top-2 text-gray-500 text-sm">%</span>
+                      </div>
+                      {helocErrors.interestRate && (
+                        <p className="text-red-600 text-xs mt-1">{helocErrors.interestRate}</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">Variable rate — check your statement</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">
+                        HELOC Opened Date
+                      </label>
+                      <input
+                        type="date"
+                        value={helocDetails.openedDate}
+                        onChange={(e) => setHelocDetails({ ...helocDetails, openedDate: e.target.value })}
+                        className="w-full px-3 py-2 border-2 border-gray-200 bg-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">When did you open your HELOC?</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      Lender <span className="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={helocDetails.lender}
+                      onChange={(e) => setHelocDetails({ ...helocDetails, lender: e.target.value })}
+                      placeholder="e.g., Huntington Bank"
+                      className="w-full px-3 py-2 border-2 border-gray-200 bg-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                      maxLength={80}
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleSaveHelocDetails}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors text-sm"
+                  >
+                    Save HELOC Details
+                  </button>
+
+                  {showHelocSuccess && (
+                    <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-400 text-emerald-800 px-4 py-3 rounded-lg">
+                      <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                      <span className="font-semibold text-sm">HELOC details saved! HELOC features are now enabled.</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
