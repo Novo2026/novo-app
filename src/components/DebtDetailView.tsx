@@ -236,7 +236,7 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
                 {transactions.map(t => {
                   const isRefinance = t.type === 'refinance';
                   return (
-                    <tr key={t.id} className={`border-b border-gray-100 hover:bg-gray-50 group ${isRefinance ? 'bg-blue-50/40' : ''}`}>
+                    <tr key={t.id} className={`border-b border-gray-100 hover:bg-gray-50 ${isRefinance ? 'bg-blue-50/40' : ''}`}>
                       <td className="py-3 px-2 text-sm text-gray-800">
                         {CalculationService.formatDate(t.date)}
                       </td>
@@ -267,11 +267,11 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
                       <td className="py-3 px-2 text-sm text-right text-gray-800 font-mono font-semibold">
                         {CalculationService.formatCurrencyDetailed(t.newBalance)}
                       </td>
-                      <td className="py-3 px-2">
+                      <td className="py-3 px-2 text-right">
                         {!isRefinance && (
                           <button
-                            onClick={() => setPendingDelete(t)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                            onClick={(e) => { e.stopPropagation(); setPendingDelete(t); }}
+                            className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
                             title="Delete payment"
                           >
                             <Trash2 className="w-4 h-4" />

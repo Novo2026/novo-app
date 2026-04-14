@@ -406,7 +406,7 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
             </thead>
             <tbody>
               {[...filteredPayments].reverse().map(p => (
-                <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50 group">
+                <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-3 px-2 text-sm text-gray-800">
                     {CalculationService.formatDate(p.date)}
                   </td>
@@ -439,10 +439,10 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
                   <td className="py-3 px-2 text-sm text-gray-700">
                     {p.description || '-'}
                   </td>
-                  <td className="py-3 px-2">
+                  <td className="py-3 px-2 text-right">
                     <button
-                      onClick={() => setPendingDelete(p)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                      onClick={(e) => { e.stopPropagation(); setPendingDelete(p); }}
+                      className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
                       title="Delete payment"
                     >
                       <Trash2 className="w-4 h-4" />
