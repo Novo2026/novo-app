@@ -1,4 +1,5 @@
-import { ArrowLeft, Download, RefreshCw, Home } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw, Home, Trash2, AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -10,7 +11,10 @@ interface DebtDetailViewProps {
   onDataUpdate: () => void;
 }
 
-export default function DebtDetailView({ debt, onBack }: DebtDetailViewProps) {
+export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetailViewProps) {
+  const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
+
   const transactions = StorageService.getTransactions()
     .filter(t => t.debtId === debt.id)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -25,6 +29,15 @@ export default function DebtDetailView({ debt, onBack }: DebtDetailViewProps) {
       balance: t.newBalance,
     })),
   ];
+
+  const handleConfirmDelete = () => {
+    if (!pendingDelete) return;
+    StorageService.deleteTransaction(pendingDelete.id);
+    setPendingDelete(null);
+    setDeleteSuccess(true);
+    setTimeout(() => setDeleteSuccess(false), 3000);
+    onDataUpdate();
+  };
 
   const handleExport = () => {
     const headers = ['Date', 'Type', 'Previous Balance', 'Interest', 'Principal', 'Payment/Charge', 'New Balance', 'Notes'];
@@ -216,13 +229,14 @@ export default function DebtDetailView({ debt, onBack }: DebtDetailViewProps) {
                   <th className="text-right py-3 px-2 text-sm font-semibold text-gray-700">Principal</th>
                   <th className="text-right py-3 px-2 text-sm font-semibold text-gray-700">Payment</th>
                   <th className="text-right py-3 px-2 text-sm font-semibold text-gray-700">New Balance</th>
+                  <th className="py-3 px-2"></th>
                 </tr>
               </thead>
               <tbody>
                 {transactions.map(t => {
                   const isRefinance = t.type === 'refinance';
                   return (
-                    <tr key={t.id} className={`border-b border-gray-100 hover:bg-gray-50 ${isRefinance ? 'bg-blue-50/40' : ''}`}>
+                    <tr key={t.id} className={`border-b border-gray-100 hover:bg-gray-50 group ${isRefinance ? 'bg-blue-50/40' : ''}`}>
                       <td className="py-3 px-2 text-sm text-gray-800">
                         {CalculationService.formatDate(t.date)}
                       </td>
@@ -253,6 +267,17 @@ export default function DebtDetailView({ debt, onBack }: DebtDetailViewProps) {
                       <td className="py-3 px-2 text-sm text-right text-gray-800 font-mono font-semibold">
                         {CalculationService.formatCurrencyDetailed(t.newBalance)}
                       </td>
+                      <td className="py-3 px-2">
+                        {!isRefinance && (
+                          <button
+                            onClick={() => setPendingDelete(t)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                            title="Delete payment"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -278,6 +303,59 @@ export default function DebtDetailView({ debt, onBack }: DebtDetailViewProps) {
       {transactions.length === 0 && (
         <div className="bg-white rounded-lg shadow-md p-8 text-center">
           <p className="text-gray-500">No payment history yet. Log your first payment to see it here.</p>
+        </div>
+      )}
+
+      {deleteSuccess && (
+        <div className="fixed bottom-6 right-6 bg-gray-800 text-white px-5 py-3 rounded-lg shadow-xl text-sm font-medium z-50">
+          Payment deleted successfully
+        </div>
+      )}
+
+      {pendingDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-start space-x-4 mb-5">
+              <div className="bg-red-100 rounded-full p-2 flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-800 mb-1">Delete this payment?</h3>
+                <div className="bg-gray-50 rounded-lg p-3 mt-2 text-sm space-y-1">
+                  <p className="font-semibold text-gray-800">
+                    {CalculationService.formatCurrency(pendingDelete.amount)} to {debt.accountName}
+                  </p>
+                  <p className="text-gray-600">
+                    {CalculationService.formatDate(pendingDelete.date)}
+                  </p>
+                  <p className="text-gray-600">
+                    Balance will change from{' '}
+                    <span className="font-semibold text-gray-800">
+                      {CalculationService.formatCurrency(pendingDelete.newBalance)}
+                    </span>
+                    {' '}to{' '}
+                    <span className="font-semibold text-gray-800">
+                      {CalculationService.formatCurrency(pendingDelete.previousBalance)}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setPendingDelete(null)}
+                className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

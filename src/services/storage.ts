@@ -49,6 +49,44 @@ export const StorageService = {
     this.saveTransactions(transactions);
   },
 
+  deleteTransaction(transactionId: string): void {
+    const transactions = this.getTransactions();
+    const txIndex = transactions.findIndex(t => t.id === transactionId);
+    if (txIndex === -1) return;
+
+    const tx = transactions[txIndex];
+    const remaining = transactions.filter(t => t.id !== transactionId);
+
+    const debts = this.getDebts();
+    const debtIndex = debts.findIndex(d => d.id === tx.debtId);
+
+    if (debtIndex !== -1) {
+      const debtTransactions = remaining
+        .filter(t => t.debtId === tx.debtId)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      let newBalance: number;
+      if (debtTransactions.length === 0) {
+        newBalance = debts[debtIndex].startingBalance;
+      } else {
+        newBalance = debtTransactions[debtTransactions.length - 1].newBalance;
+      }
+
+      debts[debtIndex] = {
+        ...debts[debtIndex],
+        currentBalance: newBalance,
+        isPaidOff: newBalance <= 0,
+        paidOffDate: newBalance <= 0 ? debts[debtIndex].paidOffDate : undefined,
+      };
+      this.saveDebts(debts);
+    }
+
+    this.saveTransactions(remaining);
+
+    const unifiedPayments = this.getUnifiedPayments().filter(p => p.id !== transactionId);
+    this.saveUnifiedPayments(unifiedPayments);
+  },
+
   getTransactions(): Transaction[] {
     const data = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
     return data ? JSON.parse(data) : [];

@@ -1,7 +1,8 @@
-import { Download, Filter } from 'lucide-react';
+import { Download, Filter, Trash2, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
+import type { UnifiedPayment } from '../types';
 import {
   LineChart,
   Line,
@@ -24,6 +25,8 @@ interface ProgressReportsProps {
 
 export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) {
   const [filterDebtId, setFilterDebtId] = useState<string>('all');
+  const [pendingDelete, setPendingDelete] = useState<UnifiedPayment | null>(null);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
 
   const debts = StorageService.getDebts();
   const allTransactions = StorageService.getTransactions();
@@ -71,6 +74,15 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
     { name: 'Interest Paid', value: totalInterest, color: '#EB5757' },
     { name: 'Principal Paid', value: totalPrincipal, color: '#27AE60' },
   ];
+
+  const handleConfirmDelete = () => {
+    if (!pendingDelete) return;
+    StorageService.deleteTransaction(pendingDelete.id);
+    setPendingDelete(null);
+    setDeleteSuccess(true);
+    setTimeout(() => setDeleteSuccess(false), 3000);
+    onDataUpdate();
+  };
 
   const handleExportHistory = () => {
     const headers = ['Date', 'Debt', 'Source', 'Amount', 'Principal', 'Interest', 'Description'];
@@ -389,11 +401,12 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
                 <th className="text-right py-3 px-2 text-sm font-semibold text-gray-700">Principal</th>
                 <th className="text-right py-3 px-2 text-sm font-semibold text-gray-700">Interest</th>
                 <th className="text-left py-3 px-2 text-sm font-semibold text-gray-700">Description</th>
+                <th className="py-3 px-2"></th>
               </tr>
             </thead>
             <tbody>
               {[...filteredPayments].reverse().map(p => (
-                <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50 group">
                   <td className="py-3 px-2 text-sm text-gray-800">
                     {CalculationService.formatDate(p.date)}
                   </td>
@@ -403,7 +416,7 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
                       <div className="text-xs text-purple-600 italic mt-0.5">Transferred to HELOC</div>
                     )}
                     {p.isPaidOff && !p.transferredToHELOC && (
-                      <div className="text-xs text-green-600 font-semibold mt-0.5">✓ Paid Off</div>
+                      <div className="text-xs text-green-600 font-semibold mt-0.5">Paid Off</div>
                     )}
                   </td>
                   <td className="py-3 px-2">
@@ -426,6 +439,15 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
                   <td className="py-3 px-2 text-sm text-gray-700">
                     {p.description || '-'}
                   </td>
+                  <td className="py-3 px-2">
+                    <button
+                      onClick={() => setPendingDelete(p)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                      title="Delete payment"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -439,6 +461,59 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
           This report combines payments from all sources: direct debt payments (Dashboard/My Debts), HELOC draws used to pay debts (HELOC Tracker), and checking account debt payments (Checking Register). This gives you a complete view of your debt elimination progress regardless of which method you use.
         </p>
       </div>
+
+      {deleteSuccess && (
+        <div className="fixed bottom-6 right-6 bg-gray-800 text-white px-5 py-3 rounded-lg shadow-xl text-sm font-medium animate-fade-in z-50">
+          Payment deleted successfully
+        </div>
+      )}
+
+      {pendingDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-start space-x-4 mb-5">
+              <div className="bg-red-100 rounded-full p-2 flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-800 mb-1">Delete this payment?</h3>
+                <div className="bg-gray-50 rounded-lg p-3 mt-2 text-sm space-y-1">
+                  <p className="font-semibold text-gray-800">
+                    {CalculationService.formatCurrency(pendingDelete.amount)} to {pendingDelete.debtName}
+                  </p>
+                  <p className="text-gray-600">
+                    {CalculationService.formatDate(pendingDelete.date)}
+                  </p>
+                  <p className="text-gray-600">
+                    Balance will change from{' '}
+                    <span className="font-semibold text-gray-800">
+                      {CalculationService.formatCurrency(pendingDelete.newBalance)}
+                    </span>
+                    {' '}to{' '}
+                    <span className="font-semibold text-gray-800">
+                      {CalculationService.formatCurrency(pendingDelete.previousBalance)}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setPendingDelete(null)}
+                className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
