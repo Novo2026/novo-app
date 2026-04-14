@@ -85,6 +85,7 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
 
   const handleConfirmDelete = () => {
     if (!pendingDelete) return;
+    applyDebtBalanceDelta(pendingDelete.debtId, pendingDelete.amount);
     StorageService.deleteTransaction(pendingDelete.id);
     StorageService.deleteUnifiedPayment(pendingDelete.id);
     setDeletedPaymentIds(prev => new Set(prev).add(pendingDelete.id));
@@ -92,6 +93,27 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
     setDeleteSuccess(true);
     setTimeout(() => setDeleteSuccess(false), 3000);
     onDataUpdate();
+  };
+
+  const applyDebtBalanceDelta = (debtId: string, delta: number) => {
+    const debts = StorageService.getDebts();
+    const updatedDebts = debts.map(debt => {
+      if (debt.id !== debtId) return debt;
+
+      const nextBalance = Math.min(
+        debt.startingBalance,
+        Math.max(0, debt.currentBalance + delta)
+      );
+
+      return {
+        ...debt,
+        currentBalance: nextBalance,
+        isPaidOff: nextBalance <= 0,
+        paidOffDate: nextBalance <= 0 ? debt.paidOffDate : undefined,
+      };
+    });
+
+    StorageService.saveDebts(updatedDebts);
   };
 
   const handleOpenEdit = (payment: UnifiedPayment) => {
@@ -107,6 +129,11 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
     const parsedAmount = parseFloat(editAmount);
     if (!editDate || Number.isNaN(parsedAmount) || parsedAmount <= 0) {
       return;
+    }
+
+    const amountDelta = editingPayment.amount - parsedAmount;
+    if (amountDelta !== 0) {
+      applyDebtBalanceDelta(editingPayment.debtId, amountDelta);
     }
 
     const updatedPayments = StorageService.getUnifiedPayments().map(payment => {
