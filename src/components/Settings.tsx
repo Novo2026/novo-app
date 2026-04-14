@@ -3,14 +3,16 @@ import { Trash2, Download, AlertTriangle, CheckCircle, User, DollarSign, Refresh
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import LearnHELOCModal from './LearnHELOCModal';
+import HelocSuccessModal from './HelocSuccessModal';
 import type { FinancialProfile, FeaturePreferences, HomeEquity } from '../types';
 
 interface SettingsProps {
   onDataUpdate: () => void;
   onHelocEnabledFirstTime?: () => void;
+  onNavigate?: (section: 'tracker' | 'strategies' | 'guide') => void;
 }
 
-export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: SettingsProps) {
+export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavigate }: SettingsProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -23,6 +25,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
   const [showHelocDisableConfirm, setShowHelocDisableConfirm] = useState(false);
   const [showLearnHELOCModal, setShowLearnHELOCModal] = useState(false);
   const [showHelocSuccess, setShowHelocSuccess] = useState(false);
+  const [showHelocSuccessModal, setShowHelocSuccessModal] = useState(false);
   const [helocDetails, setHelocDetails] = useState({
     creditLimit: '',
     currentBalance: '',
@@ -235,9 +238,17 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
     (updated as any).helocLender = helocDetails.lender;
 
     StorageService.saveHomeEquity(updated);
-    setShowHelocSuccess(true);
     onDataUpdate();
-    setTimeout(() => setShowHelocSuccess(false), 4000);
+
+    const isFirstSave = !localStorage.getItem('heloc_details_saved_once');
+    if (isFirstSave) {
+      localStorage.setItem('heloc_details_saved_once', 'true');
+      setShowHelocSuccessModal(true);
+      onHelocEnabledFirstTime?.();
+    } else {
+      setShowHelocSuccess(true);
+      setTimeout(() => setShowHelocSuccess(false), 4000);
+    }
   };
 
   const handleToggleDemoMode = () => {
@@ -1161,6 +1172,16 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime }: Sett
           handleToggleFeature('heloc');
         }}
       />
+
+      {showHelocSuccessModal && (
+        <HelocSuccessModal
+          onClose={() => setShowHelocSuccessModal(false)}
+          onNavigate={(section) => {
+            setShowHelocSuccessModal(false);
+            onNavigate?.(section);
+          }}
+        />
+      )}
     </div>
   );
 }

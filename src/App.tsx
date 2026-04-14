@@ -28,6 +28,9 @@ function App() {
     checkingEnabled: true,
   });
   const [showHelocWelcome, setShowHelocWelcome] = useState(false);
+  const [showTrackerNewBadge, setShowTrackerNewBadge] = useState(() => {
+    return localStorage.getItem('trackerTabNewSeen') !== 'true' && StorageService.getFeaturePreferences().helocEnabled;
+  });
   const [askNovoClicked, setAskNovoClicked] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [menuOpenCount, setMenuOpenCount] = useState(() => {
@@ -47,6 +50,9 @@ function App() {
   const loadFeaturePreferences = () => {
     const preferences = StorageService.getFeaturePreferences();
     setFeaturePreferences(preferences);
+    if (preferences.helocEnabled && localStorage.getItem('trackerTabNewSeen') !== 'true') {
+      setShowTrackerNewBadge(true);
+    }
   };
 
   const checkOnboarding = () => {
@@ -155,9 +161,19 @@ function App() {
 
   const handleHelocEnabledFirstTime = () => {
     setShowHelocWelcome(true);
+    setShowTrackerNewBadge(true);
+    localStorage.removeItem('trackerTabNewSeen');
     setTimeout(() => {
       setShowHelocWelcome(false);
     }, 5000);
+  };
+
+  const handleNavigateFromSettings = (section: 'tracker' | 'strategies' | 'guide') => {
+    setCurrentSection(section as Section);
+    if (section === 'tracker') {
+      setShowTrackerNewBadge(false);
+      localStorage.setItem('trackerTabNewSeen', 'true');
+    }
   };
 
   const handleWelcomeTourNavigate = (section: 'dashboard' | 'strategies', scrollTo?: string) => {
@@ -209,7 +225,7 @@ function App() {
   const renderSection = () => {
     switch (currentSection) {
       case 'dashboard':
-        return <Dashboard onDataUpdate={handleDataUpdate} onNavigateToSavings={() => setCurrentSection('savings')} />;
+        return <Dashboard onDataUpdate={handleDataUpdate} onNavigateToSavings={() => setCurrentSection('savings')} onNavigateToTracker={() => setCurrentSection('tracker')} />;
       case 'debts':
         return <MyDebts onDataUpdate={handleDataUpdate} />;
       case 'strategies':
@@ -223,7 +239,7 @@ function App() {
       case 'guide':
         return <Guide />;
       case 'settings':
-        return <Settings onDataUpdate={handleDataUpdate} onHelocEnabledFirstTime={handleHelocEnabledFirstTime} />;
+        return <Settings onDataUpdate={handleDataUpdate} onHelocEnabledFirstTime={handleHelocEnabledFirstTime} onNavigate={handleNavigateFromSettings} />;
       default:
         return <Dashboard onDataUpdate={handleDataUpdate} onNavigateToSavings={() => setCurrentSection('savings')} />;
     }
@@ -279,16 +295,22 @@ function App() {
             { section: 'debts' as Section, label: 'My Debts', icon: CreditCard },
             { section: 'strategies' as Section, label: 'Payment Strategies', icon: TrendingUp },
             ...((featurePreferences.helocEnabled || featurePreferences.checkingEnabled)
-              ? [{ section: 'tracker' as Section, label: 'Cash Flow', icon: Wallet }]
+              ? [{ section: 'tracker' as Section, label: featurePreferences.helocEnabled ? 'HELOC Tracker' : 'Cash Flow', icon: Wallet, isNew: showTrackerNewBadge && featurePreferences.helocEnabled }]
               : []),
             { section: 'savings' as Section, label: 'Savings Tracker', icon: PiggyBank },
             { section: 'progress' as Section, label: 'Progress Reports', icon: BarChart3 },
             { section: 'guide' as Section, label: 'How to Use', icon: BookOpen },
             { section: 'settings' as Section, label: 'Settings', icon: SettingsIcon },
-          ] as Array<{ section: Section; label: string; icon: any }>).map(({ section, label, icon: Icon }) => (
+          ] as Array<{ section: Section; label: string; icon: any; isNew?: boolean }>).map(({ section, label, icon: Icon, isNew }) => (
             <button
               key={section}
-              onClick={() => handleMobileNavClick(section)}
+              onClick={() => {
+                handleMobileNavClick(section);
+                if (section === 'tracker' && showTrackerNewBadge) {
+                  setShowTrackerNewBadge(false);
+                  localStorage.setItem('trackerTabNewSeen', 'true');
+                }
+              }}
               className={`w-full flex items-center gap-3 px-5 py-4 text-left transition-colors min-h-[48px] ${
                 currentSection === section
                   ? 'bg-[#FF6B35]/10 text-[#FF6B35] font-semibold border-l-4 border-[#FF6B35]'
@@ -296,7 +318,12 @@ function App() {
               }`}
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
-              <span className="text-base">{label}</span>
+              <span className="text-base flex-1">{label}</span>
+              {isNew && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-emerald-500 text-white leading-none">
+                  NEW
+                </span>
+              )}
             </button>
           ))}
         </nav>
@@ -392,8 +419,14 @@ function App() {
             </button>
             {(featurePreferences.helocEnabled || featurePreferences.checkingEnabled) && (
               <button
-                onClick={() => setCurrentSection('tracker')}
-                className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
+                onClick={() => {
+                  setCurrentSection('tracker');
+                  if (showTrackerNewBadge) {
+                    setShowTrackerNewBadge(false);
+                    localStorage.setItem('trackerTabNewSeen', 'true');
+                  }
+                }}
+                className={`relative flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                   currentSection === 'tracker'
                     ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -401,6 +434,11 @@ function App() {
               >
                 <Wallet className="w-4 h-4" />
                 <span>Tracker</span>
+                {showTrackerNewBadge && featurePreferences.helocEnabled && (
+                  <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold bg-emerald-500 text-white leading-none">
+                    NEW
+                  </span>
+                )}
               </button>
             )}
             <button

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, CreditCard as Edit2, Pencil, Trash2, TrendingUp, Target, Zap } from 'lucide-react';
+import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, CreditCard as Edit2, Pencil, Trash2, TrendingUp, Target, Zap, Home } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import LogPaymentModal from './LogPaymentModal';
@@ -11,9 +11,10 @@ import type { Debt, Transaction } from '../types';
 interface DashboardProps {
   onDataUpdate: () => void;
   onNavigateToSavings?: () => void;
+  onNavigateToTracker?: () => void;
 }
 
-export default function Dashboard({ onDataUpdate, onNavigateToSavings }: DashboardProps) {
+export default function Dashboard({ onDataUpdate, onNavigateToSavings, onNavigateToTracker }: DashboardProps) {
   const [showLogPayment, setShowLogPayment] = useState(false);
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const [quickPayAmount, setQuickPayAmount] = useState<number | undefined>(undefined);
@@ -29,6 +30,8 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
   const strategyResult = StorageService.getStrategyResult();
   const savingsAccounts = StorageService.getSavingsAccounts();
   const financialProfile = StorageService.getFinancialProfile();
+  const featurePreferences = StorageService.getFeaturePreferences();
+  const homeEquity = StorageService.getHomeEquity();
 
   const metrics = CalculationService.calculateTotalDebtMetrics(debts, transactions);
   const savingsMetrics = CalculationService.calculateSavingsMetrics(savingsAccounts);
@@ -368,6 +371,48 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings }: Dashboa
           </p>
         )}
       </div>
+
+      {featurePreferences.helocEnabled && homeEquity && homeEquity.hasHELOC && (
+        <button
+          onClick={onNavigateToTracker}
+          className="w-full text-left bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 p-5 group"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Home className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <p className="font-bold text-white text-base">HELOC Overview</p>
+                <p className="text-emerald-100 text-xs">Velocity banking tracker</p>
+              </div>
+            </div>
+            <ArrowRight className="w-5 h-5 text-emerald-200 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-3">
+            <div className="bg-white/10 rounded-lg p-3 text-center">
+              <p className="text-emerald-100 text-xs mb-1">Credit Limit</p>
+              <p className="font-bold text-white text-sm">
+                {homeEquity.helocLimit ? `$${homeEquity.helocLimit.toLocaleString()}` : '—'}
+              </p>
+            </div>
+            <div className="bg-white/10 rounded-lg p-3 text-center">
+              <p className="text-emerald-100 text-xs mb-1">Balance</p>
+              <p className="font-bold text-white text-sm">
+                {`$${(homeEquity.helocBalance ?? 0).toLocaleString()}`}
+              </p>
+            </div>
+            <div className="bg-white/10 rounded-lg p-3 text-center">
+              <p className="text-emerald-100 text-xs mb-1">Available</p>
+              <p className="font-bold text-white text-sm">
+                {homeEquity.helocLimit
+                  ? `$${((homeEquity.helocLimit) - (homeEquity.helocBalance ?? 0)).toLocaleString()}`
+                  : '—'}
+              </p>
+            </div>
+          </div>
+        </button>
+      )}
 
       <div className="flex justify-center">
         <button

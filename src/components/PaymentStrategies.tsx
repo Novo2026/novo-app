@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowRight, DollarSign, TrendingUp, CheckCircle } from 'lucide-react';
+import { ArrowRight, DollarSign, TrendingUp, CheckCircle, Home, Zap, AlertTriangle } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import StrategyWizard from './StrategyWizard';
@@ -240,6 +240,105 @@ export default function PaymentStrategies({ onDataUpdate }: PaymentStrategiesPro
                   Enable HELOC Features
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {featurePreferences.helocEnabled && (
+        <div id="heloc-strategies-section" className="max-w-3xl mx-auto">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+              <Home className="w-5 h-5 text-emerald-700" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900">HELOC Acceleration Strategies</h3>
+              <p className="text-sm text-gray-500">Advanced techniques for homeowners</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="bg-white rounded-xl border-2 border-emerald-200 shadow-sm p-5">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Zap className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-gray-800 mb-1">1. Velocity Banking</h4>
+                  <p className="text-sm text-gray-600 leading-relaxed mb-3">
+                    Deposit your paycheck directly into your HELOC each month. Pay all living expenses from the HELOC. The net effect: your average daily HELOC balance drops, dramatically reducing interest charges.
+                  </p>
+                  <div className="bg-emerald-50 rounded-lg p-3 mb-3">
+                    <p className="text-xs font-semibold text-emerald-800 mb-1">How it works:</p>
+                    <ul className="text-xs text-emerald-700 space-y-1">
+                      <li>1. Deposit paycheck ($5,000) into HELOC → balance drops $5,000</li>
+                      <li>2. Pay bills/expenses ($3,500) from HELOC → balance rises $3,500</li>
+                      <li>3. Net paydown = $1,500/month with no extra spending</li>
+                    </ul>
+                  </div>
+                  <button
+                    onClick={() => setShowLearnHELOCModal(true)}
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 hover:text-emerald-900 transition-colors"
+                  >
+                    Learn More <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border-2 border-blue-200 shadow-sm p-5">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <DollarSign className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-gray-800 mb-1">2. Chunking Payments</h4>
+                  <p className="text-sm text-gray-600 leading-relaxed mb-3">
+                    Draw a large lump sum from your HELOC and apply it directly to your mortgage principal. Then aggressively pay down the HELOC. This bypasses years of amortization interest.
+                  </p>
+                  <div className="bg-blue-50 rounded-lg p-3 mb-3">
+                    <p className="text-xs font-semibold text-blue-800 mb-1">Example:</p>
+                    <p className="text-xs text-blue-700">Draw $20K from HELOC → Apply to mortgage → Pay HELOC back in 10 months → Save years of 6.5% mortgage interest</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const chunkingEl = document.getElementById('smart-chunking-calculator');
+                      if (chunkingEl) {
+                        chunkingEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 hover:text-blue-900 transition-colors"
+                  >
+                    Chunking Calculator <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border-2 border-amber-200 shadow-sm p-5">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 bg-amber-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <TrendingUp className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-gray-800 mb-1">3. Debt Consolidation via HELOC</h4>
+                  <p className="text-sm text-gray-600 leading-relaxed mb-3">
+                    Pay off high-interest credit cards or personal loans using your HELOC. Trade a 20–29% rate for your HELOC rate. You must avoid accumulating new debt for this to work.
+                  </p>
+                  <div className="bg-amber-50 rounded-lg p-3 mb-1">
+                    <p className="text-xs text-amber-700">
+                      <span className="font-semibold">Requirement:</span> Discipline to not reuse paid-off credit cards.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 bg-amber-50 border border-amber-300 rounded-xl p-4">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-800">
+                <span className="font-semibold">Important:</span> HELOC strategies require stable income and strict discipline. Variable rates can increase your costs. Not recommended if your income is unpredictable.
+              </p>
             </div>
           </div>
         </div>
