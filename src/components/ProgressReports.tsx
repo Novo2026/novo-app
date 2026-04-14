@@ -28,6 +28,11 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
   const [pendingDelete, setPendingDelete] = useState<UnifiedPayment | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
   const [deletedPaymentIds, setDeletedPaymentIds] = useState<Set<string>>(new Set());
+  const [editingPayment, setEditingPayment] = useState<UnifiedPayment | null>(null);
+  const [editDate, setEditDate] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editSuccess, setEditSuccess] = useState(false);
 
   const debts = StorageService.getDebts();
   const allTransactions = StorageService.getTransactions();
@@ -86,6 +91,49 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
     setPendingDelete(null);
     setDeleteSuccess(true);
     setTimeout(() => setDeleteSuccess(false), 3000);
+    onDataUpdate();
+  };
+
+  const handleOpenEdit = (payment: UnifiedPayment) => {
+    setEditingPayment(payment);
+    setEditDate(payment.date);
+    setEditAmount(payment.amount.toFixed(2));
+    setEditDescription(payment.description || '');
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingPayment) return;
+
+    const parsedAmount = parseFloat(editAmount);
+    if (!editDate || Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      return;
+    }
+
+    const updatedPayments = StorageService.getUnifiedPayments().map(payment => {
+      if (payment.id !== editingPayment.id) return payment;
+      return {
+        ...payment,
+        date: editDate,
+        amount: parsedAmount,
+        description: editDescription.trim() || undefined,
+      };
+    });
+    StorageService.saveUnifiedPayments(updatedPayments);
+
+    const updatedTransactions = StorageService.getTransactions().map(transaction => {
+      if (transaction.id !== editingPayment.id) return transaction;
+      return {
+        ...transaction,
+        date: editDate,
+        amount: parsedAmount,
+        notes: editDescription.trim(),
+      };
+    });
+    StorageService.saveTransactions(updatedTransactions);
+
+    setEditingPayment(null);
+    setEditSuccess(true);
+    setTimeout(() => setEditSuccess(false), 3000);
     onDataUpdate();
   };
 
@@ -445,13 +493,22 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
                     {p.description || '-'}
                   </td>
                   <td className="py-3 px-2 text-right">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setPendingDelete(p); }}
-                      className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                      title="Delete payment"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleOpenEdit(p); }}
+                        className="px-2 py-1 text-xs font-semibold text-[#2D9CDB] hover:bg-blue-50 rounded transition-colors"
+                        title="Edit payment"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setPendingDelete(p); }}
+                        className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                        title="Delete payment"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -470,6 +527,12 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
       {deleteSuccess && (
         <div className="fixed bottom-6 right-6 bg-gray-800 text-white px-5 py-3 rounded-lg shadow-xl text-sm font-medium animate-fade-in z-50">
           Payment deleted successfully
+        </div>
+      )}
+
+      {editSuccess && (
+        <div className="fixed bottom-6 right-6 bg-gray-800 text-white px-5 py-3 rounded-lg shadow-xl text-sm font-medium animate-fade-in z-50">
+          Payment updated successfully
         </div>
       )}
 
@@ -514,6 +577,62 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
                 className="px-4 py-2 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
               >
                 Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingPayment && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <h3 className="text-lg font-bold text-gray-800">Edit Payment</h3>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Date</label>
+              <input
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Amount</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+              <input
+                type="text"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                placeholder="Optional description"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => setEditingPayment(null)}
+                className="px-4 py-2 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="px-4 py-2 text-sm font-semibold text-white bg-[#2D9CDB] hover:bg-[#1E8BBD] rounded-lg transition-colors"
+              >
+                Save
               </button>
             </div>
           </div>
