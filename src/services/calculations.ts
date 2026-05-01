@@ -264,6 +264,69 @@ export const CalculationService = {
     };
   },
 
+  /**
+   * One-time windfall applied to cloned debts only (sandbox). Highest rate first; ties by id.
+   * Does not read or write storage.
+   */
+  applySimulatorWindfall(debts: Debt[], windfall: number): Debt[] {
+    const clones = debts.map((d) => ({ ...d }));
+    if (windfall <= 0) return clones;
+
+    let remaining = windfall;
+    const targets = clones
+      .filter((d) => !d.isPaidOff && d.currentBalance > 0)
+      .sort((a, b) => b.interestRate - a.interestRate || a.id.localeCompare(b.id));
+
+    for (const d of targets) {
+      if (remaining <= 0) break;
+      const pay = Math.min(d.currentBalance, remaining);
+      d.currentBalance = Math.round((d.currentBalance - pay) * 100) / 100;
+      remaining = Math.round((remaining - pay) * 100) / 100;
+      if (d.currentBalance <= 0) {
+        d.currentBalance = 0;
+        d.isPaidOff = true;
+      }
+    }
+
+    return clones;
+  },
+
+  /**
+   * Same pipeline as Dashboard optimized payoff: sum minimums on active debts → calculateCashFlow →
+   * extra to debt (recommended + optional add-on) → projectDebtPayoff (HELOC virtual merged inside).
+   * Used by What-If Simulator only; does not persist.
+   */
+  simulateDashboardStylePayoff(
+    debtSnapshot: Debt[],
+    inputs: {
+      monthlyNetIncome: number;
+      monthlyEssentialExpenses: number;
+      monthlyDiscretionaryExpenses: number;
+      monthlySavingsGoal: number;
+      surplusCommitmentPercent: number;
+      oneTimeWindfall: number;
+      extraMonthlyContribution: number;
+    }
+  ) {
+    const afterWindfall = this.applySimulatorWindfall(debtSnapshot, inputs.oneTimeWindfall);
+    const activeDebts = afterWindfall.filter((d) => !d.isPaidOff);
+    const totalMinimumPayments = activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
+
+    const cashFlow = this.calculateCashFlow(
+      inputs.monthlyNetIncome,
+      inputs.monthlyEssentialExpenses,
+      inputs.monthlyDiscretionaryExpenses,
+      totalMinimumPayments,
+      inputs.monthlySavingsGoal,
+      inputs.surplusCommitmentPercent
+    );
+
+    const extraPayment = Math.max(0, cashFlow.recommendedExtraPayment + inputs.extraMonthlyContribution);
+    const projection = this.projectDebtPayoff(activeDebts, extraPayment);
+
+    return { cashFlow, extraPayment, projection };
+  },
+
   calculateHomeEquityMetrics(homeValue: number, mortgageBalance: number) {
     const totalEquity = homeValue - mortgageBalance;
     const availableHELOC = (homeValue * 0.9) - mortgageBalance;
