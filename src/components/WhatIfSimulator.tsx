@@ -14,6 +14,12 @@ interface SimulatorInputs {
   extraMonthlyContribution: number;
 }
 
+interface ProjectionContext {
+  cashFlow: ReturnType<typeof CalculationService.calculateCashFlow>;
+  debtAmount: number;
+  projection: ReturnType<typeof CalculationService.projectDebtPayoff> | null;
+}
+
 const clampPercentToStep = (value: number): number => {
   const clamped = Math.min(100, Math.max(0, value));
   return Math.round(clamped / 5) * 5;
@@ -53,50 +59,62 @@ const getInitialInputs = (): SimulatorInputs => {
 };
 
 export default function WhatIfSimulator() {
-  const baseInputs = useMemo(() => getInitialInputs(), []);
-  const [inputs, setInputs] = useState<SimulatorInputs>(baseInputs);
+  const initialProfileSnapshot = useMemo(() => StorageService.getFinancialProfile(), []);
+  const baseDebtsSnapshot = useMemo(
+    () => StorageService.getDebts().filter((debt) => !debt.isPaidOff),
+    []
+  );
+  const baselineInputs = useMemo<SimulatorInputs>(() => ({
+    monthlyNetIncome: initialProfileSnapshot?.monthlyNetIncome ?? 0,
+    monthlyEssentialExpenses: initialProfileSnapshot?.monthlyEssentialExpenses ?? 0,
+    monthlyDiscretionaryExpenses: initialProfileSnapshot?.monthlyDiscretionaryExpenses ?? 0,
+    monthlySavingsGoal: initialProfileSnapshot?.monthlySavingsGoal ?? 0,
+    surplusCommitmentPercent: clampPercentToStep(initialProfileSnapshot?.surplusCommitmentPercent ?? 100),
+    oneTimeWindfall: 0,
+    extraMonthlyContribution: 0,
+  }), [initialProfileSnapshot]);
+  const [inputs, setInputs] = useState<SimulatorInputs>(baselineInputs);
 
-  const debts = StorageService.getDebts().filter((debt) => !debt.isPaidOff);
-  const scenarioDebts = applyWindfallToDebts(debts, inputs.oneTimeWindfall);
-  const scenarioMinimumPayments = scenarioDebts.reduce((sum, debt) => sum + debt.minimumPayment, 0);
+  const buildProjectionContext = (
+    sourceInputs: SimulatorInputs,
+    debtSource: Debt[]
+  ): ProjectionContext => {
+    const debtsAfterWindfall = applyWindfallToDebts(debtSource, sourceInputs.oneTimeWindfall);
+    const totalMinimumPayments = debtsAfterWindfall.reduce((sum, debt) => sum + debt.minimumPayment, 0);
+    const cashFlow = CalculationService.calculateCashFlow(
+      sourceInputs.monthlyNetIncome,
+      sourceInputs.monthlyEssentialExpenses,
+      sourceInputs.monthlyDiscretionaryExpenses,
+      totalMinimumPayments,
+      sourceInputs.monthlySavingsGoal,
+      sourceInputs.surplusCommitmentPercent
+    );
+    const debtAmount = Math.max(0, cashFlow.recommendedExtraPayment + sourceInputs.extraMonthlyContribution);
+    const projection = debtsAfterWindfall.length > 0
+      ? CalculationService.projectDebtPayoff(debtsAfterWindfall, debtAmount)
+      : null;
 
-  const scenarioCashFlow = CalculationService.calculateCashFlow(
-    inputs.monthlyNetIncome,
-    inputs.monthlyEssentialExpenses,
-    inputs.monthlyDiscretionaryExpenses,
-    scenarioMinimumPayments,
-    inputs.monthlySavingsGoal,
-    inputs.surplusCommitmentPercent
+    return {
+      cashFlow,
+      debtAmount,
+      projection,
+    };
+  };
+
+  const baselineContext = useMemo(
+    () => buildProjectionContext(baselineInputs, baseDebtsSnapshot),
+    [baselineInputs, baseDebtsSnapshot]
+  );
+  const scenarioContext = useMemo(
+    () => buildProjectionContext(inputs, baseDebtsSnapshot),
+    [inputs, baseDebtsSnapshot]
   );
 
-  const scenarioDebtAmount = Math.max(0, scenarioCashFlow.recommendedExtraPayment + inputs.extraMonthlyContribution);
-  const scenarioProjection = scenarioDebts.length > 0
-    ? CalculationService.projectDebtPayoff(scenarioDebts, scenarioDebtAmount)
-    : null;
-
-  const profile = StorageService.getFinancialProfile();
-  const currentPlanDebts = cloneDebts(debts);
-  const currentPlanMinimumPayments = currentPlanDebts.reduce((sum, debt) => sum + debt.minimumPayment, 0);
-  const currentCashFlow = profile
-    ? CalculationService.calculateCashFlow(
-        profile.monthlyNetIncome,
-        profile.monthlyEssentialExpenses,
-        profile.monthlyDiscretionaryExpenses,
-        currentPlanMinimumPayments,
-        profile.monthlySavingsGoal ?? 0,
-        profile.surplusCommitmentPercent ?? 100
-      )
-    : null;
-  const currentPlanDebtAmount = currentCashFlow?.recommendedExtraPayment ?? 0;
-  const currentProjection = currentPlanDebts.length > 0
-    ? CalculationService.projectDebtPayoff(currentPlanDebts, currentPlanDebtAmount)
-    : null;
-
-  const monthsDifference = currentProjection && scenarioProjection
-    ? currentProjection.totalMonths - scenarioProjection.totalMonths
+  const monthsDifference = baselineContext.projection && scenarioContext.projection
+    ? baselineContext.projection.totalMonths - scenarioContext.projection.totalMonths
     : 0;
-  const estimatedInterestSaved = currentProjection && scenarioProjection
-    ? currentProjection.totalInterest - scenarioProjection.totalInterest
+  const estimatedInterestSaved = baselineContext.projection && scenarioContext.projection
+    ? baselineContext.projection.totalInterest - scenarioContext.projection.totalInterest
     : 0;
 
   const setNumberInput = (field: keyof SimulatorInputs, value: string) => {
@@ -106,7 +124,7 @@ export default function WhatIfSimulator() {
   };
 
   const resetToProfileValues = () => {
-    setInputs(getInitialInputs());
+    setInputs(baselineInputs);
   };
 
   return (
@@ -249,20 +267,20 @@ export default function WhatIfSimulator() {
           <div className="space-y-3">
             <div className="flex justify-between border-b border-gray-100 pb-2">
               <span className="text-gray-600">Total surplus available</span>
-              <span className="font-bold text-gray-900">{CalculationService.formatCurrency(scenarioCashFlow.surplusAfterSavings)}</span>
+              <span className="font-bold text-gray-900">{CalculationService.formatCurrency(scenarioContext.cashFlow.surplusAfterSavings)}</span>
             </div>
             <div className="flex justify-between border-b border-gray-100 pb-2">
               <span className="text-gray-600">Amount going to savings</span>
-              <span className="font-bold text-[#27AE60]">{CalculationService.formatCurrency(scenarioCashFlow.savingsCarveOut)}</span>
+              <span className="font-bold text-[#27AE60]">{CalculationService.formatCurrency(scenarioContext.cashFlow.savingsCarveOut)}</span>
             </div>
             <div className="flex justify-between border-b border-gray-100 pb-2">
               <span className="text-gray-600">Amount going to debt</span>
-              <span className="font-bold text-[#1E3A5F]">{CalculationService.formatCurrency(scenarioDebtAmount)}</span>
+              <span className="font-bold text-[#1E3A5F]">{CalculationService.formatCurrency(scenarioContext.debtAmount)}</span>
             </div>
             <div className="flex justify-between border-b border-gray-100 pb-2">
               <span className="text-gray-600">Projected debt-free date</span>
               <span className="font-bold text-[#1E3A5F]">
-                {scenarioProjection ? CalculationService.formatMonthYear(scenarioProjection.debtFreeDate) : 'No active debt'}
+                {scenarioContext.projection ? CalculationService.formatMonthYear(scenarioContext.projection.debtFreeDate) : 'No active debt'}
               </span>
             </div>
             <div className="flex justify-between border-b border-gray-100 pb-2">
