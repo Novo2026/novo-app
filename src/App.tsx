@@ -3,6 +3,7 @@ import { Home, CreditCard, TrendingUp, BarChart3, Settings as SettingsIcon, Wall
 import Dashboard from './components/Dashboard';
 import MyDebts from './components/MyDebts';
 import PaymentStrategies from './components/PaymentStrategies';
+import WhatIfSimulator from './components/WhatIfSimulator';
 import { Tracker } from './components/Tracker';
 import SavingsTracker from './components/SavingsTracker';
 import ProgressReports from './components/ProgressReports';
@@ -13,7 +14,7 @@ import WelcomeTourModal from './components/WelcomeTourModal';
 import { StorageService } from './services/storage';
 import type { Debt, Transaction, FeaturePreferences } from './types';
 
-type Section = 'dashboard' | 'debts' | 'strategies' | 'tracker' | 'savings' | 'progress' | 'guide' | 'settings';
+type Section = 'dashboard' | 'debts' | 'strategies' | 'what-if' | 'tracker' | 'savings' | 'progress' | 'guide' | 'settings';
 
 function App() {
   const [currentSection, setCurrentSection] = useState<Section>('dashboard');
@@ -232,6 +233,8 @@ function App() {
         return <MyDebts onDataUpdate={handleDataUpdate} />;
       case 'strategies':
         return <PaymentStrategies onDataUpdate={handleDataUpdate} />;
+      case 'what-if':
+        return <WhatIfSimulator />;
       case 'tracker':
         return <Tracker />;
       case 'savings':
@@ -296,6 +299,7 @@ function App() {
             { section: 'dashboard' as Section, label: 'Dashboard', icon: Home },
             { section: 'debts' as Section, label: 'My Debts', icon: CreditCard },
             { section: 'strategies' as Section, label: 'Payment Strategies', icon: TrendingUp },
+            { section: 'what-if' as Section, label: 'What-If Simulator', icon: BarChart3 },
             ...((featurePreferences.helocEnabled || featurePreferences.checkingEnabled)
               ? [{ section: 'tracker' as Section, label: featurePreferences.helocEnabled ? 'HELOC Tracker' : 'Cash Flow', icon: Wallet, isNew: showTrackerNewBadge && featurePreferences.helocEnabled }]
               : []),
@@ -418,6 +422,17 @@ function App() {
             >
               <TrendingUp className="w-4 h-4" />
               <span>Payment Strategies</span>
+            </button>
+            <button
+              onClick={() => setCurrentSection('what-if')}
+              className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
+                currentSection === 'what-if'
+                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>What-If Simulator</span>
             </button>
             {(featurePreferences.helocEnabled || featurePreferences.checkingEnabled) && (
               <button
