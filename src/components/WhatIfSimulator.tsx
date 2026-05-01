@@ -57,37 +57,39 @@ export default function WhatIfSimulator() {
   const [inputs, setInputs] = useState<SimulatorInputs>(baseInputs);
 
   const debts = StorageService.getDebts().filter((debt) => !debt.isPaidOff);
-  const totalMinimumPayments = debts.reduce((sum, debt) => sum + debt.minimumPayment, 0);
+  const scenarioDebts = applyWindfallToDebts(debts, inputs.oneTimeWindfall);
+  const scenarioMinimumPayments = scenarioDebts.reduce((sum, debt) => sum + debt.minimumPayment, 0);
 
   const scenarioCashFlow = CalculationService.calculateCashFlow(
     inputs.monthlyNetIncome,
     inputs.monthlyEssentialExpenses,
     inputs.monthlyDiscretionaryExpenses,
-    totalMinimumPayments,
+    scenarioMinimumPayments,
     inputs.monthlySavingsGoal,
     inputs.surplusCommitmentPercent
   );
 
   const scenarioDebtAmount = Math.max(0, scenarioCashFlow.recommendedExtraPayment + inputs.extraMonthlyContribution);
-  const scenarioDebts = applyWindfallToDebts(debts, inputs.oneTimeWindfall);
   const scenarioProjection = scenarioDebts.length > 0
     ? CalculationService.projectDebtPayoff(scenarioDebts, scenarioDebtAmount)
     : null;
 
   const profile = StorageService.getFinancialProfile();
+  const currentPlanDebts = cloneDebts(debts);
+  const currentPlanMinimumPayments = currentPlanDebts.reduce((sum, debt) => sum + debt.minimumPayment, 0);
   const currentCashFlow = profile
     ? CalculationService.calculateCashFlow(
         profile.monthlyNetIncome,
         profile.monthlyEssentialExpenses,
         profile.monthlyDiscretionaryExpenses,
-        totalMinimumPayments,
+        currentPlanMinimumPayments,
         profile.monthlySavingsGoal ?? 0,
         profile.surplusCommitmentPercent ?? 100
       )
     : null;
   const currentPlanDebtAmount = currentCashFlow?.recommendedExtraPayment ?? 0;
-  const currentProjection = debts.length > 0
-    ? CalculationService.projectDebtPayoff(cloneDebts(debts), currentPlanDebtAmount)
+  const currentProjection = currentPlanDebts.length > 0
+    ? CalculationService.projectDebtPayoff(currentPlanDebts, currentPlanDebtAmount)
     : null;
 
   const monthsDifference = currentProjection && scenarioProjection
