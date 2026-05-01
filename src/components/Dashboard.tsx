@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, CreditCard as Edit2, Pencil, Trash2, TrendingUp, Target, Zap, Home } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, CreditCard as Edit2, Pencil, Trash2, TrendingUp, Target, Zap, Home, Sliders } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import LogPaymentModal from './LogPaymentModal';
@@ -43,30 +43,51 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings, onNavigat
   const activeDebts = debts.filter(d => !d.isPaidOff);
   const totalMinimumPayments = activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
 
+  const [commitmentPercent, setCommitmentPercent] = useState<number>(
+    financialProfile?.surplusCommitmentPercent ?? 100
+  );
+
+  useEffect(() => {
+    setCommitmentPercent(financialProfile?.surplusCommitmentPercent ?? 100);
+  }, [financialProfile?.surplusCommitmentPercent]);
+
+  const cashFlowMetrics = financialProfile
+    ? CalculationService.calculateCashFlow(
+        financialProfile.monthlyNetIncome,
+        financialProfile.monthlyEssentialExpenses,
+        financialProfile.monthlyDiscretionaryExpenses,
+        totalMinimumPayments,
+        financialProfile.monthlySavingsGoal ?? 0,
+        commitmentPercent
+      )
+    : null;
+
+  const extraForDebtPayoff = cashFlowMetrics
+    ? Math.max(0, cashFlowMetrics.recommendedExtraPayment)
+    : 0;
+
   let optimizedProjection: { debtFreeDate: string; totalMonths: number } | null = null;
   if (financialProfile && activeDebts.length > 0) {
-    const cashFlowMetrics = CalculationService.calculateCashFlow(
-      financialProfile.monthlyNetIncome,
-      financialProfile.monthlyEssentialExpenses,
-      financialProfile.monthlyDiscretionaryExpenses,
-      totalMinimumPayments
-    );
-    const extraPayment = Math.max(0, cashFlowMetrics.recommendedExtraPayment);
-    const projection = CalculationService.projectDebtPayoff(activeDebts, extraPayment);
+    const projection = CalculationService.projectDebtPayoff(activeDebts, extraForDebtPayoff);
     optimizedProjection = {
       debtFreeDate: projection.debtFreeDate,
-      totalMonths: projection.totalMonths
+      totalMonths: projection.totalMonths,
     };
   }
 
-  const extraForDebtPayoff = financialProfile
-    ? Math.max(0,
-        financialProfile.monthlyNetIncome -
-        financialProfile.monthlyEssentialExpenses -
-        financialProfile.monthlyDiscretionaryExpenses -
-        totalMinimumPayments
-      )
-    : 0;
+  const handleCommitmentChange = (value: number) => {
+    setCommitmentPercent(value);
+    if (financialProfile) {
+      StorageService.saveFinancialProfile({
+        ...financialProfile,
+        surplusCommitmentPercent: value,
+      });
+    }
+  };
+
+  const handleCommitmentCommit = () => {
+    onDataUpdate();
+  };
 
   const nonHelocActive = activeDebts.filter(d => d.category !== 'HELOC');
   const targetDebt: Debt | null = (() => {
@@ -428,7 +449,7 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings, onNavigat
         </button>
       </div>
 
-      {financialProfile && (
+      {financialProfile && cashFlowMetrics && (
         <div className="bg-gradient-to-br from-[#2D9CDB] to-[#1E8BBD] text-white rounded-xl shadow-lg p-6">
           <div className="flex items-center space-x-3 mb-4">
             <TrendingUp className="w-8 h-8" />
@@ -442,19 +463,107 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings, onNavigat
             )}
           </p>
           <div className="space-y-2 text-sm bg-white/10 rounded-lg p-4 mb-4">
-            <p className="font-semibold mb-2">Breakdown:</p>
+            <p className="font-semibold mb-2">Income Allocation:</p>
+            <div className="flex justify-between">
+              <span className="opacity-90">Net income:</span>
+              <span className="font-semibold">
+                {CalculationService.formatCurrency(financialProfile.monthlyNetIncome)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="opacity-90">Essential expenses:</span>
+              <span className="font-semibold">
+                - {CalculationService.formatCurrency(financialProfile.monthlyEssentialExpenses)}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="opacity-90">Discretionary expenses:</span>
+              <span className="font-semibold">
+                - {CalculationService.formatCurrency(financialProfile.monthlyDiscretionaryExpenses)}
+              </span>
+            </div>
             <div className="flex justify-between">
               <span className="opacity-90">Minimum debt payments:</span>
               <span className="font-semibold">
-                {CalculationService.formatCurrency(totalMinimumPayments)}
+                - {CalculationService.formatCurrency(totalMinimumPayments)}
+              </span>
+            </div>
+            <div className="flex justify-between pt-2 border-t border-white/20">
+              <span className="opacity-90">Gross monthly surplus:</span>
+              <span className="font-semibold">
+                {CalculationService.formatCurrency(cashFlowMetrics.grossSurplus)}
+              </span>
+            </div>
+            <div className="flex justify-between bg-emerald-500/30 -mx-2 px-2 py-1 rounded">
+              <span className="opacity-95 font-medium">Savings carve-out:</span>
+              <span className="font-bold">
+                - {CalculationService.formatCurrency(cashFlowMetrics.savingsCarveOut)}
+              </span>
+            </div>
+            <div className="flex justify-between pt-2 border-t border-white/20 font-bold">
+              <span>Surplus after savings:</span>
+              <span>
+                {CalculationService.formatCurrency(cashFlowMetrics.surplusAfterSavings)}
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-white/10 rounded-lg p-4 mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-4 h-4" />
+                <span className="font-semibold text-sm">Surplus Commitment</span>
+              </div>
+              <span className="font-bold text-lg">{commitmentPercent}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={commitmentPercent}
+              onChange={(e) => handleCommitmentChange(parseInt(e.target.value, 10))}
+              onMouseUp={handleCommitmentCommit}
+              onTouchEnd={handleCommitmentCommit}
+              onKeyUp={handleCommitmentCommit}
+              className="w-full accent-[#27AE60] cursor-pointer"
+              aria-label="Percent of surplus committed to debt payoff"
+            />
+            <div className="flex justify-between text-xs opacity-75 mt-1">
+              <span>0%</span>
+              <span>50%</span>
+              <span>100%</span>
+            </div>
+            <p className="text-xs opacity-90 mt-2">
+              How much of your remaining surplus you'll realistically put toward debt this month.
+            </p>
+          </div>
+
+          <div className="space-y-2 text-sm bg-white/10 rounded-lg p-4 mb-4">
+            <div className="flex justify-between">
+              <span className="opacity-90">Surplus available:</span>
+              <span className="font-semibold">
+                {CalculationService.formatCurrency(cashFlowMetrics.surplusAfterSavings)}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="opacity-90">Extra for debt payoff:</span>
-              <span className="font-semibold">
+              <span className="opacity-90">Committed:</span>
+              <span className="font-semibold">{commitmentPercent}%</span>
+            </div>
+            <div className="flex justify-between pt-2 border-t border-white/20 font-bold text-base">
+              <span>Going to debt:</span>
+              <span className="text-[#F2C94C]">
                 {CalculationService.formatCurrency(extraForDebtPayoff)}
               </span>
             </div>
+            {optimizedProjection && (
+              <div className="flex justify-between pt-2 border-t border-white/20">
+                <span className="opacity-90">Revised debt-free date:</span>
+                <span className="font-semibold">
+                  {CalculationService.formatMonthYear(optimizedProjection.debtFreeDate)}
+                </span>
+              </div>
+            )}
           </div>
 
           {metrics.paidOffDebts.length > 0 && (

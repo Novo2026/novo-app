@@ -128,13 +128,20 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
   const hasRateArbitrageWarnings = currentResult.strategy.type === 'heloc-velocity' &&
     allDebts.some(d => d.interestRate < helocRate && d.id !== 'HELOC_VIRTUAL');
 
-  // Calculate cash flow after debt minimums
+  // Calculate cash flow after debt minimums, savings carve-out, and commitment %
   const totalMinimumPayments = allDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
-  const cashFlowAfterMinimums = financialProfile
-    ? financialProfile.monthlyNetIncome -
-      financialProfile.monthlyEssentialExpenses -
-      financialProfile.monthlyDiscretionaryExpenses -
-      totalMinimumPayments
+  const cashFlowMetricsForResults = financialProfile
+    ? CalculationService.calculateCashFlow(
+        financialProfile.monthlyNetIncome,
+        financialProfile.monthlyEssentialExpenses,
+        financialProfile.monthlyDiscretionaryExpenses,
+        totalMinimumPayments,
+        financialProfile.monthlySavingsGoal ?? 0,
+        financialProfile.surplusCommitmentPercent ?? 100
+      )
+    : null;
+  const cashFlowAfterMinimums = cashFlowMetricsForResults
+    ? cashFlowMetricsForResults.recommendedExtraPayment
     : currentResult.strategy.extraMonthlyPayment || 0;
 
   const hasLowCashFlow = cashFlowAfterMinimums < 200;

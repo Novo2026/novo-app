@@ -112,6 +112,8 @@ export interface FinancialProfile {
   monthlyNetIncome: number;
   monthlyEssentialExpenses: number;
   monthlyDiscretionaryExpenses: number;
+  monthlySavingsGoal?: number;
+  surplusCommitmentPercent?: number;
 }
 
 export interface HomeEquity {

@@ -27,7 +27,9 @@ export const CalculationService = {
       profile.monthlyNetIncome,
       profile.monthlyEssentialExpenses,
       profile.monthlyDiscretionaryExpenses,
-      totalMinimumPayments
+      totalMinimumPayments,
+      profile.monthlySavingsGoal ?? 0,
+      profile.surplusCommitmentPercent ?? 100
     );
 
     const extraPayment = Math.floor(cashFlow.recommendedExtraPayment);
@@ -239,16 +241,26 @@ export const CalculationService = {
     monthlyNetIncome: number,
     monthlyEssentialExpenses: number,
     monthlyDiscretionaryExpenses: number,
-    totalMinimumPayments: number
+    totalMinimumPayments: number,
+    monthlySavingsGoal: number = 0,
+    surplusCommitmentPercent: number = 100
   ) {
     const totalExpenses = monthlyEssentialExpenses + monthlyDiscretionaryExpenses;
-    const availableCashFlow = monthlyNetIncome - totalExpenses - totalMinimumPayments;
-    const recommendedExtraPayment = Math.max(0, availableCashFlow * 0.8);
+    const grossSurplus = monthlyNetIncome - totalExpenses - totalMinimumPayments;
+    const positiveGross = Math.max(0, grossSurplus);
+    const savingsCarveOut = Math.min(Math.max(0, monthlySavingsGoal), positiveGross);
+    const surplusAfterSavings = Math.max(0, positiveGross - savingsCarveOut);
+    const clampedPercent = Math.min(100, Math.max(0, surplusCommitmentPercent));
+    const recommendedExtraPayment = surplusAfterSavings * (clampedPercent / 100);
 
     return {
       totalExpenses,
-      availableCashFlow,
+      grossSurplus,
+      savingsCarveOut,
+      surplusAfterSavings,
+      commitmentPercent: clampedPercent,
       recommendedExtraPayment,
+      availableCashFlow: surplusAfterSavings,
     };
   },
 

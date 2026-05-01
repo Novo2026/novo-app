@@ -208,8 +208,11 @@ export const StorageService = {
     const relevantData = {
       debtsCount: debts.length,
       totalBalance: debts.reduce((sum, d) => sum + d.currentBalance, 0),
-      monthlyIncome: financialProfile?.monthlyIncome || 0,
-      monthlyExpenses: financialProfile?.monthlyExpenses || 0,
+      monthlyNetIncome: financialProfile?.monthlyNetIncome || 0,
+      monthlyEssentialExpenses: financialProfile?.monthlyEssentialExpenses || 0,
+      monthlyDiscretionaryExpenses: financialProfile?.monthlyDiscretionaryExpenses || 0,
+      monthlySavingsGoal: financialProfile?.monthlySavingsGoal || 0,
+      surplusCommitmentPercent: financialProfile?.surplusCommitmentPercent ?? 100,
       helocBalance: homeEquity?.helocBalance || 0,
       helocTransactionsCount: helocTransactions ? JSON.parse(helocTransactions).length : 0,
     };

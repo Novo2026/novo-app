@@ -22,6 +22,7 @@ interface OnboardingData {
   monthlyIncome: string;
   essentialExpenses: string;
   discretionaryExpenses: string;
+  monthlySavingsGoal: string;
   address: string;
   debts: DebtInput[];
   hasHELOC: boolean;
@@ -47,6 +48,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
     monthlyIncome: '',
     essentialExpenses: '',
     discretionaryExpenses: '',
+    monthlySavingsGoal: '',
     address: '',
     debts: [{ id: '1', name: '', type: 'Credit Card', balance: '', interestRate: '', minPayment: '' }],
     hasHELOC: false,
@@ -125,7 +127,8 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
     const income = parseCurrency(data.monthlyIncome);
     const essential = parseCurrency(data.essentialExpenses);
     const discretionary = parseCurrency(data.discretionaryExpenses);
-    return Math.max(0, income - essential - discretionary);
+    const savings = parseCurrency(data.monthlySavingsGoal);
+    return Math.max(0, income - essential - discretionary - savings);
   };
 
   const getTotalDebt = (): number => {
@@ -226,6 +229,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       monthlyIncome: '',
       essentialExpenses: '',
       discretionaryExpenses: '',
+      monthlySavingsGoal: '',
       address: '',
       debts: [{ id: '1', name: '', type: 'Credit Card', balance: '', interestRate: '', minPayment: '' }],
       hasHELOC: false,
@@ -375,6 +379,27 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         <p className="text-xs text-gray-600 mt-2 italic">Examples: Dining out, entertainment, subscriptions, hobbies, shopping, travel, luxury items</p>
       </div>
 
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-2">
+          Monthly Savings Goal
+        </label>
+        <p className="text-xs text-gray-500 mb-2">
+          Set aside before debt payoff so your emergency fund / savings keep growing
+        </p>
+        <div className="relative">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+          <input
+            type="text"
+            value={data.monthlySavingsGoal}
+            onChange={(e) => handleCurrencyChange('monthlySavingsGoal', e.target.value)}
+            placeholder="0"
+            className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all min-h-[48px]"
+            style={{ fontSize: '16px' }}
+          />
+        </div>
+        <p className="text-xs text-gray-600 mt-2 italic">Optional. Leave blank if you'd rather throw 100% of your surplus at debt.</p>
+      </div>
+
       {parseCurrency(data.essentialExpenses) > 0 && parseCurrency(data.discretionaryExpenses) >= 0 && (
         <div className="bg-gray-50 border-2 border-gray-300 rounded-lg p-4">
           <div className="flex justify-between items-center mb-2">
@@ -392,6 +417,12 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
               <span>Discretionary:</span>
               <span>{CalculationService.formatCurrency(parseCurrency(data.discretionaryExpenses))}</span>
             </div>
+            {parseCurrency(data.monthlySavingsGoal) > 0 && (
+              <div className="flex justify-between text-emerald-700">
+                <span>Savings carve-out:</span>
+                <span>{CalculationService.formatCurrency(parseCurrency(data.monthlySavingsGoal))}</span>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -415,7 +446,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
             {CalculationService.formatCurrency(getCashFlow())}
           </p>
           <p className="text-xs text-emerald-800 mt-2">
-            Net Income - Essential Expenses - Discretionary Expenses
+            Net Income - Essential Expenses - Discretionary Expenses{parseCurrency(data.monthlySavingsGoal) > 0 ? ' - Savings Goal' : ''}
           </p>
         </div>
       )}

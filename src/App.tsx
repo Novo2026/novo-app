@@ -113,6 +113,8 @@ function App() {
       monthlyNetIncome: parseCurrency(data.monthlyIncome),
       monthlyEssentialExpenses: parseCurrency(data.essentialExpenses),
       monthlyDiscretionaryExpenses: parseCurrency(data.discretionaryExpenses),
+      monthlySavingsGoal: parseCurrency(data.monthlySavingsGoal || ''),
+      surplusCommitmentPercent: 100,
     };
     StorageService.saveFinancialProfile(financialProfile);
 

@@ -39,6 +39,8 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
     monthlyNetIncome: 0,
     monthlyEssentialExpenses: 0,
     monthlyDiscretionaryExpenses: 0,
+    monthlySavingsGoal: 0,
+    surplusCommitmentPercent: 100,
   });
   const [featurePreferences, setFeaturePreferences] = useState<FeaturePreferences>({
     helocEnabled: false,
@@ -526,6 +528,30 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
                   if (e.target.value === '0') e.target.value = '';
                 }}
                 placeholder="Enter amount"
+                className="w-full pl-8 pr-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                step="0.01"
+                min="0"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Monthly Savings Goal
+            </label>
+            <p className="text-xs text-gray-500 mb-2">
+              Set aside before debt payoff so your emergency fund / savings keep growing
+            </p>
+            <div className="relative">
+              <span className="absolute left-3 top-2 text-gray-500">$</span>
+              <input
+                type="number"
+                value={financialProfile.monthlySavingsGoal || ''}
+                onChange={(e) => setFinancialProfile({ ...financialProfile, monthlySavingsGoal: parseFloat(e.target.value) || 0 })}
+                onFocus={(e) => {
+                  if (e.target.value === '0') e.target.value = '';
+                }}
+                placeholder="0"
                 className="w-full pl-8 pr-4 py-2 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                 step="0.01"
                 min="0"
