@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Home, Calculator, TrendingUp, Phone, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react';
+import { Home, Calculator, TrendingUp, Phone, ChevronDown, ChevronUp, CheckCircle, Settings } from 'lucide-react';
+import type { Debt } from '../types';
+import { StorageService } from '../services/storage';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 const fmt = (n: number) =>
@@ -65,14 +67,63 @@ function calcMortgage(
   };
 }
 
-// ── readiness score ───────────────────────────────────────────────────────────
-function getReadinessScore(result: CalcResult | null, monthlyIncome: number) {
-  if (!result || !monthlyIncome) return null;
-  const dti = (result.monthlyPayment / monthlyIncome) * 100;
-  if (dti <= 28) return { score: 'Strong', color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200', pct: 90, msg: "You're in great shape. Let's talk." };
-  if (dti <= 36) return { score: 'Good', color: 'text-blue-600', bg: 'bg-blue-50 border-blue-200', pct: 65, msg: 'Solid position. A few tweaks could help.' };
-  if (dti <= 43) return { score: 'Caution', color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200', pct: 40, msg: 'Possible, but debt paydown first helps a lot.' };
-  return { score: 'Not Yet', color: 'text-red-600', bg: 'bg-red-50 border-red-200', pct: 15, msg: "NOVO's debt plan is your next step before buying." };
+function sumActiveDebtMinimums(debts: Debt[]): number {
+  return debts.filter((d) => !d.isPaidOff).reduce((sum, d) => sum + (Number(d.minimumPayment) || 0), 0);
+}
+
+/** Front-end = proposed housing / gross; back-end = (housing + existing minimums) / gross */
+function getReadinessScore(
+  result: CalcResult | null,
+  monthlyGrossIncome: number,
+  existingDebtMinimums: number
+) {
+  if (!result || !monthlyGrossIncome || monthlyGrossIncome <= 0) return null;
+  const housing = result.monthlyPayment;
+  const frontDti = (housing / monthlyGrossIncome) * 100;
+  const backDti = ((housing + existingDebtMinimums) / monthlyGrossIncome) * 100;
+  // Tiers: classic front 28% / back 36% “ideal”, then back 43% / 50% stress bands
+  if (frontDti <= 28 && backDti <= 36) {
+    return {
+      score: 'Strong' as const,
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50 border-emerald-200',
+      pct: 90,
+      msg: "You're in great shape on both housing ratio and total debt. Let's talk.",
+      frontDti,
+      backDti,
+    };
+  }
+  if (backDti <= 43) {
+    return {
+      score: 'Good' as const,
+      color: 'text-blue-600',
+      bg: 'bg-blue-50 border-blue-200',
+      pct: 65,
+      msg: 'Solid position. Small changes to price, down payment, or debt can improve your ratios.',
+      frontDti,
+      backDti,
+    };
+  }
+  if (backDti <= 50) {
+    return {
+      score: 'Caution' as const,
+      color: 'text-amber-600',
+      bg: 'bg-amber-50 border-amber-200',
+      pct: 40,
+      msg: 'Possible for some loan types, but lowering back-end DTI (debt paydown or lower housing payment) helps a lot.',
+      frontDti,
+      backDti,
+    };
+  }
+  return {
+    score: 'Not Yet' as const,
+    color: 'text-red-600',
+    bg: 'bg-red-50 border-red-200',
+    pct: 15,
+    msg: "NOVO's debt plan is your next step before buying.",
+    frontDti,
+    backDti,
+  };
 }
 
 // ── input field ───────────────────────────────────────────────────────────────
@@ -117,7 +168,17 @@ function ResultRow({ label, value, highlight = false }: { label: string; value: 
 }
 
 // ── main component ────────────────────────────────────────────────────────────
-export default function HomeReady() {
+type HomeReadyProps = {
+  onNavigateToSettings?: () => void;
+};
+
+export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
+  const financialProfile = StorageService.getFinancialProfile();
+  const debts = StorageService.getDebts();
+  const grossMonthlyIncome = financialProfile?.monthlyGrossIncome ?? 0;
+  const monthlyDebtMinimums = sumActiveDebtMinimums(debts);
+  const hasFinancialProfile = financialProfile !== null;
+
   // calculator inputs
   const [homePrice, setHomePrice]       = useState('300000');
   const [downPayment, setDownPayment]   = useState('15000');
@@ -125,7 +186,6 @@ export default function HomeReady() {
   const [term, setTerm]                 = useState('30');
   const [annualTax, setAnnualTax]       = useState('3600');
   const [annualIns, setAnnualIns]       = useState('1200');
-  const [monthlyIncome, setMonthlyIncome] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
 
@@ -138,8 +198,16 @@ export default function HomeReady() {
     parseDollar(annualIns)
   );
 
-  const readiness = getReadinessScore(result, parseDollar(monthlyIncome));
+  const readiness =
+    hasFinancialProfile && grossMonthlyIncome > 0
+      ? getReadinessScore(result, grossMonthlyIncome, monthlyDebtMinimums)
+      : null;
   const downPct = result ? result.downPct.toFixed(1) : '0';
+
+  const proposedMortgage = result?.monthlyPayment ?? 0;
+  const canComputeDti = hasFinancialProfile && grossMonthlyIncome > 0 && result;
+  const frontEndDti = canComputeDti ? (proposedMortgage / grossMonthlyIncome) * 100 : null;
+  const backEndDti = canComputeDti ? ((proposedMortgage + monthlyDebtMinimums) / grossMonthlyIncome) * 100 : null;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-12">
@@ -159,6 +227,49 @@ export default function HomeReady() {
           Use this calculator to see what a home would cost monthly — and whether your current financial position makes you ready to buy.
         </p>
       </div>
+
+      {!hasFinancialProfile && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950 shadow-sm">
+          <div className="flex gap-3">
+            <div className="shrink-0 w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+              <Settings className="w-5 h-5 text-amber-800" />
+            </div>
+            <div className="min-w-0 space-y-2">
+              <p className="font-semibold text-amber-900">Complete your financial profile</p>
+              <p className="text-sm text-amber-900/90 leading-relaxed">
+                We pull your <strong>gross monthly income</strong> and <strong>existing debt minimum payments</strong> from NOVO to estimate DTI. Add your profile in Settings to unlock readiness and ratio insights.
+              </p>
+              {onNavigateToSettings && (
+                <button
+                  type="button"
+                  onClick={onNavigateToSettings}
+                  className="mt-1 inline-flex items-center gap-2 rounded-lg bg-amber-800 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-900 transition-colors"
+                >
+                  Open Settings
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {hasFinancialProfile && grossMonthlyIncome <= 0 && (
+        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 text-gray-800">
+          <p className="text-sm font-medium text-gray-900">Gross monthly income not set</p>
+          <p className="text-sm text-gray-600 mt-1">
+            Enter a positive gross monthly income in Settings → Financial Profile to see DTI and readiness.
+          </p>
+          {onNavigateToSettings && (
+            <button
+              type="button"
+              onClick={onNavigateToSettings}
+              className="mt-3 text-sm font-semibold text-[#2D9CDB] hover:underline"
+            >
+              Open Settings
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── calculator card ── */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -256,6 +367,19 @@ export default function HomeReady() {
               </div>
             )}
 
+            {canComputeDti && frontEndDti !== null && backEndDti !== null && (
+              <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Debt-to-income (gross)</p>
+                <ResultRow label="Current monthly debt obligations (minimums)" value={fmt(monthlyDebtMinimums)} />
+                <ResultRow label="Proposed total housing payment (PITI + PMI)" value={fmt(proposedMortgage)} />
+                <ResultRow label="Front-end DTI (housing ÷ gross income)" value={`${frontEndDti.toFixed(1)}%`} />
+                <ResultRow label="Back-end DTI (housing + debt minimums ÷ gross)" value={`${backEndDti.toFixed(1)}%`} highlight />
+                <p className="text-xs text-gray-500 pt-1">
+                  Guidelines often cite ~28% front-end and ~36–43% back-end depending on loan type; actual approval depends on the lender.
+                </p>
+              </div>
+            )}
+
             {result.downPct < 20 && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mt-2">
                 <p className="text-xs text-amber-700 font-medium">
@@ -268,20 +392,23 @@ export default function HomeReady() {
       )}
 
       {/* ── readiness score ── */}
-      {result && (
+      {result && hasFinancialProfile && grossMonthlyIncome > 0 && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100 bg-gray-50">
             <CheckCircle className="w-4 h-4 text-[#FF6B35]" />
             <h2 className="font-semibold text-gray-800 text-sm">Homebuyer Readiness Score</h2>
           </div>
           <div className="p-6 space-y-4">
-            <Field
-              label="Your Gross Monthly Income"
-              value={monthlyIncome}
-              onChange={setMonthlyIncome}
-              prefix="$"
-              hint="Enter to see your readiness score"
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5">
+                <p className="text-xs text-gray-500 font-medium">Gross monthly income (from profile)</p>
+                <p className="text-sm font-bold text-gray-900 mt-0.5">{fmt(grossMonthlyIncome)}</p>
+              </div>
+              <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5">
+                <p className="text-xs text-gray-500 font-medium">Current debt minimums (active debts)</p>
+                <p className="text-sm font-bold text-gray-900 mt-0.5">{fmt(monthlyDebtMinimums)}</p>
+              </div>
+            </div>
 
             {readiness && (
               <div className={`border rounded-xl p-4 ${readiness.bg}`}>
@@ -290,7 +417,6 @@ export default function HomeReady() {
                   <span className={`font-bold text-lg ${readiness.color}`}>{readiness.score}</span>
                 </div>
 
-                {/* progress bar */}
                 <div className="w-full bg-gray-200 rounded-full h-2.5 mb-3">
                   <div
                     className="h-2.5 rounded-full transition-all duration-700"
@@ -306,9 +432,15 @@ export default function HomeReady() {
 
                 <p className="text-sm text-gray-600">{readiness.msg}</p>
 
-                <div className="mt-3 text-xs text-gray-500">
-                  Housing ratio: <strong>{((result.monthlyPayment / parseDollar(monthlyIncome)) * 100).toFixed(1)}%</strong> of gross income
-                  <span className="ml-2 text-gray-400">(guideline: under 28%)</span>
+                <div className="mt-3 space-y-1 text-xs text-gray-600">
+                  <p>
+                    Front-end DTI: <strong>{readiness.frontDti.toFixed(1)}%</strong>
+                    <span className="text-gray-400 ml-1">(proposed housing ÷ gross)</span>
+                  </p>
+                  <p>
+                    Back-end DTI: <strong>{readiness.backDti.toFixed(1)}%</strong>
+                    <span className="text-gray-400 ml-1">(housing + existing minimums ÷ gross)</span>
+                  </p>
                 </div>
               </div>
             )}

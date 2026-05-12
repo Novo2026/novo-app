@@ -243,7 +243,7 @@ function App() {
       case 'progress':
         return <ProgressReports onDataUpdate={handleDataUpdate} />;
       case 'home-ready':
-        return <HomeReady />;
+        return <HomeReady onNavigateToSettings={() => setCurrentSection('settings')} />;
       case 'guide':
         return <Guide />;
       case 'settings':
