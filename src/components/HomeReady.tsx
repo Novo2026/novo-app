@@ -9,6 +9,44 @@ const fmt = (n: number) =>
 
 const parseDollar = (v: string) => parseFloat(v.replace(/[^0-9.]/g, '')) || 0;
 
+/** Credit range labels for PMI table lookup (default: 740-759). */
+export const CREDIT_SCORE_RANGE_OPTIONS = [
+  '760+',
+  '740-759',
+  '720-739',
+  '700-719',
+  '680-699',
+  '660-679',
+  '640-659',
+  '620-639',
+] as const;
+
+export type CreditScoreRange = (typeof CREDIT_SCORE_RANGE_OPTIONS)[number];
+
+/** Annual PMI as % of loan, by credit range then LTV columns: ~95%, ~90%, ~85% LTV. */
+const PMI_TABLE: Record<CreditScoreRange, readonly [number, number, number]> = {
+  '760+': [0.41, 0.25, 0.19],
+  '740-759': [0.54, 0.37, 0.26],
+  '720-739': [0.65, 0.44, 0.33],
+  '700-719': [0.77, 0.58, 0.41],
+  '680-699': [0.93, 0.71, 0.54],
+  '660-679': [1.15, 0.88, 0.67],
+  '640-659': [1.4, 1.1, 0.85],
+  '620-639': [1.75, 1.35, 1.05],
+};
+
+/** Map actual LTV to table column: high LTV → 95% bucket, then 90%, then 85%. */
+function getPmiLtvColumnIndex(ltvPercent: number): 0 | 1 | 2 | null {
+  if (ltvPercent <= 80) return null;
+  if (ltvPercent > 90) return 0;
+  if (ltvPercent > 85) return 1;
+  return 2;
+}
+
+function lookupPmiAnnualPercent(credit: CreditScoreRange, column: 0 | 1 | 2): number {
+  return PMI_TABLE[credit][column];
+}
+
 // ── types ────────────────────────────────────────────────────────────────────
 interface CalcResult {
   monthlyPayment: number;
@@ -20,6 +58,10 @@ interface CalcResult {
   totalCost: number;
   downPct: number;
   loanAmount: number;
+  /** Loan-to-value % (loan ÷ home price × 100). */
+  ltvPercent: number;
+  /** Annual PMI rate % of loan used for this estimate (0 if no PMI). */
+  pmiAnnualPercent: number;
 }
 
 // ── mortgage math ─────────────────────────────────────────────────────────────
@@ -29,7 +71,8 @@ function calcMortgage(
   rate: number,
   termYears: number,
   annualTax: number,
-  annualInsurance: number
+  annualInsurance: number,
+  creditScoreRange: CreditScoreRange
 ): CalcResult | null {
   if (!homePrice || !rate || !termYears) return null;
 
@@ -48,7 +91,17 @@ function calcMortgage(
   const monthlyTax = annualTax / 12;
   const monthlyInsurance = annualInsurance / 12;
   const downPct = (downPayment / homePrice) * 100;
-  const monthlyPMI = downPct < 20 ? (loanAmount * 0.008) / 12 : 0;
+  const ltvPercent = (loanAmount / homePrice) * 100;
+
+  let monthlyPMI = 0;
+  let pmiAnnualPercent = 0;
+  if (downPct < 20) {
+    const col = getPmiLtvColumnIndex(ltvPercent);
+    if (col !== null) {
+      pmiAnnualPercent = lookupPmiAnnualPercent(creditScoreRange, col);
+      monthlyPMI = (loanAmount * (pmiAnnualPercent / 100)) / 12;
+    }
+  }
 
   const monthly = pi + monthlyTax + monthlyInsurance + monthlyPMI;
   const totalInterest = pi * n - loanAmount;
@@ -64,6 +117,8 @@ function calcMortgage(
     totalCost,
     downPct,
     loanAmount,
+    ltvPercent,
+    pmiAnnualPercent,
   };
 }
 
@@ -186,6 +241,7 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
   const [term, setTerm]                 = useState('30');
   const [annualTax, setAnnualTax]       = useState('3600');
   const [annualIns, setAnnualIns]       = useState('1200');
+  const [creditScoreRange, setCreditScoreRange] = useState<CreditScoreRange>('740-759');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
 
@@ -195,7 +251,8 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
     parseFloat(rate) || 0,
     parseInt(term) || 30,
     parseDollar(annualTax),
-    parseDollar(annualIns)
+    parseDollar(annualIns),
+    creditScoreRange
   );
 
   const readiness =
@@ -313,6 +370,22 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Credit score range</label>
+            <p className="text-xs text-gray-400 mb-1">Used with LTV to estimate PMI (not a hard pull).</p>
+            <select
+              value={creditScoreRange}
+              onChange={(e) => setCreditScoreRange(e.target.value as CreditScoreRange)}
+              className="w-full border border-gray-200 rounded-lg py-2.5 px-3 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent transition"
+            >
+              {CREDIT_SCORE_RANGE_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* advanced toggle */}
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
@@ -360,7 +433,20 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
                 <ResultRow label="Monthly Property Tax" value={fmt(result.monthlyTax)} />
                 <ResultRow label="Monthly Insurance" value={fmt(result.monthlyInsurance)} />
                 {result.monthlyPMI > 0 && (
-                  <ResultRow label="PMI (< 20% down)" value={fmt(result.monthlyPMI)} />
+                  <div className="rounded-lg overflow-hidden">
+                    <ResultRow
+                      label={`PMI (est. · ${result.pmiAnnualPercent.toFixed(2)}%/yr of loan · LTV ${result.ltvPercent.toFixed(1)}%)`}
+                      value={fmt(result.monthlyPMI)}
+                    />
+                    <div className="px-3 pb-2 pt-0 space-y-1.5 bg-gray-50 border-t border-gray-100">
+                      <p className="text-xs text-gray-500 leading-relaxed">
+                        PMI estimate based on credit range and LTV. Actual rate varies by lender and PMI provider.
+                      </p>
+                      <p className="text-xs text-gray-500 leading-relaxed">
+                        For illustration only: your exact credit score and provider pricing may differ, and market factors can change over time.
+                      </p>
+                    </div>
+                  </div>
                 )}
                 <ResultRow label="Total Interest Paid" value={fmt(result.totalInterest)} />
                 <ResultRow label="Total Cost Over Loan" value={fmt(result.totalCost)} />
