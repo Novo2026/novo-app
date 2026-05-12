@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Home, CreditCard, TrendingUp, BarChart3, Settings as SettingsIcon, Wallet, PiggyBank, MessageCircle, BookOpen, CheckCircle, X, Menu } from 'lucide-react';
+import { Home, CreditCard, TrendingUp, BarChart3, Settings as SettingsIcon, Wallet, PiggyBank, MessageCircle, BookOpen, CheckCircle, X, Menu, Building2 } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import MyDebts from './components/MyDebts';
 import PaymentStrategies from './components/PaymentStrategies';
@@ -8,13 +8,14 @@ import { Tracker } from './components/Tracker';
 import SavingsTracker from './components/SavingsTracker';
 import ProgressReports from './components/ProgressReports';
 import Guide from './components/Guide';
+import HomeReady from './components/HomeReady';
 import Settings from './components/Settings';
 import OnboardingModal from './components/OnboardingModal';
 import WelcomeTourModal from './components/WelcomeTourModal';
 import { StorageService } from './services/storage';
 import type { Debt, Transaction, FeaturePreferences } from './types';
 
-type Section = 'dashboard' | 'debts' | 'strategies' | 'what-if' | 'tracker' | 'savings' | 'progress' | 'guide' | 'settings';
+type Section = 'dashboard' | 'debts' | 'strategies' | 'what-if' | 'tracker' | 'savings' | 'progress' | 'home-ready' | 'guide' | 'settings';
 
 function App() {
   const [currentSection, setCurrentSection] = useState<Section>('dashboard');
@@ -241,6 +242,8 @@ function App() {
         return <SavingsTracker />;
       case 'progress':
         return <ProgressReports onDataUpdate={handleDataUpdate} />;
+      case 'home-ready':
+        return <HomeReady />;
       case 'guide':
         return <Guide />;
       case 'settings':
@@ -467,6 +470,17 @@ function App() {
             >
               <BarChart3 className="w-4 h-4" />
               <span>Progress Reports</span>
+            </button>
+            <button
+              onClick={() => setCurrentSection('home-ready')}
+              className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
+                currentSection === 'home-ready'
+                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              <span>Home Ready</span>
             </button>
             <button
               onClick={() => setCurrentSection('guide')}
