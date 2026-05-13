@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Trash2, Download, AlertTriangle, CheckCircle, User, DollarSign, RefreshCw, Target, Mail, Phone, Settings as SettingsIcon, Home } from 'lucide-react';
 import { StorageService } from '../services/storage';
-import { CalculationService } from '../services/calculations';
-import { getHomeReadySnapshotForReport } from '../utils/homeReadySnapshot';
-import { buildNovoPrintReportHtml, printHtmlDocument } from '../utils/novoPrintReport';
+import { assembleNovoReportPayload } from '../utils/novoReportData';
+import { buildNovoFullReportHtml, printHtmlDocument } from '../utils/novoPrintReport';
 import LearnHELOCModal from './LearnHELOCModal';
 import HelocSuccessModal from './HelocSuccessModal';
 import type { FinancialProfile, FeaturePreferences, HomeEquity } from '../types';
@@ -90,117 +89,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
   }, []);
 
   const handleDownloadNovoReport = () => {
-    const profile = StorageService.getFinancialProfile();
-    const debts = StorageService.getDebts();
-    const transactions = StorageService.getTransactions();
-    const strategyResult = StorageService.getStrategyResult();
-
-    const fmt = (n: number) =>
-      n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-    const userDisplayName = (localStorage.getItem('userName') || '').trim() || 'NOVO user';
-    const generatedAt = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
-
-    const activeDebts = debts.filter((d) => !d.isPaidOff);
-    const totalMinimumPayments = activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
-
-    let grossMonthlyIncome = '—';
-    let monthlyExpenses = '—';
-    let monthlySurplus = '—';
-    let financialProfileNote =
-      'No financial profile on file. Add income and expenses in Settings to populate this section.';
-
-    if (profile) {
-      grossMonthlyIncome = fmt(profile.monthlyGrossIncome);
-      const living = profile.monthlyEssentialExpenses + profile.monthlyDiscretionaryExpenses;
-      monthlyExpenses = fmt(living);
-      const cash = CalculationService.calculateCashFlow(
-        profile.monthlyNetIncome,
-        profile.monthlyEssentialExpenses,
-        profile.monthlyDiscretionaryExpenses,
-        totalMinimumPayments,
-        profile.monthlySavingsGoal ?? 0,
-        profile.surplusCommitmentPercent ?? 100
-      );
-      monthlySurplus = fmt(cash.grossSurplus);
-      financialProfileNote =
-        'Monthly expenses = essential + discretionary (debt minimums shown separately in NOVO). Monthly surplus = take-home pay minus those expenses minus all active debt minimums (before savings goal carve-out).';
-    }
-
-    const debtRows = debts.map((d) => ({
-      cells: [
-        d.accountName,
-        d.category,
-        fmt(d.currentBalance),
-        `${d.interestRate}%`,
-        fmt(d.minimumPayment),
-        d.isPaidOff ? 'Paid Off' : 'Active',
-      ],
-    }));
-
-    const metrics = CalculationService.calculateTotalDebtMetrics(debts, transactions);
-
-    let projectedDebtFreeDate = '—';
-    let progressNote =
-      'Projected debt-free date uses your saved strategy when available, otherwise a live projection from your current debts and financial profile.';
-
-    if (activeDebts.length === 0) {
-      projectedDebtFreeDate = debts.length === 0 ? 'Add debts in NOVO to see a projection.' : 'No active debts — congratulations if you are debt-free!';
-    } else if (profile) {
-      const cashFlow = CalculationService.calculateCashFlow(
-        profile.monthlyNetIncome,
-        profile.monthlyEssentialExpenses,
-        profile.monthlyDiscretionaryExpenses,
-        totalMinimumPayments,
-        profile.monthlySavingsGoal ?? 0,
-        profile.surplusCommitmentPercent ?? 100
-      );
-      const extra = Math.floor(Math.max(0, cashFlow.recommendedExtraPayment));
-      const projection = CalculationService.projectDebtPayoff(activeDebts, extra);
-      projectedDebtFreeDate = CalculationService.formatDate(projection.debtFreeDate);
-    } else if (strategyResult?.debtFreeDate) {
-      projectedDebtFreeDate = CalculationService.formatDate(strategyResult.debtFreeDate);
-      progressNote =
-        'Projected date from your last saved strategy run. Add a financial profile for a projection that matches your current surplus settings.';
-    }
-
-    const homeSnap = getHomeReadySnapshotForReport(profile, debts);
-    const homeReadyTitle = 'Home Ready snapshot';
-    const homeReadyRows = homeSnap
-      ? [
-          { label: 'Home price (sample)', value: homeSnap.homePrice },
-          { label: 'Down payment (sample)', value: homeSnap.downPayment },
-          { label: 'Rate / term (sample)', value: `${homeSnap.ratePercent} · ${homeSnap.termYears} yr` },
-          { label: 'Est. total housing payment (PITI + PMI)', value: homeSnap.estimatedMonthlyPayment },
-          { label: 'Loan amount', value: homeSnap.loanAmount },
-          { label: 'Down % / LTV', value: `${homeSnap.downPct} / ${homeSnap.ltvPct}` },
-          { label: 'Gross monthly income (from profile)', value: homeSnap.grossMonthlyIncome },
-          { label: 'Active debt minimums', value: homeSnap.monthlyDebtMinimums },
-          { label: 'Readiness level', value: homeSnap.readinessLevel },
-          { label: 'Front-end DTI', value: homeSnap.frontDti },
-          { label: 'Back-end DTI', value: homeSnap.backDti },
-          { label: 'Coaching note', value: homeSnap.readinessMessage },
-        ]
-      : null;
-
-    const html = buildNovoPrintReportHtml({
-      userDisplayName,
-      generatedAt,
-      grossMonthlyIncome,
-      monthlyExpenses,
-      monthlySurplus,
-      financialProfileNote,
-      debtRows,
-      totalStartingDebt: fmt(metrics.totalStartingBalance),
-      totalCurrentDebt: fmt(metrics.totalCurrentBalance),
-      totalPaidOff: fmt(metrics.totalPaidOff),
-      projectedDebtFreeDate,
-      progressNote,
-      homeReadyRows,
-      homeReadyTitle,
-    });
-
-    printHtmlDocument(html);
+    printHtmlDocument(buildNovoFullReportHtml(assembleNovoReportPayload()));
   };
 
   const handleSaveProfile = () => {
