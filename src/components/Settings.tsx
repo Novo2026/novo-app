@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Trash2, Download, AlertTriangle, CheckCircle, User, DollarSign, RefreshCw, Target, Mail, Phone, Settings as SettingsIcon, Home } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Trash2, Download, Upload, AlertTriangle, CheckCircle, User, DollarSign, RefreshCw, Target, Mail, Phone, Settings as SettingsIcon, Home, Shield } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { assembleNovoReportPayload } from '../utils/novoReportData';
 import { buildNovoFullReportHtml, printHtmlDocument } from '../utils/novoPrintReport';
@@ -90,6 +90,54 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
 
   const handleDownloadNovoReport = () => {
     printHtmlDocument(buildNovoFullReportHtml(assembleNovoReportPayload()));
+  };
+
+  const restoreBackupInputRef = useRef<HTMLInputElement>(null);
+
+  const handleBackupLocalStorage = () => {
+    const snapshot: Record<string, string> = {};
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key) snapshot[key] = localStorage.getItem(key) ?? '';
+    }
+    const date = new Date().toISOString().split('T')[0];
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `novo-backup-${date}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleRestoreBackupClick = () => {
+    restoreBackupInputRef.current?.click();
+  };
+
+  const handleRestoreBackupFile: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const raw = reader.result as string;
+        const parsed = JSON.parse(raw) as unknown;
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+          window.alert('This file does not look like a valid NOVO backup.');
+          return;
+        }
+        for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+          if (typeof value === 'string') {
+            localStorage.setItem(key, value);
+          }
+        }
+        window.location.reload();
+      } catch {
+        window.alert('Could not read this backup file. Make sure it is valid JSON from NOVO.');
+      }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
   };
 
   const handleSaveProfile = () => {
@@ -341,6 +389,47 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
       <div>
         <h2 className="text-2xl font-bold text-gray-800 mb-2">Settings</h2>
         <p className="text-gray-600">Manage your profile, data, and export options.</p>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+        <div className="flex items-center space-x-2 mb-3">
+          <Shield className="w-6 h-6 text-[#1E3A5F]" />
+          <h3 className="text-xl font-bold text-gray-800">Data Protection</h3>
+        </div>
+        <p className="text-gray-600 text-sm mb-4 leading-relaxed">
+          Download a full snapshot of NOVO data stored in this browser, or restore from an earlier backup file.
+        </p>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 mb-4">
+          <p className="text-sm text-amber-900 leading-relaxed">
+            <strong className="font-semibold">Important:</strong> Store your backup file somewhere safe — email it to yourself or save to cloud storage.
+          </p>
+        </div>
+        <input
+          ref={restoreBackupInputRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          aria-hidden
+          onChange={handleRestoreBackupFile}
+        />
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={handleBackupLocalStorage}
+            className="w-full flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-lg transition-colors shadow-md hover:shadow-lg text-white bg-[#1E3A5F] hover:bg-[#152a45] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1E3A5F]"
+          >
+            <Download className="w-5 h-5" />
+            Backup My Data
+          </button>
+          <button
+            type="button"
+            onClick={handleRestoreBackupClick}
+            className="w-full flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-lg transition-colors shadow-md hover:shadow-lg text-white bg-[#FF6B35] hover:bg-[#e85d2a] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF6B35]"
+          >
+            <Upload className="w-5 h-5" />
+            Restore From Backup
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6 border border-orange-100">
