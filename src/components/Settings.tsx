@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Trash2, Download, AlertTriangle, CheckCircle, User, DollarSign, RefreshCw, Target, Mail, Phone, Settings as SettingsIcon, Home } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
+import { getHomeReadySnapshotForReport } from '../utils/homeReadySnapshot';
+import { buildNovoPrintReportHtml, printHtmlDocument } from '../utils/novoPrintReport';
 import LearnHELOCModal from './LearnHELOCModal';
 import HelocSuccessModal from './HelocSuccessModal';
 import type { FinancialProfile, FeaturePreferences, HomeEquity } from '../types';
@@ -87,62 +89,118 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
     }
   }, []);
 
-  const handleExportPaymentHistory = () => {
-    const transactions = StorageService.getTransactions();
-    const headers = ['Date', 'Debt', 'Type', 'Previous Balance', 'Interest', 'Principal', 'Payment/Charge', 'New Balance', 'Notes'];
-    const rows = transactions.map(t => [
-      t.date,
-      t.debtName,
-      t.type,
-      t.previousBalance.toFixed(2),
-      t.interestCharged.toFixed(2),
-      t.principalPaid.toFixed(2),
-      t.amount.toFixed(2),
-      t.newBalance.toFixed(2),
-      t.notes || '',
-    ]);
-
-    const csv = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
-    downloadCSV(csv, 'payment_history.csv');
-  };
-
-  const handleExportDebtSummary = () => {
+  const handleDownloadNovoReport = () => {
+    const profile = StorageService.getFinancialProfile();
     const debts = StorageService.getDebts();
-    const headers = ['Account Name', 'Category', 'Starting Balance', 'Current Balance', 'Amount Paid Off', 'Interest Rate', 'Minimum Payment', 'Status'];
-    const rows = debts.map(d => [
-      d.accountName,
-      d.category,
-      d.startingBalance.toFixed(2),
-      d.currentBalance.toFixed(2),
-      (d.startingBalance - d.currentBalance).toFixed(2),
-      d.interestRate.toString(),
-      d.minimumPayment.toFixed(2),
-      d.isPaidOff ? 'Paid Off' : 'Active',
-    ]);
+    const transactions = StorageService.getTransactions();
+    const strategyResult = StorageService.getStrategyResult();
 
-    const csv = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
-    downloadCSV(csv, 'debt_summary.csv');
-  };
+    const fmt = (n: number) =>
+      n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const handleExportFullReport = () => {
-    const data = StorageService.exportData();
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `novo_full_report_${CalculationService.getTodayDateString()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+    const userDisplayName = (localStorage.getItem('userName') || '').trim() || 'NOVO user';
+    const generatedAt = new Date().toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' });
 
-  const downloadCSV = (csv: string, filename: string) => {
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    const activeDebts = debts.filter((d) => !d.isPaidOff);
+    const totalMinimumPayments = activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
+
+    let grossMonthlyIncome = '—';
+    let monthlyExpenses = '—';
+    let monthlySurplus = '—';
+    let financialProfileNote =
+      'No financial profile on file. Add income and expenses in Settings to populate this section.';
+
+    if (profile) {
+      grossMonthlyIncome = fmt(profile.monthlyGrossIncome);
+      const living = profile.monthlyEssentialExpenses + profile.monthlyDiscretionaryExpenses;
+      monthlyExpenses = fmt(living);
+      const cash = CalculationService.calculateCashFlow(
+        profile.monthlyNetIncome,
+        profile.monthlyEssentialExpenses,
+        profile.monthlyDiscretionaryExpenses,
+        totalMinimumPayments,
+        profile.monthlySavingsGoal ?? 0,
+        profile.surplusCommitmentPercent ?? 100
+      );
+      monthlySurplus = fmt(cash.grossSurplus);
+      financialProfileNote =
+        'Monthly expenses = essential + discretionary (debt minimums shown separately in NOVO). Monthly surplus = take-home pay minus those expenses minus all active debt minimums (before savings goal carve-out).';
+    }
+
+    const debtRows = debts.map((d) => ({
+      cells: [
+        d.accountName,
+        d.category,
+        fmt(d.currentBalance),
+        `${d.interestRate}%`,
+        fmt(d.minimumPayment),
+        d.isPaidOff ? 'Paid Off' : 'Active',
+      ],
+    }));
+
+    const metrics = CalculationService.calculateTotalDebtMetrics(debts, transactions);
+
+    let projectedDebtFreeDate = '—';
+    let progressNote =
+      'Projected debt-free date uses your saved strategy when available, otherwise a live projection from your current debts and financial profile.';
+
+    if (activeDebts.length === 0) {
+      projectedDebtFreeDate = debts.length === 0 ? 'Add debts in NOVO to see a projection.' : 'No active debts — congratulations if you are debt-free!';
+    } else if (profile) {
+      const cashFlow = CalculationService.calculateCashFlow(
+        profile.monthlyNetIncome,
+        profile.monthlyEssentialExpenses,
+        profile.monthlyDiscretionaryExpenses,
+        totalMinimumPayments,
+        profile.monthlySavingsGoal ?? 0,
+        profile.surplusCommitmentPercent ?? 100
+      );
+      const extra = Math.floor(Math.max(0, cashFlow.recommendedExtraPayment));
+      const projection = CalculationService.projectDebtPayoff(activeDebts, extra);
+      projectedDebtFreeDate = CalculationService.formatDate(projection.debtFreeDate);
+    } else if (strategyResult?.debtFreeDate) {
+      projectedDebtFreeDate = CalculationService.formatDate(strategyResult.debtFreeDate);
+      progressNote =
+        'Projected date from your last saved strategy run. Add a financial profile for a projection that matches your current surplus settings.';
+    }
+
+    const homeSnap = getHomeReadySnapshotForReport(profile, debts);
+    const homeReadyTitle = 'Home Ready snapshot';
+    const homeReadyRows = homeSnap
+      ? [
+          { label: 'Home price (sample)', value: homeSnap.homePrice },
+          { label: 'Down payment (sample)', value: homeSnap.downPayment },
+          { label: 'Rate / term (sample)', value: `${homeSnap.ratePercent} · ${homeSnap.termYears} yr` },
+          { label: 'Est. total housing payment (PITI + PMI)', value: homeSnap.estimatedMonthlyPayment },
+          { label: 'Loan amount', value: homeSnap.loanAmount },
+          { label: 'Down % / LTV', value: `${homeSnap.downPct} / ${homeSnap.ltvPct}` },
+          { label: 'Gross monthly income (from profile)', value: homeSnap.grossMonthlyIncome },
+          { label: 'Active debt minimums', value: homeSnap.monthlyDebtMinimums },
+          { label: 'Readiness level', value: homeSnap.readinessLevel },
+          { label: 'Front-end DTI', value: homeSnap.frontDti },
+          { label: 'Back-end DTI', value: homeSnap.backDti },
+          { label: 'Coaching note', value: homeSnap.readinessMessage },
+        ]
+      : null;
+
+    const html = buildNovoPrintReportHtml({
+      userDisplayName,
+      generatedAt,
+      grossMonthlyIncome,
+      monthlyExpenses,
+      monthlySurplus,
+      financialProfileNote,
+      debtRows,
+      totalStartingDebt: fmt(metrics.totalStartingBalance),
+      totalCurrentDebt: fmt(metrics.totalCurrentBalance),
+      totalPaidOff: fmt(metrics.totalPaidOff),
+      projectedDebtFreeDate,
+      progressNote,
+      homeReadyRows,
+      homeReadyTitle,
+    });
+
+    printHtmlDocument(html);
   };
 
   const handleSaveProfile = () => {
@@ -394,6 +452,21 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
       <div>
         <h2 className="text-2xl font-bold text-gray-800 mb-2">Settings</h2>
         <p className="text-gray-600">Manage your profile, data, and export options.</p>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-md p-6 border border-orange-100">
+        <h3 className="text-lg font-bold text-gray-800 mb-2">NOVO report</h3>
+        <p className="text-gray-600 text-sm mb-4 leading-relaxed">
+          Open a print-friendly summary of your NOVO data. In the print dialog, choose <strong>Save as PDF</strong> to download.
+        </p>
+        <button
+          type="button"
+          onClick={handleDownloadNovoReport}
+          className="w-full flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-lg transition-colors shadow-md hover:shadow-lg text-white bg-[#FF6B35] hover:bg-[#e85d2a] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF6B35]"
+        >
+          <Download className="w-5 h-5" />
+          Download My NOVO Report
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -1025,39 +1098,6 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
             </div>
           </>
         )}
-      </div>
-
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">Export Data</h3>
-        <p className="text-gray-600 mb-6">
-          Download your data for backup or analysis purposes.
-        </p>
-
-        <div className="space-y-3">
-          <button
-            onClick={handleExportPaymentHistory}
-            className="w-full flex items-center justify-between bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-          >
-            <span>Export Payment History</span>
-            <Download className="w-5 h-5" />
-          </button>
-
-          <button
-            onClick={handleExportDebtSummary}
-            className="w-full flex items-center justify-between bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-          >
-            <span>Export Debt Summary</span>
-            <Download className="w-5 h-5" />
-          </button>
-
-          <button
-            onClick={handleExportFullReport}
-            className="w-full flex items-center justify-between bg-[#1E3A5F] hover:bg-[#152A45] text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-          >
-            <span>Export Full Report (JSON)</span>
-            <Download className="w-5 h-5" />
-          </button>
-        </div>
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6">
