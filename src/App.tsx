@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Home, CreditCard, TrendingUp, BarChart3, Settings as SettingsIcon, Wallet, PiggyBank, MessageCircle, BookOpen, CheckCircle, X, Menu, Building2 } from 'lucide-react';
+import { Home, CreditCard, TrendingUp, BarChart3, Settings as SettingsIcon, Wallet, PiggyBank, MessageCircle, CheckCircle, X, Menu, Building2 } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import MyDebts from './components/MyDebts';
 import PaymentStrategies from './components/PaymentStrategies';
@@ -301,13 +301,12 @@ function App() {
           {([
             { section: 'dashboard' as Section, label: 'Dashboard', icon: Home },
             { section: 'debts' as Section, label: 'My Debts', icon: CreditCard },
-            { section: 'strategies' as Section, label: 'Payment Strategies', icon: TrendingUp },
+            { section: 'strategies' as Section, label: 'My Plan', icon: TrendingUp },
             ...((featurePreferences.helocEnabled || featurePreferences.checkingEnabled)
               ? [{ section: 'tracker' as Section, label: featurePreferences.helocEnabled ? 'HELOC Tracker' : 'Cash Flow', icon: Wallet, isNew: showTrackerNewBadge && featurePreferences.helocEnabled }]
               : []),
-            { section: 'savings' as Section, label: 'Savings Tracker', icon: PiggyBank },
-            { section: 'progress' as Section, label: 'Progress Reports', icon: BarChart3 },
-            { section: 'guide' as Section, label: 'How to Use', icon: BookOpen },
+            { section: 'savings' as Section, label: 'Savings', icon: PiggyBank },
+            { section: 'progress' as Section, label: 'Progress', icon: BarChart3 },
             { section: 'settings' as Section, label: 'Settings', icon: SettingsIcon },
           ] as Array<{ section: Section; label: string; icon: any; isNew?: boolean }>).map(({ section, label, icon: Icon, isNew }) => (
             <button
@@ -423,7 +422,7 @@ function App() {
               }`}
             >
               <TrendingUp className="w-4 h-4" />
-              <span>Payment Strategies</span>
+              <span>My Plan</span>
             </button>
             {(featurePreferences.helocEnabled || featurePreferences.checkingEnabled) && (
               <button
@@ -458,7 +457,7 @@ function App() {
               }`}
             >
               <PiggyBank className="w-4 h-4" />
-              <span>Savings Tracker</span>
+              <span>Savings</span>
             </button>
             <button
               onClick={() => setCurrentSection('progress')}
@@ -469,7 +468,7 @@ function App() {
               }`}
             >
               <BarChart3 className="w-4 h-4" />
-              <span>Progress Reports</span>
+              <span>Progress</span>
             </button>
             <button
               onClick={() => setCurrentSection('home-ready')}
@@ -481,17 +480,6 @@ function App() {
             >
               <Building2 className="w-4 h-4" />
               <span>Home Ready</span>
-            </button>
-            <button
-              onClick={() => setCurrentSection('guide')}
-              className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
-                currentSection === 'guide'
-                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>How to Use</span>
             </button>
             <button
               onClick={() => setCurrentSection('settings')}
