@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DollarSign, CreditCard, CheckCircle, ChevronLeft, Plus, X, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
 import CashFlowWarningModal from './CashFlowWarningModal';
@@ -38,6 +38,7 @@ interface OnboardingModalProps {
 
 export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const [step, setStep] = useState(1);
+  const restoreBackupInputRef = useRef<HTMLInputElement>(null);
   const [showCashFlowWarning, setShowCashFlowWarning] = useState(false);
   const [showLearnHELOCModal, setShowLearnHELOCModal] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
@@ -239,6 +240,50 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       helocMinPayment: '',
     });
     setIsResuming(false);
+  };
+
+  const handleRestoreBackupClick = () => {
+    restoreBackupInputRef.current?.click();
+  };
+
+  const isPlausibleNovoBackup = (obj: Record<string, unknown>): boolean => {
+    const keys = Object.keys(obj);
+    if (keys.length === 0) return false;
+    return keys.some((k) => k.startsWith('novo_'));
+  };
+
+  const handleRestoreBackupFile: React.ChangeEventHandler<HTMLInputElement> = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const raw = reader.result as string;
+        const parsed = JSON.parse(raw) as unknown;
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+          window.alert('This file does not look like a valid NOVO backup.');
+          e.target.value = '';
+          return;
+        }
+        const record = parsed as Record<string, unknown>;
+        if (!isPlausibleNovoBackup(record)) {
+          window.alert('This file does not look like a valid NOVO backup. Use a JSON file exported from NOVO Settings → Data Protection.');
+          e.target.value = '';
+          return;
+        }
+        for (const [key, value] of Object.entries(record)) {
+          if (typeof value === 'string') {
+            localStorage.setItem(key, value);
+          }
+        }
+        localStorage.removeItem('onboardingProgress');
+        window.location.reload();
+      } catch {
+        window.alert('Could not read this backup file. Make sure it is valid JSON from NOVO.');
+        e.target.value = '';
+      }
+    };
+    reader.readAsText(file);
   };
 
   const renderProgressBar = () => (
@@ -936,26 +981,56 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
             {step === 4 && renderStep4()}
           </div>
 
-          <div className="flex items-center justify-between space-x-4 p-8 pt-4 border-t border-gray-200 bg-white rounded-b-2xl">
-            {step > 1 && (
-              <button
-                onClick={handleBack}
-                className="flex items-center space-x-2 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors min-h-[48px]"
-              >
-                <ChevronLeft className="w-5 h-5" />
-                <span>Back</span>
-              </button>
-            )}
+          <div className="border-t border-gray-200 bg-white rounded-b-2xl">
+            <div className="flex items-center justify-between space-x-4 p-8 pt-4">
+              {step > 1 && (
+                <button
+                  onClick={handleBack}
+                  className="flex items-center space-x-2 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-lg transition-colors min-h-[48px]"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                  <span>Back</span>
+                </button>
+              )}
 
-            <button
-              onClick={handleNext}
-              disabled={!canProceed()}
-              className={`flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold py-3 px-6 rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] min-h-[48px] ${
-                step === 1 ? 'w-full' : ''
-              }`}
-            >
-              {step === 4 ? 'Start My Journey' : 'Next'}
-            </button>
+              <button
+                onClick={handleNext}
+                disabled={!canProceed()}
+                className={`flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold py-3 px-6 rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] min-h-[48px] ${
+                  step === 1 ? 'w-full' : ''
+                }`}
+              >
+                {step === 4 ? 'Start My Journey' : 'Next'}
+              </button>
+            </div>
+
+            {step === 1 && (
+              <div className="px-8 pb-8 pt-1 space-y-3">
+                <input
+                  ref={restoreBackupInputRef}
+                  type="file"
+                  accept="application/json,.json"
+                  className="hidden"
+                  aria-hidden
+                  onChange={handleRestoreBackupFile}
+                />
+                <div className="flex items-center gap-3 py-1">
+                  <div className="flex-1 h-px bg-gray-200" />
+                  <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">or</span>
+                  <div className="flex-1 h-px bg-gray-200" />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRestoreBackupClick}
+                  className="w-full py-3 px-4 rounded-lg border-2 border-gray-300 bg-white text-gray-700 font-semibold text-sm hover:bg-gray-50 hover:border-gray-400 transition-colors min-h-[48px]"
+                >
+                  Restore from Backup File
+                </button>
+                <p className="text-center text-xs text-gray-500 leading-relaxed px-1">
+                  Have a backup file? Skip setup and restore your data instantly.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
