@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import {
-  ChevronDown, ChevronUp, BookOpen, Play, TrendingUp, Repeat, DollarSign,
+  ChevronDown, ChevronUp, BookOpen, Play, TrendingUp, DollarSign,
   PiggyBank, BarChart3, HelpCircle, ArrowUp, Wallet, Zap, Bot,
   Settings as SettingsIcon, Target, Lightbulb, Home, CreditCard, RefreshCw,
-  MessageCircle, CheckCircle, AlertCircle
+  MessageCircle, CheckCircle, AlertCircle, Building2, Phone,
 } from 'lucide-react';
 
 interface GuideSection {
@@ -126,7 +126,7 @@ function Guide() {
               <ul className="text-gray-700 text-sm space-y-1">
                 <li>• <strong>Log Payment</strong> — Record any debt payment in seconds</li>
                 <li>• <strong>Add Debt</strong> — Track a new debt you haven't added yet</li>
-                <li>• <strong>View Strategy</strong> — Jump to your optimized payoff plan</li>
+                <li>• <strong>View Strategy</strong> — Jump to <strong>My Plan</strong> and your optimized payoff timeline</li>
               </ul>
             </div>
 
@@ -200,7 +200,7 @@ function Guide() {
     },
     {
       id: 'strategies',
-      title: '4. Payment Strategies — Your Roadmap',
+      title: '4. My Plan — Your Roadmap',
       icon: TrendingUp,
       color: 'bg-teal-600',
       content: (
@@ -209,6 +209,8 @@ function Guide() {
             <p className="font-bold text-emerald-900 text-lg mb-1">You Don't Need a HELOC to Succeed</p>
             <p className="text-emerald-800 text-sm leading-relaxed">Most NOVO users eliminate debt using cash flow strategies alone. The debt avalanche method saves the most money of any approach — with nothing but disciplined payments.</p>
           </div>
+
+          <p className="text-gray-700 leading-relaxed">In <strong>My Plan</strong>, NOVO lays out your payoff roadmap — the same ideas you chose during onboarding, now turned into a living timeline.</p>
 
           <div className="space-y-4">
             <div className="bg-white border-l-4 border-teal-500 rounded-r-xl p-4 shadow-sm">
@@ -241,12 +243,12 @@ function Guide() {
     },
     {
       id: 'cash-flow',
-      title: '5. Cash Flow Tracker',
+      title: '5. Tracker',
       icon: Wallet,
       color: 'bg-green-600',
       content: (
         <div className="space-y-4">
-          <p className="text-gray-700 leading-relaxed">Track your checking account to see your complete financial picture — income, expenses, and debt payments in one place.</p>
+          <p className="text-gray-700 leading-relaxed">Open the <strong>Tracker</strong> tab (it appears when you have cash flow or HELOC features enabled in Settings). Depending on your setup, you will see <strong>Cash Flow</strong> tracking, <strong>HELOC</strong> velocity banking tools, or both — your complete picture of money moving in and out alongside debt payments.</p>
           <div className="space-y-3">
             {[
               { label: 'Deposit', desc: 'Log paychecks and other income. Categorize by source.' },
@@ -265,12 +267,12 @@ function Guide() {
     },
     {
       id: 'savings',
-      title: '6. Savings Tracker',
+      title: '6. Savings',
       icon: PiggyBank,
       color: 'bg-sky-500',
       content: (
         <div className="space-y-4">
-          <p className="text-gray-700 leading-relaxed">Track your emergency fund and savings goals alongside your debt payoff progress.</p>
+          <p className="text-gray-700 leading-relaxed">Use <strong>Savings</strong> to track your emergency fund and savings goals alongside your debt payoff progress.</p>
           <div className="bg-amber-50 border border-amber-300 rounded-xl p-4">
             <p className="font-semibold text-amber-900 mb-1">Why This Matters</p>
             <p className="text-amber-800 text-sm">Build a $1,000 emergency fund before attacking debt aggressively. Without a buffer, one unexpected expense forces you back into debt — undoing months of progress.</p>
@@ -286,12 +288,12 @@ function Guide() {
     },
     {
       id: 'progress-reports',
-      title: '7. Progress Reports',
+      title: '7. Progress',
       icon: BarChart3,
       color: 'bg-indigo-500',
       content: (
         <div className="space-y-4">
-          <p className="text-gray-700 leading-relaxed">Detailed analytics on your entire debt elimination journey.</p>
+          <p className="text-gray-700 leading-relaxed">The <strong>Progress</strong> tab is your analytics hub — a detailed look at your entire debt elimination journey.</p>
           <div className="grid sm:grid-cols-2 gap-3">
             {[
               { label: 'Payment History', desc: 'Complete record of every payment. Filter by debt or date range.' },
@@ -312,8 +314,60 @@ function Guide() {
       )
     },
     {
+      id: 'home-ready',
+      title: '8. Home Ready — Your Path to the Next Front Door',
+      icon: Building2,
+      color: 'bg-emerald-600',
+      content: (
+        <div className="space-y-5">
+          <p className="text-gray-700 leading-relaxed">
+            The <strong>Home Ready</strong> tab bridges the gap between crushing debt and buying with confidence. It uses the same profile and debts you already keep in NOVO — so you are not starting from scratch.
+          </p>
+
+          <div className="bg-white border border-emerald-200 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-7 h-7 bg-emerald-600 rounded-lg flex items-center justify-center">
+                <DollarSign className="w-4 h-4 text-white" />
+              </div>
+              <p className="font-bold text-gray-900">Mortgage payment calculator</p>
+            </div>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              Plug in home price, down payment, rate, and term to see estimated principal and interest. Expand taxes and insurance when you want a fuller monthly picture. The calculator rolls everything into a clear estimated payment so you can compare scenarios side by side with your current budget.
+            </p>
+          </div>
+
+          <div className="bg-white border border-emerald-200 rounded-xl p-4 shadow-sm">
+            <p className="font-bold text-gray-900 mb-2">PMI estimation by credit score</p>
+            <p className="text-gray-700 text-sm leading-relaxed mb-3">
+              If you put less than 20% down, private mortgage insurance (PMI) usually applies. Choose your <strong>credit score range</strong> from the dropdown — NOVO combines that with your loan-to-value (LTV) to estimate a monthly PMI amount. This is an educational illustration only (not a credit pull and not a lender quote), but it helps you understand how score and down payment work together.
+            </p>
+            <p className="text-xs text-gray-500 leading-relaxed">Actual PMI varies by lender and provider; use this as a planning ballpark.</p>
+          </div>
+
+          <div className="bg-white border border-emerald-200 rounded-xl p-4 shadow-sm">
+            <p className="font-bold text-gray-900 mb-2">Homebuyer readiness score</p>
+            <p className="text-gray-700 text-sm leading-relaxed">
+              When your financial profile includes <strong>gross monthly income</strong> and you have active debts in NOVO, Home Ready pulls your <strong>existing minimum payments</strong> and layers your <strong>proposed housing payment</strong> on top. You will see front-end and back-end debt-to-income context and a friendly readiness level — so you can tell at a glance whether you are in a strong position, making good progress, or need a little more runway before you shop.
+            </p>
+            <p className="text-gray-600 text-sm mt-3">Missing income in Settings? The page will nudge you to complete your profile so those insights can appear.</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2D5A8A] text-white rounded-xl p-5">
+            <div className="flex items-center gap-2 mb-2">
+              <Phone className="w-5 h-5 text-[#FF6B35]" />
+              <p className="font-bold text-lg">Talk to Ben</p>
+            </div>
+            <p className="text-blue-100 text-sm leading-relaxed mb-4">
+              At the bottom of Home Ready you will find a <strong>Talk to Ben · Windmill Mortgage</strong> button — a simple way to book a real conversation when you are ready for personalized mortgage guidance. No pressure, no obligation; just a human who has spent decades helping families align debt payoff with homeownership goals.
+            </p>
+            <p className="text-blue-200 text-xs">Perfect when your numbers look close but you want a pro to sanity-check the plan before you make a move.</p>
+          </div>
+        </div>
+      )
+    },
+    {
       id: 'ask-novo',
-      title: '8. Ask NOVO — Your AI Coach',
+      title: '9. Ask NOVO — Your AI Coach',
       icon: Bot,
       color: 'bg-violet-600',
       content: (
@@ -344,7 +398,7 @@ function Guide() {
     },
     {
       id: 'daily-tip',
-      title: '9. Debt Payoff Tip of the Day',
+      title: '10. Debt Payoff Tip of the Day',
       icon: Lightbulb,
       color: 'bg-sky-500',
       content: (
@@ -376,7 +430,7 @@ function Guide() {
     },
     {
       id: 'settings',
-      title: '10. Settings',
+      title: '11. Settings',
       icon: SettingsIcon,
       color: 'bg-gray-600',
       content: (
@@ -399,7 +453,7 @@ function Guide() {
     },
     {
       id: 'common-scenarios',
-      title: '11. Common Scenarios',
+      title: '12. Common Scenarios',
       icon: HelpCircle,
       color: 'bg-orange-500',
       content: (
@@ -423,7 +477,7 @@ function Guide() {
             },
             {
               q: 'I want to see what happens if I pay extra — can NOVO show me?',
-              steps: ['Ask NOVO: "What if I pay an extra $200/month on my highest debt?"', 'Or visit Payment Strategies to explore different scenarios'],
+              steps: ['Ask NOVO: "What if I pay an extra $200/month on my highest debt?"', 'Or open My Plan to explore different scenarios and timelines'],
             },
           ].map(({ q, steps }) => (
             <div key={q} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
@@ -443,7 +497,7 @@ function Guide() {
     },
     {
       id: 'tips-success',
-      title: '12. Tips for Success',
+      title: '13. Tips for Success',
       icon: Zap,
       color: 'bg-yellow-500',
       content: (
@@ -451,7 +505,7 @@ function Guide() {
           {[
             { num: 1, tip: 'Log every payment', detail: 'Consistency is key. Track all debt payments to see real progress and stay motivated.' },
             { num: 2, tip: 'Check your tip daily', detail: 'The daily tip on your Dashboard provides ongoing education and fresh motivation.' },
-            { num: 3, tip: 'Review your strategy monthly', detail: 'Visit Payment Strategies once a month to stay focused on the plan and see your debt-free date move closer.' },
+            { num: 3, tip: 'Review your strategy monthly', detail: 'Open My Plan once a month to stay focused on the roadmap and watch your debt-free date move closer.' },
             { num: 4, tip: 'Celebrate small wins', detail: 'Every $1,000 paid off is real progress — acknowledge your discipline and keep going.' },
             { num: 5, tip: 'Use Ask NOVO', detail: "Don't struggle alone. Ask NOVO is available 24/7 to answer questions and provide encouragement." },
             { num: 6, tip: 'Stay consistent', detail: 'Debt elimination is a marathon, not a sprint. Keep making progress even when it feels slow.' },
@@ -471,7 +525,7 @@ function Guide() {
     },
     {
       id: 'faq',
-      title: '13. Frequently Asked Questions',
+      title: '14. Frequently Asked Questions',
       icon: MessageCircle,
       color: 'bg-cyan-600',
       content: (
@@ -481,9 +535,9 @@ function Guide() {
             { q: 'Is my financial data secure?', a: 'Yes. All data is stored locally on your device. NOVO does not send your debt details to any external server.' },
             { q: 'Can I use NOVO on multiple devices?', a: 'Currently data is stored per-device. Cloud sync is planned for a future update.' },
             { q: 'How accurate are the debt-free date projections?', a: 'Very accurate, assuming you maintain your payment plan. Results depend on consistency and any extra payments you make.' },
-            { q: 'Can NOVO help with budgeting?', a: 'Yes. The Cash Flow Tracker lets you see income, expenses, and debt payments together in one place.' },
+            { q: 'Can NOVO help with budgeting?', a: 'Yes. When Tracker is enabled, you can see income, expenses, and debt payments together in one place.' },
             { q: 'What if I have a setback — medical bill, car repair?', a: 'Life happens. Update your debts if needed, adjust your plan, and keep going. NOVO recalculates your timeline automatically.' },
-            { q: 'Can I export my data?', a: 'Yes. Progress Reports can be exported for your own records.' },
+            { q: 'Can I export my data?', a: 'Yes. Progress includes export options for your own records.' },
             { q: 'What if I want personalized help beyond what Ask NOVO provides?', a: 'Ben offers 1-on-1 coaching for personalized debt elimination guidance. Contact him at ben@windmillmortgage.com or 614-327-2213.' },
           ].map(({ q, a }) => (
             <div key={q} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
@@ -496,7 +550,7 @@ function Guide() {
     },
     {
       id: 'contact',
-      title: '14. Need More Help?',
+      title: '15. Need More Help?',
       icon: AlertCircle,
       color: 'bg-[#FF6B35]',
       content: (
@@ -550,9 +604,15 @@ function Guide() {
           </div>
         </div>
 
-        <p className="text-gray-700 leading-relaxed mb-6">
+        <p className="text-gray-700 leading-relaxed mb-4">
           Everything you need to know about using NOVO effectively. Click any section to expand it. Use the search bar to jump to a specific topic.
         </p>
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6">
+          <p className="font-semibold text-gray-900 text-sm mb-2">How the app is organized</p>
+          <p className="text-gray-700 text-sm leading-relaxed">
+            Along the top (or in the menu on your phone) you will find: <strong>Dashboard</strong>, <strong>My Debts</strong>, <strong>My Plan</strong>, <strong>Tracker</strong> (when cash flow or HELOC tracking is turned on), <strong>Savings</strong>, <strong>Progress</strong>, <strong>Home Ready</strong>, and <strong>Settings</strong>. This guide walks through each area in plain language.
+          </p>
+        </div>
 
         <div className="mb-4">
           <input

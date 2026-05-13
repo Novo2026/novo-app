@@ -370,7 +370,7 @@ function App() {
                   alt="NOVO Logo"
                   className="h-10 w-auto transition-transform duration-200 group-hover:scale-105"
                 />
-                <div className="hidden sm:block text-sm text-gray-300">Debt Payoff Calculator</div>
+                <div className="hidden sm:block text-sm text-gray-300">Debt Free. Home Ready.</div>
               </button>
             </div>
 
