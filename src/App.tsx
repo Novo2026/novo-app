@@ -361,6 +361,7 @@ function App() {
               : []),
             { section: 'savings' as Section, label: 'Savings', icon: PiggyBank },
             { section: 'progress' as Section, label: 'Progress', icon: BarChart3 },
+            { section: 'home-ready' as Section, label: 'Home Ready', icon: Building2 },
             { section: 'settings' as Section, label: 'Settings', icon: SettingsIcon },
           ] as Array<{ section: Section; label: string; icon: any; isNew?: boolean }>).map(({ section, label, icon: Icon, isNew }) => (
             <button
