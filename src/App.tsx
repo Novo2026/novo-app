@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Home, CreditCard, TrendingUp, BarChart3, Settings as SettingsIcon, Wallet, PiggyBank, MessageCircle, CheckCircle, X, Menu, Building2 } from 'lucide-react';
+import type { Session } from '@supabase/supabase-js';
+import { Home, CreditCard, TrendingUp, BarChart3, Settings as SettingsIcon, Wallet, PiggyBank, MessageCircle, CheckCircle, X, Menu, Building2, LogOut } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import MyDebts from './components/MyDebts';
 import PaymentStrategies from './components/PaymentStrategies';
@@ -12,12 +13,16 @@ import HomeReady from './components/HomeReady';
 import Settings from './components/Settings';
 import OnboardingModal from './components/OnboardingModal';
 import WelcomeTourModal from './components/WelcomeTourModal';
+import AuthModal from './components/AuthModal';
+import { supabase } from './lib/supabase';
+import { pushLocalStorageToCloud } from './services/cloudSync';
 import { StorageService } from './services/storage';
 import type { Debt, Transaction, FeaturePreferences } from './types';
 
 type Section = 'dashboard' | 'debts' | 'strategies' | 'what-if' | 'tracker' | 'savings' | 'progress' | 'home-ready' | 'guide' | 'settings';
 
 function App() {
+  const [authSession, setAuthSession] = useState<Session | null | undefined>(undefined);
   const [currentSection, setCurrentSection] = useState<Section>('dashboard');
   const [debts, setDebts] = useState<Debt[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -41,13 +46,39 @@ function App() {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthSession(session);
+    });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setAuthSession(session);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const bootstrapFromStorage = () => {
     StorageService.deduplicatePayments();
     loadData();
     checkOnboarding();
     loadFeaturePreferences();
     const clicked = localStorage.getItem('askNovoClicked') === 'true';
     setAskNovoClicked(clicked);
-  }, []);
+  };
+
+  useEffect(() => {
+    if (authSession === undefined || authSession === null) return;
+    bootstrapFromStorage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot bootstrap when session becomes available
+  }, [authSession]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    StorageService.deduplicatePayments();
+    loadData();
+    loadFeaturePreferences();
+    setRefreshKey(prev => prev + 1);
+  };
 
   const loadFeaturePreferences = () => {
     const preferences = StorageService.getFeaturePreferences();
@@ -61,6 +92,8 @@ function App() {
     const userName = localStorage.getItem('userName');
     if (!userName) {
       setShowOnboarding(true);
+    } else {
+      setShowOnboarding(false);
     }
   };
 
@@ -139,6 +172,11 @@ function App() {
 
     setShowOnboarding(false);
     loadData();
+
+    const uid = authSession?.user?.id;
+    if (uid) {
+      pushLocalStorageToCloud(uid).catch(err => console.error('NOVO cloud sync failed:', err));
+    }
 
     const shouldShowTour = localStorage.getItem('welcomeTourCompleted') !== 'true';
     if (shouldShowTour) {
@@ -253,8 +291,24 @@ function App() {
     }
   };
 
+  if (authSession === undefined) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-600 text-sm">Loading…</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {authSession === null && (
+        <AuthModal
+          onAuthenticated={() => {
+            bootstrapFromStorage();
+            setRefreshKey(prev => prev + 1);
+          }}
+        />
+      )}
       {showOnboarding && <OnboardingModal onComplete={handleOnboardingComplete} />}
       {showWelcomeTour && (
         <WelcomeTourModal
@@ -374,16 +428,37 @@ function App() {
               </button>
             </div>
 
-            <button
-              onClick={handleAskNovoClick}
-              className={`group flex items-center space-x-2 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md hover:shadow-lg ${
-                !askNovoClicked ? 'animate-gentle-pulse' : ''
-              }`}
-              title="Get personalized debt coaching from NOVO's AI assistant"
-            >
-              <MessageCircle className="w-5 h-5" />
-              <span className="hidden sm:inline">Ask NOVO</span>
-            </button>
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              {authSession?.user?.email && (
+                <>
+                  <span
+                    className="hidden md:inline text-xs text-gray-300 max-w-[160px] truncate"
+                    title={authSession.user.email}
+                  >
+                    {authSession.user.email}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex items-center gap-1 text-xs sm:text-sm font-medium text-gray-200 hover:text-white border border-white/30 hover:border-white/60 rounded-lg px-2 py-1.5 sm:px-3 transition-colors"
+                    title="Log out"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="hidden sm:inline">Log out</span>
+                  </button>
+                </>
+              )}
+              <button
+                onClick={handleAskNovoClick}
+                className={`group flex items-center space-x-2 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md hover:shadow-lg ${
+                  !askNovoClicked ? 'animate-gentle-pulse' : ''
+                }`}
+                title="Get personalized debt coaching from NOVO's AI assistant"
+              >
+                <MessageCircle className="w-5 h-5" />
+                <span className="hidden sm:inline">Ask NOVO</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
