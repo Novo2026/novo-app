@@ -539,15 +539,15 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
         <Phone className="w-8 h-8 text-[#FF6B35] mx-auto mb-3" />
         <h3 className="font-bold text-lg mb-2">Ready to Take the Next Step?</h3>
         <p className="text-blue-200 text-sm mb-4 leading-relaxed">
-          Whether you're 6 months out or 6 years out, a 15-minute call with Ben can show you exactly what needs to happen first.
+          Ready to talk through your numbers? Book a free 30-minute NOVO Strategy Call.
         </p>
         <a
-          href="https://windmillmortgage.com"
+          href="https://api.leadconnectorhq.com/widget/booking/Ms28gTzPwpR5BbzeU0Dc"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-block bg-[#FF6B35] hover:bg-[#e85d2a] text-white font-semibold px-6 py-3 rounded-xl transition-colors text-sm shadow-lg"
         >
-          Talk to Ben · Windmill Mortgage
+          Schedule a Strategy Call with Ben
         </a>
         <p className="text-xs text-blue-300 mt-3">No pressure. No obligation. Just a real conversation.</p>
       </div>
