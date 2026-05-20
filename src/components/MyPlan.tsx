@@ -42,31 +42,37 @@ export default function MyPlan({
 
   return (
     <>
-      <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-400 rounded-xl shadow-lg p-8">
-        <div className="flex items-start gap-4 mb-6">
-          <div className="flex-shrink-0 w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center">
-            <AlertTriangle className="w-8 h-8 text-amber-600" />
+      <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-400 rounded-xl shadow-lg p-4 sm:p-6 md:p-8">
+        <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-amber-100 rounded-full flex items-center justify-center">
+            <AlertTriangle className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" />
           </div>
-          <div className="flex-1">
-            <h2 className="text-3xl font-bold text-gray-900 mb-3">Strategy Optimization Not Available Yet</h2>
-            <div className="bg-white/60 rounded-lg p-4 mb-4">
-              <p className="text-sm text-gray-700 mb-1">Your current cash flow after debt payments:</p>
-              <p className={`text-3xl font-bold ${cashFlowAfterMinimums < 0 ? 'text-red-600' : 'text-amber-700'}`}>
+          <div className="flex-1 min-w-0 w-full">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2 sm:mb-3 leading-snug">
+              Strategy Optimization Not Available Yet
+            </h2>
+            <div className="bg-white/60 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+              <p className="text-xs sm:text-sm text-gray-700 mb-1">Your current cash flow after debt payments:</p>
+              <p
+                className={`text-xl sm:text-2xl md:text-3xl font-bold break-words ${
+                  cashFlowAfterMinimums < 0 ? 'text-red-600' : 'text-amber-700'
+                }`}
+              >
                 {CalculationService.formatCurrency(cashFlowAfterMinimums)}/month
               </p>
             </div>
-            <p className="text-lg text-gray-800 mb-4">
+            <p className="text-sm sm:text-base md:text-lg text-gray-800 mb-0 sm:mb-4 leading-relaxed">
               To unlock NOVO&apos;s debt acceleration strategies, you need positive cash flow of at least $200-500/month.
             </p>
           </div>
         </div>
 
         {highestRateDebt && helocRate > 0 && highestRateDebt.interestRate > helocRate && helocTacticalImpact && (
-          <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-500 rounded-xl p-6 mb-6 shadow-md">
+          <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-500 rounded-xl p-4 sm:p-6 mb-6 shadow-md">
             <div className="flex items-start gap-3 mb-4">
-              <span className="text-blue-600 text-2xl flex-shrink-0">✅</span>
-              <div className="flex-1">
-                <h3 className="text-2xl font-bold text-blue-900 mb-2">
+              <span className="text-blue-600 text-xl sm:text-2xl flex-shrink-0">✅</span>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-blue-900 mb-2 leading-snug">
                   Use HELOC Tactically {hasHELOCAccount ? '(Recommended)' : '(Recommended if you have home equity)'}
                 </h3>
                 {!hasHELOCAccount && (
@@ -82,36 +88,42 @@ export default function MyPlan({
               </div>
             </div>
 
-            <div className="bg-white rounded-lg p-5 mb-4">
-              <h4 className="font-bold text-gray-900 mb-3">Your highest-interest debt:</h4>
-              <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-4">
-                <p className="text-xl font-bold text-red-900 mb-1">{highestRateDebt.accountName}</p>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-gray-600">Interest Rate</p>
-                    <p className="text-lg font-bold text-red-700">{highestRateDebt.interestRate.toFixed(2)}%</p>
+            <div className="bg-white rounded-lg p-4 sm:p-5 mb-4">
+              <h4 className="text-sm sm:text-base font-bold text-gray-900 mb-3">Your highest-interest debt:</h4>
+              <div className="bg-red-50 border-2 border-red-300 rounded-lg p-3 sm:p-4 mb-4">
+                <p className="text-base sm:text-lg md:text-xl font-bold text-red-900 mb-3 break-words">
+                  {highestRateDebt.accountName}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-3">
+                  <div className="min-w-0 space-y-1 py-1 border-b border-red-200/60 sm:border-0 sm:py-0 last:border-0">
+                    <p className="text-xs sm:text-sm text-gray-600">Interest Rate</p>
+                    <p className="text-base sm:text-lg font-bold text-red-700 break-words">
+                      {highestRateDebt.interestRate.toFixed(2)}%
+                    </p>
                   </div>
-                  <div>
-                    <p className="text-gray-600">Current Balance</p>
-                    <p className="text-lg font-bold text-gray-900">
+                  <div className="min-w-0 space-y-1 py-1 border-b border-red-200/60 sm:border-0 sm:py-0 last:border-0">
+                    <p className="text-xs sm:text-sm text-gray-600">Current Balance</p>
+                    <p className="text-base sm:text-lg font-bold text-gray-900 break-words">
                       {CalculationService.formatCurrency(highestRateDebt.currentBalance)}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-gray-600">Minimum Payment</p>
-                    <p className="text-lg font-bold text-gray-900">
+                  <div className="min-w-0 space-y-1 py-1 border-b border-red-200/60 sm:border-0 sm:py-0 last:border-0">
+                    <p className="text-xs sm:text-sm text-gray-600">Minimum Payment</p>
+                    <p className="text-base sm:text-lg font-bold text-gray-900 break-words">
                       {CalculationService.formatCurrency(highestRateDebt.minimumPayment)}/mo
                     </p>
                   </div>
-                  <div>
-                    <p className="text-gray-600">HELOC Rate</p>
-                    <p className="text-lg font-bold text-blue-700">{helocRate.toFixed(2)}%</p>
+                  <div className="min-w-0 space-y-1 py-1">
+                    <p className="text-xs sm:text-sm text-gray-600">HELOC Rate</p>
+                    <p className="text-base sm:text-lg font-bold text-blue-700 break-words">
+                      {helocRate.toFixed(2)}%
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-400 rounded-lg p-5">
-                <h4 className="font-bold text-emerald-900 mb-3 text-lg">The Tactical Strategy:</h4>
+              <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-400 rounded-lg p-4 sm:p-5">
+                <h4 className="font-bold text-emerald-900 mb-3 text-base sm:text-lg">The Tactical Strategy:</h4>
                 <div className="space-y-2 text-gray-800">
                   <div className="flex items-start gap-2">
                     <span className="flex-shrink-0 w-6 h-6 bg-emerald-600 text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
@@ -216,8 +228,10 @@ export default function MyPlan({
           </div>
         )}
 
-        <div className="bg-white rounded-lg p-6 mb-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">Additional ways to improve your cash flow:</h3>
+        <div className="bg-white rounded-lg p-4 sm:p-6 mb-6">
+          <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-4">
+            Additional ways to improve your cash flow:
+          </h3>
           <div className="space-y-3">
             <div className="flex items-start gap-3">
               <span className="text-emerald-600 text-xl flex-shrink-0">✅</span>
@@ -250,8 +264,8 @@ export default function MyPlan({
           </div>
         </div>
 
-        <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-6 mb-6">
-          <h3 className="text-xl font-bold text-blue-900 mb-3">Current Action Plan:</h3>
+        <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 sm:p-6 mb-6">
+          <h3 className="text-base sm:text-lg md:text-xl font-bold text-blue-900 mb-3">Current Action Plan:</h3>
           <ul className="space-y-2 text-blue-900">
             <li className="flex items-start gap-2">
               <span className="flex-shrink-0">•</span>
@@ -272,8 +286,10 @@ export default function MyPlan({
           </ul>
         </div>
 
-        <div className="bg-white border-2 border-[#1E3A5F]/20 rounded-xl p-6 mb-6 text-center shadow-sm">
-          <p className="text-lg font-semibold text-[#1E3A5F] mb-4">Want to talk through your numbers with Ben?</p>
+        <div className="bg-white border-2 border-[#1E3A5F]/20 rounded-xl p-4 sm:p-6 mb-6 text-center shadow-sm">
+          <p className="text-base sm:text-lg font-semibold text-[#1E3A5F] mb-4">
+            Want to talk through your numbers with Ben?
+          </p>
           <a
             href={BEN_BOOKING_URL}
             target="_blank"
