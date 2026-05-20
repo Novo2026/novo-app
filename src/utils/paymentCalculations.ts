@@ -6,9 +6,8 @@ export interface PayoffProjection {
   payoffDate: Date;
 }
 
-const MAX_DAYS = 365 * 50;
 const UNPAYABLE_MONTHS = 999;
-const PAYMENTS_PER_YEAR = { monthly: 12, biweekly: 26, weekly: 52 } as const;
+const MAX_YEARS = 50;
 
 function addMonths(date: Date, months: number): Date {
   const safeMonths = Math.max(0, Math.min(Math.floor(months), 1200));
@@ -33,18 +32,9 @@ export function payoffDateFromMonths(months: number): Date {
   return addMonths(new Date(), months);
 }
 
-/** Per-payment amount: 12 monthly payments spread across N pay periods per year. */
-export function paymentAmountForFrequency(
-  monthlyPayment: number,
-  frequency: Exclude<PaymentFrequency, 'monthly'>
-): number {
-  const periods = PAYMENTS_PER_YEAR[frequency];
-  return (monthlyPayment * 12) / periods;
-}
-
-function daysToMonths(days: number): number {
-  if (days <= 0) return 0;
-  return Math.max(1, Math.ceil(days / 30.4375));
+function periodsToMonths(periodCount: number, periodsPerYear: number): number {
+  if (periodCount <= 0) return 0;
+  return Math.max(1, Math.ceil((periodCount / periodsPerYear) * 12));
 }
 
 function unpayableResult(totalInterest = 0): PayoffProjection {
@@ -55,55 +45,100 @@ function unpayableResult(totalInterest = 0): PayoffProjection {
   };
 }
 
+interface AmortizationSchedule {
+  periods: number;
+  totalInterest: number;
+  months: number;
+}
+
 /**
- * Daily interest accrual; one payment every `intervalDays` for `paymentAmount`.
- * More frequent payments (shorter interval) reduce interest when annual principal is equal.
+ * Standard amortization: each period accrue interest on balance, apply full payment toward
+ * interest then principal, repeat until paid off.
  */
-function simulateAcceleratedPayoff(
+function runAmortizationSchedule(
   balance: number,
   annualRate: number,
-  paymentAmount: number,
-  intervalDays: number
-): PayoffProjection {
+  payment: number,
+  periodsPerYear: number,
+  scheduleLabel: string
+): AmortizationSchedule {
+  console.log('[NOVO payoff]', scheduleLabel, {
+    balance,
+    annualRatePercent: annualRate,
+    paymentPerPeriod: payment,
+    periodsPerYear,
+    annualPrincipalPaid: payment * periodsPerYear,
+  });
+
   if (balance <= 0) {
-    return { months: 0, totalInterest: 0, payoffDate: new Date() };
+    return { periods: 0, totalInterest: 0, months: 0 };
   }
-  if (paymentAmount <= 0) {
-    return unpayableResult();
+  if (payment <= 0) {
+    return { periods: UNPAYABLE_MONTHS, totalInterest: 0, months: UNPAYABLE_MONTHS };
   }
 
-  const dailyRate = annualRate / 100 / 365;
+  if (annualRate <= 0) {
+    const periods = Math.ceil(balance / payment);
+    const months = periodsToMonths(periods, periodsPerYear);
+    console.log('[NOVO payoff] result (0% rate)', scheduleLabel, { periods, months, totalInterest: 0 });
+    return { periods, totalInterest: 0, months };
+  }
+
+  const periodRate = annualRate / 100 / periodsPerYear;
+  const maxPeriods = periodsPerYear * MAX_YEARS;
   let remaining = balance;
   let totalInterest = 0;
-  let daysElapsed = 0;
-  let daysUntilPayment = 0;
+  let periodCount = 0;
 
-  while (remaining > 0.005 && daysElapsed < MAX_DAYS) {
-    if (dailyRate > 0) {
-      const interest = remaining * dailyRate;
-      totalInterest += interest;
-      remaining += interest;
+  while (remaining > 0.01 && periodCount < maxPeriods) {
+    const interest = remaining * periodRate;
+    if (payment <= interest) {
+      console.log('[NOVO payoff] unpayable — payment does not cover period interest', scheduleLabel, {
+        payment,
+        interest,
+        remaining,
+        period: periodCount + 1,
+      });
+      return { periods: UNPAYABLE_MONTHS, totalInterest, months: UNPAYABLE_MONTHS };
     }
-    daysElapsed += 1;
-    daysUntilPayment += 1;
 
-    if (daysUntilPayment < intervalDays) continue;
-
-    daysUntilPayment = 0;
-    const applied = Math.min(paymentAmount, remaining);
-    remaining -= applied;
+    totalInterest += interest;
+    const principal = Math.min(payment - interest, remaining);
+    remaining -= principal;
+    periodCount += 1;
   }
 
-  if (remaining > 0.5) {
-    return unpayableResult(totalInterest);
+  if (remaining > 0.01) {
+    return { periods: UNPAYABLE_MONTHS, totalInterest, months: UNPAYABLE_MONTHS };
   }
 
-  const months = daysToMonths(daysElapsed);
-  return {
-    months,
+  const months = periodsToMonths(periodCount, periodsPerYear);
+  const result = {
+    periods: periodCount,
     totalInterest: Math.round(totalInterest * 100) / 100,
-    payoffDate: payoffDateFromMonths(months),
+    months,
   };
+  console.log('[NOVO payoff] result', scheduleLabel, result);
+  return result;
+}
+
+function scheduleToProjection(schedule: AmortizationSchedule): PayoffProjection {
+  if (schedule.months >= UNPAYABLE_MONTHS) {
+    return unpayableResult(schedule.totalInterest);
+  }
+  return {
+    months: schedule.months,
+    totalInterest: schedule.totalInterest,
+    payoffDate: payoffDateFromMonths(schedule.months),
+  };
+}
+
+/** Per-period payment for accelerated schedules (13 monthly equivalents per year). */
+export function paymentAmountForFrequency(
+  monthlyPayment: number,
+  frequency: Exclude<PaymentFrequency, 'monthly'>
+): number {
+  return frequency === 'biweekly' ? monthlyPayment / 2 : monthlyPayment / 4;
 }
 
 export function calculatePayoffMonths(
@@ -122,83 +157,42 @@ export function calculateTotalInterest(
   return calculateMonthlyPayoff(balance, annualRate, monthlyPayment).totalInterest;
 }
 
+/** 12 payments/year — monthly minimum each period. */
 export function calculateMonthlyPayoff(
   balance: number,
   annualRate: number,
   monthlyPayment: number
 ): PayoffProjection {
-  if (balance <= 0) {
-    return { months: 0, totalInterest: 0, payoffDate: new Date() };
-  }
-  if (monthlyPayment <= 0) {
-    return unpayableResult();
-  }
-
-  if (annualRate <= 0) {
-    const months = Math.ceil(balance / monthlyPayment);
-    return {
-      months,
-      totalInterest: 0,
-      payoffDate: payoffDateFromMonths(months),
-    };
-  }
-
-  const monthlyRate = annualRate / 12 / 100;
-  const monthlyInterest = balance * monthlyRate;
-  if (monthlyPayment <= monthlyInterest) {
-    return unpayableResult();
-  }
-
-  const monthsExact =
-    -Math.log(1 - (monthlyRate * balance) / monthlyPayment) / Math.log(1 + monthlyRate);
-  if (!Number.isFinite(monthsExact) || monthsExact < 0) {
-    return unpayableResult();
-  }
-  const months = Math.ceil(monthsExact);
-
-  let remaining = balance;
-  let totalInterest = 0;
-  for (let i = 0; i < months && remaining > 0.005; i += 1) {
-    const interest = remaining * monthlyRate;
-    totalInterest += interest;
-    const principal = Math.min(monthlyPayment - interest, remaining);
-    if (principal <= 0) {
-      return unpayableResult(totalInterest);
-    }
-    remaining -= principal;
-  }
-
-  return {
-    months,
-    totalInterest: Math.round(totalInterest * 100) / 100,
-    payoffDate: payoffDateFromMonths(months),
-  };
+  const schedule = runAmortizationSchedule(
+    balance,
+    annualRate,
+    monthlyPayment,
+    12,
+    'monthly'
+  );
+  return scheduleToProjection(schedule);
 }
 
-/** 26 payments/year × (12/26 of monthly) = 12 monthly payments/year, every 14 days. */
+/** 26 payments/year at half the monthly payment (13 full monthly payments per year). */
 export function calculateBiWeeklyPayoff(
   balance: number,
   annualRate: number,
   monthlyPayment: number
 ): PayoffProjection {
-  if (balance <= 0) {
-    return { months: 0, totalInterest: 0, payoffDate: new Date() };
-  }
-  const payment = paymentAmountForFrequency(monthlyPayment, 'biweekly');
-  return simulateAcceleratedPayoff(balance, annualRate, payment, 14);
+  const payment = monthlyPayment / 2;
+  const schedule = runAmortizationSchedule(balance, annualRate, payment, 26, 'biweekly');
+  return scheduleToProjection(schedule);
 }
 
-/** 52 payments/year × (12/52 of monthly) = 12 monthly payments/year, every 7 days. */
+/** 52 payments/year at one-quarter of the monthly payment. */
 export function calculateWeeklyPayoff(
   balance: number,
   annualRate: number,
   monthlyPayment: number
 ): PayoffProjection {
-  if (balance <= 0) {
-    return { months: 0, totalInterest: 0, payoffDate: new Date() };
-  }
-  const payment = paymentAmountForFrequency(monthlyPayment, 'weekly');
-  return simulateAcceleratedPayoff(balance, annualRate, payment, 7);
+  const payment = monthlyPayment / 4;
+  const schedule = runAmortizationSchedule(balance, annualRate, payment, 52, 'weekly');
+  return scheduleToProjection(schedule);
 }
 
 export function projectPayoffForFrequency(
