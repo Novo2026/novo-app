@@ -2,9 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { X, Send, Loader2 } from 'lucide-react';
 import { streamAnthropicMessage, stripMarkdown, type ChatMessage } from '../services/anthropic';
 
-const BEN_BOOKING_URL =
-  'https://api.leadconnectorhq.com/widget/booking/Ms28gTzPwpR5BbzeU0Dc';
-
 /** Appended to every chat context passed into this panel. */
 export const NOVO_CONVERSATION_RULES =
   'Ask only ONE question at a time. Wait for the user to respond before asking anything else. Keep responses short, warm, and conversational - like a knowledgeable friend, not a financial advisor reading from a checklist.';
@@ -138,11 +135,11 @@ export default function NovoChat({ open, onClose, context }: NovoChatProps) {
         role="dialog"
         aria-modal="true"
         aria-label="NOVO chat"
-        className={`fixed top-0 right-0 z-50 h-full w-full max-w-md bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+        className={`fixed top-0 right-0 z-50 h-dvh max-h-dvh w-full max-w-md bg-white shadow-2xl flex flex-col min-h-0 transition-transform duration-300 ease-out ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        <header className="flex items-center justify-between px-4 py-4 bg-[#1E3A5F] text-white flex-shrink-0">
+        <header className="flex-shrink-0 flex items-center justify-between px-4 py-4 bg-[#1E3A5F] text-white">
           <div className="flex items-center gap-3">
             <img src="/novo_primary.png" alt="NOVO" className="h-8 w-auto" />
             <div>
@@ -160,7 +157,10 @@ export default function NovoChat({ open, onClose, context }: NovoChatProps) {
           </button>
         </header>
 
-        <div ref={threadRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-gray-50">
+        <div
+          ref={threadRef}
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-3 bg-gray-50"
+        >
           {messages.length === 0 && !isStreaming && (
             <div className="text-center text-sm text-gray-500 py-8 px-4">
               <p className="font-medium text-gray-700 mb-1">Hi — I&apos;m NOVO.</p>
@@ -205,19 +205,7 @@ export default function NovoChat({ open, onClose, context }: NovoChatProps) {
           )}
         </div>
 
-        <div className="flex-shrink-0 border-t border-gray-200 bg-white px-4 py-3">
-          <div className="bg-[#1E3A5F]/5 border border-[#1E3A5F]/15 rounded-xl px-3 py-3 mb-3 text-center">
-            <p className="text-sm text-gray-700 mb-2">Ready to talk to Ben?</p>
-            <a
-              href={BEN_BOOKING_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block text-sm font-semibold bg-[#FF6B35] hover:bg-[#e85a28] text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              Schedule a Strategy Call
-            </a>
-          </div>
-
+        <footer className="flex-shrink-0 border-t border-gray-200 bg-white px-4 py-3">
           <div className="flex gap-2 items-end">
             <textarea
               ref={inputRef}
@@ -243,7 +231,7 @@ export default function NovoChat({ open, onClose, context }: NovoChatProps) {
               )}
             </button>
           </div>
-        </div>
+        </footer>
       </aside>
     </>
   );
