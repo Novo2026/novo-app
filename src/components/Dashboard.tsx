@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, CreditCard as Edit2, Pencil, Trash2, TrendingUp, Target, Zap, Home, Sliders, CalendarClock } from 'lucide-react';
-import { getPaymentCommitmentCount } from '../utils/paymentCalculations';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import LogPaymentModal from './LogPaymentModal';
@@ -16,12 +15,27 @@ interface DashboardProps {
   onNavigateToSmarterPayments?: () => void;
 }
 
+const PAYMENT_COMMITMENTS_KEY = 'novo_payment_commitments';
+
+function countPaymentCommitments(): number {
+  try {
+    const raw = localStorage.getItem(PAYMENT_COMMITMENTS_KEY);
+    if (!raw) return 0;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return Object.keys(parsed).length;
+  } catch {
+    return 0;
+  }
+}
+
 export default function Dashboard({
   onDataUpdate,
   onNavigateToSavings,
   onNavigateToTracker,
   onNavigateToSmarterPayments,
 }: DashboardProps) {
+  const paymentCommitmentCount = countPaymentCommitments();
+
   const [showLogPayment, setShowLogPayment] = useState(false);
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const [quickPayAmount, setQuickPayAmount] = useState<number | undefined>(undefined);
@@ -328,7 +342,6 @@ export default function Dashboard({
   };
 
   const recentActivity = getRecentActivity();
-  const paymentCommitmentCount = getPaymentCommitmentCount();
 
   if (debts.length === 0) {
     return (
@@ -357,13 +370,9 @@ export default function Dashboard({
       <DailyTip debts={debts} />
 
       {paymentCommitmentCount > 0 && onNavigateToSmarterPayments && (
-        <button
-          type="button"
-          onClick={onNavigateToSmarterPayments}
-          className="w-full text-left bg-emerald-50 border border-emerald-200 rounded-xl p-4 shadow-sm hover:bg-emerald-100/80 hover:border-emerald-300 transition-colors group"
-        >
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-white border border-emerald-300 border-l-4 border-l-emerald-500 rounded-xl p-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-start gap-3 min-w-0">
               <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
                 <CalendarClock className="w-5 h-5 text-emerald-700" />
               </div>
@@ -372,12 +381,21 @@ export default function Dashboard({
                   Smarter Payments Active — {paymentCommitmentCount}{' '}
                   {paymentCommitmentCount === 1 ? 'debt' : 'debts'} on accelerated payoff
                 </p>
-                <p className="text-emerald-700 text-xs mt-0.5">View or update your payment strategies</p>
+                <p className="text-emerald-700 text-sm mt-0.5">
+                  You&apos;re paying smarter without spending more
+                </p>
               </div>
             </div>
-            <ArrowRight className="w-5 h-5 text-emerald-600 flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
+            <button
+              type="button"
+              onClick={onNavigateToSmarterPayments}
+              className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors flex-shrink-0"
+            >
+              Smarter Payments
+              <ArrowRight className="w-4 h-4" />
+            </button>
           </div>
-        </button>
+        </div>
       )}
 
       <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2D5A8A] text-white rounded-xl shadow-lg p-8">
