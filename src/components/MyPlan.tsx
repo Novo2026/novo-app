@@ -2,23 +2,12 @@ import { useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
 import type { Debt } from '../types';
-import NovoChat from './NovoChat';
+import NovoChat, { CHAT_CONTEXT } from './NovoChat';
 
 const BEN_BOOKING_URL =
   'https://api.leadconnectorhq.com/widget/booking/Ms28gTzPwpR5BbzeU0Dc';
 
-export const CHAT_CONTEXT = {
-  helocStrategy:
-    'You are NOVO, a friendly debt payoff and financial coaching assistant built by Ben Hulshof, a mortgage broker with 27 years experience. The user wants to understand their HELOC strategy. Ask them about their current home equity, their debts, and help them understand how a HELOC can accelerate debt payoff.',
-  learnMore:
-    'You are NOVO, a friendly debt payoff and financial coaching assistant. The user wants to learn more about their debt payoff plan. Answer their questions helpfully and encourage them.',
-  updateBudget:
-    'You are NOVO, a friendly debt payoff and financial coaching assistant. The user wants to update their budget. Ask them about their monthly income and expenses and help them think through improvements.',
-  reduceExpenses:
-    'You are NOVO, a friendly debt payoff and financial coaching assistant. The user wants to find ways to reduce expenses. Ask them about their current spending and suggest practical ways to cut costs and free up cash flow.',
-  addIncome:
-    'You are NOVO, a friendly debt payoff and financial coaching assistant. The user wants to explore adding an income source. Ask them about their skills, available time, and help them brainstorm realistic options to increase monthly income.',
-} as const;
+export { CHAT_CONTEXT };
 
 export interface HelocTacticalImpact {
   interestSavings: number;
