@@ -1,17 +1,57 @@
 import { useState } from 'react';
-import { AlertTriangle, CalendarClock, ArrowRight } from 'lucide-react';
+import { AlertTriangle, CalendarClock, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
 import { StorageService } from '../services/storage';
-import {
-  hasVisitedSmarterPayments,
-  getActiveCommitmentsSummary,
-  formatFrequencyLabel,
-} from '../utils/paymentCalculations';
+import { hasVisitedSmarterPayments } from '../utils/paymentCalculations';
 import type { Debt } from '../types';
 import NovoChat, { CHAT_CONTEXT } from './NovoChat';
 
 const BEN_BOOKING_URL =
   'https://api.leadconnectorhq.com/widget/booking/Ms28gTzPwpR5BbzeU0Dc';
+
+const PAYMENT_COMMITMENTS_KEY = 'novo_payment_commitments';
+
+type CommitmentFrequency = 'monthly' | 'biweekly' | 'weekly';
+
+interface StoredPaymentCommitment {
+  frequency: CommitmentFrequency;
+  committedAt: string;
+}
+
+function loadPaymentCommitments(): Record<string, StoredPaymentCommitment> {
+  try {
+    const raw = localStorage.getItem(PAYMENT_COMMITMENTS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, StoredPaymentCommitment>;
+    const out: Record<string, StoredPaymentCommitment> = {};
+    for (const [id, entry] of Object.entries(parsed)) {
+      if (
+        entry &&
+        (entry.frequency === 'biweekly' || entry.frequency === 'weekly') &&
+        entry.committedAt
+      ) {
+        out[id] = entry;
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function formatCommitmentFrequency(frequency: CommitmentFrequency): string {
+  if (frequency === 'biweekly') return 'Bi-Weekly';
+  if (frequency === 'weekly') return 'Weekly';
+  return 'Monthly';
+}
+
+function formatCommittedDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
 
 export { CHAT_CONTEXT };
 
@@ -40,11 +80,21 @@ export default function MyPlan({
   hasHELOCAccount,
   onNavigateToSmarterPayments,
 }: MyPlanProps) {
+  const paymentCommitments = loadPaymentCommitments();
+  const allDebts = StorageService.getDebts();
+  const activePaymentCommitments = allDebts
+    .filter(d => paymentCommitments[d.id])
+    .map(d => ({
+      debtId: d.id,
+      accountName: d.accountName,
+      frequency: paymentCommitments[d.id].frequency,
+      committedAt: paymentCommitments[d.id].committedAt,
+    }));
+
   const [chatOpen, setChatOpen] = useState(false);
   const [chatContext, setChatContext] = useState('');
 
-  const activeDebts = StorageService.getDebts().filter(d => !d.isPaidOff && d.currentBalance > 0);
-  const activePaymentCommitments = getActiveCommitmentsSummary(activeDebts);
+  const activeDebts = allDebts.filter(d => !d.isPaidOff && d.currentBalance > 0);
 
   const showSmarterPaymentsSuggestion =
     onNavigateToSmarterPayments &&
@@ -303,19 +353,26 @@ export default function MyPlan({
         </div>
 
         {activePaymentCommitments.length > 0 && (
-          <div className="bg-emerald-50 border-2 border-emerald-300 rounded-lg p-4 sm:p-6 mb-6">
-            <h3 className="text-base sm:text-lg md:text-xl font-bold text-emerald-900 mb-3">
+          <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-xl p-4 sm:p-6 mb-6 shadow-sm">
+            <h3 className="text-base sm:text-lg md:text-xl font-bold text-emerald-800 mb-4">
               Your Active Payment Strategies:
             </h3>
-            <ul className="space-y-2 text-emerald-900">
+            <ul className="space-y-3">
               {activePaymentCommitments.map(c => (
-                <li key={c.debtId} className="flex items-start gap-2">
-                  <span className="flex-shrink-0">•</span>
-                  <span>
-                    <span className="font-semibold">{c.accountName}</span>
-                    {' — '}
-                    {formatFrequencyLabel(c.frequency)} payments
-                  </span>
+                <li
+                  key={c.debtId}
+                  className="flex items-start gap-3 bg-white/80 border border-emerald-200 rounded-lg p-3 sm:p-4"
+                >
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-gray-900">{c.accountName}</p>
+                    <p className="text-sm text-emerald-800 mt-0.5">
+                      {formatCommitmentFrequency(c.frequency)} payments
+                    </p>
+                    <p className="text-xs text-emerald-700 mt-1">
+                      Committed {formatCommittedDate(c.committedAt)}
+                    </p>
+                  </div>
                 </li>
               ))}
             </ul>
