@@ -8,6 +8,7 @@ export interface PayoffProjection {
 
 const MAX_DAYS = 365 * 50;
 const UNPAYABLE_MONTHS = 999;
+const PAYMENTS_PER_YEAR = { monthly: 12, biweekly: 26, weekly: 52 } as const;
 
 function addMonths(date: Date, months: number): Date {
   const safeMonths = Math.max(0, Math.min(Math.floor(months), 1200));
@@ -32,15 +33,33 @@ export function payoffDateFromMonths(months: number): Date {
   return addMonths(new Date(), months);
 }
 
+/** Per-payment amount: 12 monthly payments spread across N pay periods per year. */
+export function paymentAmountForFrequency(
+  monthlyPayment: number,
+  frequency: Exclude<PaymentFrequency, 'monthly'>
+): number {
+  const periods = PAYMENTS_PER_YEAR[frequency];
+  return (monthlyPayment * 12) / periods;
+}
+
 function daysToMonths(days: number): number {
   if (days <= 0) return 0;
   return Math.max(1, Math.ceil(days / 30.4375));
 }
 
+function unpayableResult(totalInterest = 0): PayoffProjection {
+  return {
+    months: UNPAYABLE_MONTHS,
+    totalInterest,
+    payoffDate: payoffDateFromMonths(UNPAYABLE_MONTHS),
+  };
+}
+
 /**
- * Daily-accrual simulation: interest compounds daily, payment applied every `intervalDays`.
+ * Daily interest accrual; one payment every `intervalDays` for `paymentAmount`.
+ * More frequent payments (shorter interval) reduce interest when annual principal is equal.
  */
-function simulatePayoff(
+function simulateAcceleratedPayoff(
   balance: number,
   annualRate: number,
   paymentAmount: number,
@@ -49,60 +68,41 @@ function simulatePayoff(
   if (balance <= 0) {
     return { months: 0, totalInterest: 0, payoffDate: new Date() };
   }
-
   if (paymentAmount <= 0) {
-    return {
-      months: UNPAYABLE_MONTHS,
-      totalInterest: 0,
-      payoffDate: addMonths(new Date(), UNPAYABLE_MONTHS),
-    };
+    return unpayableResult();
   }
 
   const dailyRate = annualRate / 100 / 365;
   let remaining = balance;
   let totalInterest = 0;
   let daysElapsed = 0;
+  let daysUntilPayment = 0;
 
   while (remaining > 0.005 && daysElapsed < MAX_DAYS) {
-    let periodInterest = 0;
-    for (let d = 0; d < intervalDays; d += 1) {
-      if (remaining <= 0.005) break;
-      const interest = dailyRate > 0 ? remaining * dailyRate : 0;
-      periodInterest += interest;
+    if (dailyRate > 0) {
+      const interest = remaining * dailyRate;
+      totalInterest += interest;
       remaining += interest;
-      daysElapsed += 1;
-      if (daysElapsed >= MAX_DAYS) break;
     }
+    daysElapsed += 1;
+    daysUntilPayment += 1;
 
-    totalInterest += periodInterest;
+    if (daysUntilPayment < intervalDays) continue;
 
-    if (remaining <= 0.005) break;
-
-    if (paymentAmount <= periodInterest && dailyRate > 0) {
-      return {
-        months: UNPAYABLE_MONTHS,
-        totalInterest,
-        payoffDate: addMonths(new Date(), UNPAYABLE_MONTHS),
-      };
-    }
-
+    daysUntilPayment = 0;
     const applied = Math.min(paymentAmount, remaining);
     remaining -= applied;
+  }
 
-    if (applied < paymentAmount * 0.001 && remaining > 1) {
-      return {
-        months: UNPAYABLE_MONTHS,
-        totalInterest,
-        payoffDate: addMonths(new Date(), UNPAYABLE_MONTHS),
-      };
-    }
+  if (remaining > 0.5) {
+    return unpayableResult(totalInterest);
   }
 
   const months = daysToMonths(daysElapsed);
   return {
     months,
     totalInterest: Math.round(totalInterest * 100) / 100,
-    payoffDate: addMonths(new Date(), months),
+    payoffDate: payoffDateFromMonths(months),
   };
 }
 
@@ -131,11 +131,7 @@ export function calculateMonthlyPayoff(
     return { months: 0, totalInterest: 0, payoffDate: new Date() };
   }
   if (monthlyPayment <= 0) {
-    return {
-      months: UNPAYABLE_MONTHS,
-      totalInterest: 0,
-      payoffDate: addMonths(new Date(), UNPAYABLE_MONTHS),
-    };
+    return unpayableResult();
   }
 
   if (annualRate <= 0) {
@@ -143,28 +139,20 @@ export function calculateMonthlyPayoff(
     return {
       months,
       totalInterest: 0,
-      payoffDate: addMonths(new Date(), months),
+      payoffDate: payoffDateFromMonths(months),
     };
   }
 
   const monthlyRate = annualRate / 12 / 100;
   const monthlyInterest = balance * monthlyRate;
   if (monthlyPayment <= monthlyInterest) {
-    return {
-      months: UNPAYABLE_MONTHS,
-      totalInterest: 0,
-      payoffDate: addMonths(new Date(), UNPAYABLE_MONTHS),
-    };
+    return unpayableResult();
   }
 
   const monthsExact =
     -Math.log(1 - (monthlyRate * balance) / monthlyPayment) / Math.log(1 + monthlyRate);
   if (!Number.isFinite(monthsExact) || monthsExact < 0) {
-    return {
-      months: UNPAYABLE_MONTHS,
-      totalInterest: 0,
-      payoffDate: payoffDateFromMonths(UNPAYABLE_MONTHS),
-    };
+    return unpayableResult();
   }
   const months = Math.ceil(monthsExact);
 
@@ -175,11 +163,7 @@ export function calculateMonthlyPayoff(
     totalInterest += interest;
     const principal = Math.min(monthlyPayment - interest, remaining);
     if (principal <= 0) {
-      return {
-        months: UNPAYABLE_MONTHS,
-        totalInterest,
-        payoffDate: addMonths(new Date(), UNPAYABLE_MONTHS),
-      };
+      return unpayableResult(totalInterest);
     }
     remaining -= principal;
   }
@@ -191,7 +175,7 @@ export function calculateMonthlyPayoff(
   };
 }
 
-/** Half the monthly payment every 14 days (26 payments/year ≈ 13 monthly payments). */
+/** 26 payments/year × (12/26 of monthly) = 12 monthly payments/year, every 14 days. */
 export function calculateBiWeeklyPayoff(
   balance: number,
   annualRate: number,
@@ -200,11 +184,11 @@ export function calculateBiWeeklyPayoff(
   if (balance <= 0) {
     return { months: 0, totalInterest: 0, payoffDate: new Date() };
   }
-  const payment = monthlyPayment / 2;
-  return simulatePayoff(balance, annualRate, payment, 14);
+  const payment = paymentAmountForFrequency(monthlyPayment, 'biweekly');
+  return simulateAcceleratedPayoff(balance, annualRate, payment, 14);
 }
 
-/** Weekly payment = monthly ÷ 4.33 (avg weeks/month), every 7 days. */
+/** 52 payments/year × (12/52 of monthly) = 12 monthly payments/year, every 7 days. */
 export function calculateWeeklyPayoff(
   balance: number,
   annualRate: number,
@@ -213,8 +197,8 @@ export function calculateWeeklyPayoff(
   if (balance <= 0) {
     return { months: 0, totalInterest: 0, payoffDate: new Date() };
   }
-  const payment = monthlyPayment / 4.33;
-  return simulatePayoff(balance, annualRate, payment, 7);
+  const payment = paymentAmountForFrequency(monthlyPayment, 'weekly');
+  return simulateAcceleratedPayoff(balance, annualRate, payment, 7);
 }
 
 export function projectPayoffForFrequency(
