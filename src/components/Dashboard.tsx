@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, CreditCard as Edit2, Pencil, Trash2, TrendingUp, Target, Zap, Home, Sliders } from 'lucide-react';
+import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, CreditCard as Edit2, Pencil, Trash2, TrendingUp, Target, Zap, Home, Sliders, CalendarClock } from 'lucide-react';
+import { hasSmarterPaymentsConfigured } from '../utils/paymentCalculations';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import LogPaymentModal from './LogPaymentModal';
@@ -12,9 +13,15 @@ interface DashboardProps {
   onDataUpdate: () => void;
   onNavigateToSavings?: () => void;
   onNavigateToTracker?: () => void;
+  onNavigateToSmarterPayments?: () => void;
 }
 
-export default function Dashboard({ onDataUpdate, onNavigateToSavings, onNavigateToTracker }: DashboardProps) {
+export default function Dashboard({
+  onDataUpdate,
+  onNavigateToSavings,
+  onNavigateToTracker,
+  onNavigateToSmarterPayments,
+}: DashboardProps) {
   const [showLogPayment, setShowLogPayment] = useState(false);
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const [quickPayAmount, setQuickPayAmount] = useState<number | undefined>(undefined);
@@ -391,9 +398,24 @@ export default function Dashboard({ onDataUpdate, onNavigateToSavings, onNavigat
           )}
         </div>
         {optimizedProjection && (
-          <p className="mt-4 text-sm opacity-90">
-            Projected debt-free date: <span className="font-semibold">{CalculationService.formatMonthYear(optimizedProjection.debtFreeDate)}</span>
-          </p>
+          <div className="mt-4 space-y-2">
+            <p className="text-sm opacity-90">
+              Projected debt-free date:{' '}
+              <span className="font-semibold">
+                {CalculationService.formatMonthYear(optimizedProjection.debtFreeDate)}
+              </span>
+            </p>
+            {hasSmarterPaymentsConfigured() && (
+              <button
+                type="button"
+                onClick={onNavigateToSmarterPayments}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white/20 hover:bg-white/30 text-white px-2.5 py-1 rounded-full transition-colors"
+              >
+                <CalendarClock className="w-3.5 h-3.5" />
+                Smarter Payments active
+              </button>
+            )}
+          </div>
         )}
       </div>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Home, CreditCard, TrendingUp, BarChart3, Settings as SettingsIcon, Wallet, PiggyBank, MessageCircle, CheckCircle, X, Menu, Building2, LogOut } from 'lucide-react';
+import { Home, CreditCard, TrendingUp, BarChart3, Settings as SettingsIcon, Wallet, PiggyBank, MessageCircle, CheckCircle, X, Menu, Building2, LogOut, CalendarClock } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import MyDebts from './components/MyDebts';
 import PaymentStrategies from './components/PaymentStrategies';
@@ -11,6 +11,7 @@ import ProgressReports from './components/ProgressReports';
 import Guide from './components/Guide';
 import HomeReady from './components/HomeReady';
 import Settings from './components/Settings';
+import SmarterPayments from './components/SmarterPayments';
 import OnboardingModal from './components/OnboardingModal';
 import WelcomeTourModal from './components/WelcomeTourModal';
 import AuthModal from './components/AuthModal';
@@ -19,7 +20,7 @@ import { pushLocalStorageToCloud } from './services/cloudSync';
 import { StorageService } from './services/storage';
 import type { Debt, Transaction, FeaturePreferences } from './types';
 
-type Section = 'dashboard' | 'debts' | 'strategies' | 'what-if' | 'tracker' | 'savings' | 'progress' | 'home-ready' | 'guide' | 'settings';
+type Section = 'dashboard' | 'debts' | 'strategies' | 'smarter-payments' | 'what-if' | 'tracker' | 'savings' | 'progress' | 'home-ready' | 'guide' | 'settings';
 
 function App() {
   const [authSession, setAuthSession] = useState<Session | null | undefined>(undefined);
@@ -267,11 +268,25 @@ function App() {
   const renderSection = () => {
     switch (currentSection) {
       case 'dashboard':
-        return <Dashboard onDataUpdate={handleDataUpdate} onNavigateToSavings={() => setCurrentSection('savings')} onNavigateToTracker={() => setCurrentSection('tracker')} />;
+        return (
+          <Dashboard
+            onDataUpdate={handleDataUpdate}
+            onNavigateToSavings={() => setCurrentSection('savings')}
+            onNavigateToTracker={() => setCurrentSection('tracker')}
+            onNavigateToSmarterPayments={() => setCurrentSection('smarter-payments')}
+          />
+        );
       case 'debts':
         return <MyDebts onDataUpdate={handleDataUpdate} />;
       case 'strategies':
-        return <PaymentStrategies onDataUpdate={handleDataUpdate} />;
+        return (
+          <PaymentStrategies
+            onDataUpdate={handleDataUpdate}
+            onNavigateToSmarterPayments={() => setCurrentSection('smarter-payments')}
+          />
+        );
+      case 'smarter-payments':
+        return <SmarterPayments onDataUpdate={handleDataUpdate} />;
       case 'what-if':
         return <WhatIfSimulator />;
       case 'tracker':
@@ -356,6 +371,7 @@ function App() {
             { section: 'dashboard' as Section, label: 'Dashboard', icon: Home },
             { section: 'debts' as Section, label: 'My Debts', icon: CreditCard },
             { section: 'strategies' as Section, label: 'My Plan', icon: TrendingUp },
+            { section: 'smarter-payments' as Section, label: 'Smarter Payments', icon: CalendarClock },
             ...((featurePreferences.helocEnabled || featurePreferences.checkingEnabled)
               ? [{ section: 'tracker' as Section, label: featurePreferences.helocEnabled ? 'HELOC Tracker' : 'Cash Flow', icon: Wallet, isNew: showTrackerNewBadge && featurePreferences.helocEnabled }]
               : []),
@@ -499,6 +515,17 @@ function App() {
             >
               <TrendingUp className="w-4 h-4" />
               <span>My Plan</span>
+            </button>
+            <button
+              onClick={() => setCurrentSection('smarter-payments')}
+              className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
+                currentSection === 'smarter-payments'
+                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <CalendarClock className="w-4 h-4" />
+              <span>Smarter Payments</span>
             </button>
             {(featurePreferences.helocEnabled || featurePreferences.checkingEnabled) && (
               <button

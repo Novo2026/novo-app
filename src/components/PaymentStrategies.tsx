@@ -10,9 +10,10 @@ import type { StrategyResult } from '../types';
 
 interface PaymentStrategiesProps {
   onDataUpdate: () => void;
+  onNavigateToSmarterPayments?: () => void;
 }
 
-export default function PaymentStrategies({ onDataUpdate }: PaymentStrategiesProps) {
+export default function PaymentStrategies({ onDataUpdate, onNavigateToSmarterPayments }: PaymentStrategiesProps) {
   const [showWizard, setShowWizard] = useState(false);
   const [strategyResult, setStrategyResult] = useState<StrategyResult | null>(
     StorageService.getStrategyResult()
@@ -87,6 +88,7 @@ export default function PaymentStrategies({ onDataUpdate }: PaymentStrategiesPro
         onRunNew={() => setShowWizard(true)}
         showAutoUpdateBanner={showAutoUpdateBanner}
         isAutoCalculating={isAutoCalculating}
+        onNavigateToSmarterPayments={onNavigateToSmarterPayments}
       />
     );
   }

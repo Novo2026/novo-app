@@ -18,9 +18,16 @@ interface StrategyResultsProps {
   onRunNew: () => void;
   showAutoUpdateBanner?: boolean;
   isAutoCalculating?: boolean;
+  onNavigateToSmarterPayments?: () => void;
 }
 
-export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner, isAutoCalculating }: StrategyResultsProps) {
+export default function StrategyResults({
+  result,
+  onRunNew,
+  showAutoUpdateBanner,
+  isAutoCalculating,
+  onNavigateToSmarterPayments,
+}: StrategyResultsProps) {
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [currentResult, setCurrentResult] = useState(result);
 
@@ -218,6 +225,7 @@ export default function StrategyResults({ result, onRunNew, showAutoUpdateBanner
           helocRate={helocRate}
           helocTacticalImpact={helocTacticalImpact}
           hasHELOCAccount={hasHELOCAccount}
+          onNavigateToSmarterPayments={onNavigateToSmarterPayments}
         />
       ) : (
         <>

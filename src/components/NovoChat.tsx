@@ -4,7 +4,7 @@ import { streamAnthropicMessage, stripMarkdown, type ChatMessage } from '../serv
 
 /** Appended to every chat context passed into this panel. */
 export const NOVO_CONVERSATION_RULES =
-  'Ask only ONE question at a time. Wait for the user to respond before asking anything else. Keep responses short, warm, and conversational - like a knowledgeable friend, not a financial advisor reading from a checklist.';
+  'Ask only ONE question at a time. Wait for the user to respond before asking anything else. Keep responses short, warm, and conversational - like a knowledgeable friend, not a financial advisor reading from a checklist. If the user mentions not having extra money or struggling with cash flow, suggest they check the Smarter Payments tab where they can see how payment frequency changes save money without extra spending.';
 
 export const CHAT_CONTEXT = {
   helocStrategy:

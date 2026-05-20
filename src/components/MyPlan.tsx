@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, CalendarClock, ArrowRight } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
+import { StorageService } from '../services/storage';
+import { hasVisitedSmarterPayments } from '../utils/paymentCalculations';
 import type { Debt } from '../types';
 import NovoChat, { CHAT_CONTEXT } from './NovoChat';
 
@@ -23,6 +25,7 @@ interface MyPlanProps {
   helocRate: number;
   helocTacticalImpact: HelocTacticalImpact | null;
   hasHELOCAccount: boolean;
+  onNavigateToSmarterPayments?: () => void;
 }
 
 export default function MyPlan({
@@ -31,9 +34,15 @@ export default function MyPlan({
   helocRate,
   helocTacticalImpact,
   hasHELOCAccount,
+  onNavigateToSmarterPayments,
 }: MyPlanProps) {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatContext, setChatContext] = useState('');
+
+  const showSmarterPaymentsSuggestion =
+    onNavigateToSmarterPayments &&
+    !hasVisitedSmarterPayments() &&
+    StorageService.getDebts().some(d => !d.isPaidOff && d.currentBalance > 0);
 
   const openChat = (context: string) => {
     setChatContext(context);
@@ -42,6 +51,28 @@ export default function MyPlan({
 
   return (
     <>
+      {showSmarterPaymentsSuggestion && (
+        <div className="mb-4 bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-[#2D9CDB]/40 rounded-xl p-4 sm:p-5 shadow-sm">
+          <div className="flex items-start gap-3">
+            <CalendarClock className="w-6 h-6 text-[#2D9CDB] flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm sm:text-base text-gray-800 mb-3 leading-relaxed">
+                Did you know you could pay off your debts faster without spending more? See your Smarter
+                Payments options →
+              </p>
+              <button
+                type="button"
+                onClick={onNavigateToSmarterPayments}
+                className="inline-flex items-center gap-2 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
+              >
+                Explore Smarter Payments
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-400 rounded-xl shadow-lg p-4 sm:p-6 md:p-8">
         <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-amber-100 rounded-full flex items-center justify-center">
