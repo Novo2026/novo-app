@@ -12,6 +12,7 @@ import {
   markSmarterPaymentsVisited,
   getMotivationalMessage,
   getJourneyStep,
+  formatPayoffDateLabel,
   type JourneyStep,
 } from '../utils/paymentCalculations';
 import type { Debt, DebtCategory } from '../types';
@@ -33,10 +34,6 @@ function categoryLabel(category: DebtCategory): string {
     Other: 'Other',
   };
   return map[category] ?? category;
-}
-
-function formatPayoffDate(date: Date): string {
-  return CalculationService.formatMonthYear(date.toISOString());
 }
 
 interface SmarterPaymentsProps {
@@ -237,7 +234,7 @@ export default function SmarterPayments({ onDataUpdate }: SmarterPaymentsProps) 
                       <p className="text-gray-600">
                         Payoff date:{' '}
                         <span className="font-semibold text-gray-900">
-                          {formatPayoffDate(selected.payoffDate)}
+                          {formatPayoffDateLabel(selected.months)}
                         </span>
                       </p>
                       <p className="text-gray-600">

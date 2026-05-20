@@ -10,9 +10,26 @@ const MAX_DAYS = 365 * 50;
 const UNPAYABLE_MONTHS = 999;
 
 function addMonths(date: Date, months: number): Date {
-  const d = new Date(date);
-  d.setMonth(d.getMonth() + months);
-  return d;
+  const safeMonths = Math.max(0, Math.min(Math.floor(months), 1200));
+  const y = date.getFullYear();
+  const m = date.getMonth();
+  const day = date.getDate();
+  return new Date(y, m + safeMonths, day);
+}
+
+/** Today + payoff months → readable label e.g. "March 2029". */
+export function formatPayoffDateLabel(months: number): string {
+  if (months <= 0) return 'Now';
+  if (months >= UNPAYABLE_MONTHS || !Number.isFinite(months)) return '—';
+  const payoff = addMonths(new Date(), months);
+  if (Number.isNaN(payoff.getTime())) return '—';
+  return payoff.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+export function payoffDateFromMonths(months: number): Date {
+  if (months <= 0) return new Date();
+  if (months >= UNPAYABLE_MONTHS) return addMonths(new Date(), 0);
+  return addMonths(new Date(), months);
 }
 
 function daysToMonths(days: number): number {
@@ -142,6 +159,13 @@ export function calculateMonthlyPayoff(
 
   const monthsExact =
     -Math.log(1 - (monthlyRate * balance) / monthlyPayment) / Math.log(1 + monthlyRate);
+  if (!Number.isFinite(monthsExact) || monthsExact < 0) {
+    return {
+      months: UNPAYABLE_MONTHS,
+      totalInterest: 0,
+      payoffDate: payoffDateFromMonths(UNPAYABLE_MONTHS),
+    };
+  }
   const months = Math.ceil(monthsExact);
 
   let remaining = balance;
@@ -163,7 +187,7 @@ export function calculateMonthlyPayoff(
   return {
     months,
     totalInterest: Math.round(totalInterest * 100) / 100,
-    payoffDate: addMonths(new Date(), months),
+    payoffDate: payoffDateFromMonths(months),
   };
 }
 
@@ -180,7 +204,7 @@ export function calculateBiWeeklyPayoff(
   return simulatePayoff(balance, annualRate, payment, 14);
 }
 
-/** Quarter of the monthly payment every 7 days (52 payments/year ≈ 13 monthly payments). */
+/** Weekly payment = monthly ÷ 4.33 (avg weeks/month), every 7 days. */
 export function calculateWeeklyPayoff(
   balance: number,
   annualRate: number,
@@ -189,7 +213,7 @@ export function calculateWeeklyPayoff(
   if (balance <= 0) {
     return { months: 0, totalInterest: 0, payoffDate: new Date() };
   }
-  const payment = monthlyPayment / 4;
+  const payment = monthlyPayment / 4.33;
   return simulatePayoff(balance, annualRate, payment, 7);
 }
 
