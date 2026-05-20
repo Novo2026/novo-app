@@ -2,7 +2,11 @@ import { useState } from 'react';
 import { AlertTriangle, CalendarClock, ArrowRight } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
 import { StorageService } from '../services/storage';
-import { hasVisitedSmarterPayments } from '../utils/paymentCalculations';
+import {
+  hasVisitedSmarterPayments,
+  getActiveCommitmentsSummary,
+  formatFrequencyLabel,
+} from '../utils/paymentCalculations';
 import type { Debt } from '../types';
 import NovoChat, { CHAT_CONTEXT } from './NovoChat';
 
@@ -39,10 +43,13 @@ export default function MyPlan({
   const [chatOpen, setChatOpen] = useState(false);
   const [chatContext, setChatContext] = useState('');
 
+  const activeDebts = StorageService.getDebts().filter(d => !d.isPaidOff && d.currentBalance > 0);
+  const activePaymentCommitments = getActiveCommitmentsSummary(activeDebts);
+
   const showSmarterPaymentsSuggestion =
     onNavigateToSmarterPayments &&
     !hasVisitedSmarterPayments() &&
-    StorageService.getDebts().some(d => !d.isPaidOff && d.currentBalance > 0);
+    activeDebts.length > 0;
 
   const openChat = (context: string) => {
     setChatContext(context);
@@ -294,6 +301,26 @@ export default function MyPlan({
             </div>
           </div>
         </div>
+
+        {activePaymentCommitments.length > 0 && (
+          <div className="bg-emerald-50 border-2 border-emerald-300 rounded-lg p-4 sm:p-6 mb-6">
+            <h3 className="text-base sm:text-lg md:text-xl font-bold text-emerald-900 mb-3">
+              Your Active Payment Strategies:
+            </h3>
+            <ul className="space-y-2 text-emerald-900">
+              {activePaymentCommitments.map(c => (
+                <li key={c.debtId} className="flex items-start gap-2">
+                  <span className="flex-shrink-0">•</span>
+                  <span>
+                    <span className="font-semibold">{c.accountName}</span>
+                    {' — '}
+                    {formatFrequencyLabel(c.frequency)} payments
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 sm:p-6 mb-6">
           <h3 className="text-base sm:text-lg md:text-xl font-bold text-blue-900 mb-3">Current Action Plan:</h3>

@@ -7,6 +7,9 @@ import {
   type PaymentFrequency,
   loadPaymentFrequencies,
   savePaymentFrequency,
+  loadPaymentCommitments,
+  savePaymentCommitment,
+  removePaymentCommitment,
   projectPayoffForFrequency,
   calculateMonthlyPayoff,
   markSmarterPaymentsVisited,
@@ -44,6 +47,7 @@ export default function SmarterPayments({ onDataUpdate }: SmarterPaymentsProps) 
   const [frequencies, setFrequencies] = useState<Record<string, PaymentFrequency>>(() =>
     loadPaymentFrequencies()
   );
+  const [commitments, setCommitments] = useState(() => loadPaymentCommitments());
 
   useEffect(() => {
     markSmarterPaymentsVisited();
@@ -51,7 +55,7 @@ export default function SmarterPayments({ onDataUpdate }: SmarterPaymentsProps) 
 
   const debts = useMemo(
     () => StorageService.getDebts().filter(d => !d.isPaidOff && d.currentBalance > 0),
-    [frequencies]
+    [frequencies, commitments]
   );
 
   const financialProfile = StorageService.getFinancialProfile();
@@ -64,7 +68,19 @@ export default function SmarterPayments({ onDataUpdate }: SmarterPaymentsProps) 
 
   const handleFrequencyChange = (debtId: string, freq: PaymentFrequency) => {
     savePaymentFrequency(debtId, freq);
+    removePaymentCommitment(debtId);
     setFrequencies(loadPaymentFrequencies());
+    setCommitments(loadPaymentCommitments());
+    onDataUpdate?.();
+  };
+
+  const handleCommitmentToggle = (debtId: string, freq: PaymentFrequency, checked: boolean) => {
+    if (checked) {
+      savePaymentCommitment(debtId, freq);
+    } else {
+      removePaymentCommitment(debtId);
+    }
+    setCommitments(loadPaymentCommitments());
     onDataUpdate?.();
   };
 
@@ -179,11 +195,18 @@ export default function SmarterPayments({ onDataUpdate }: SmarterPaymentsProps) 
               ? Math.max(0, monthly.months - selected.months)
               : 0;
           const unpayable = selected.months >= 999;
+          const isAccelerated = freq === 'biweekly' || freq === 'weekly';
+          const isCommitted =
+            isAccelerated && commitments[debt.id]?.frequency === freq;
 
           return (
             <article
               key={debt.id}
-              className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 sm:p-5 transition-shadow hover:shadow-md"
+              className={`bg-white border rounded-xl shadow-sm p-4 sm:p-5 transition-all duration-300 hover:shadow-md ${
+                isCommitted
+                  ? 'border-emerald-300 border-l-4 border-l-emerald-500'
+                  : 'border-gray-200'
+              }`}
             >
               <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
                 <div>
@@ -255,11 +278,26 @@ export default function SmarterPayments({ onDataUpdate }: SmarterPaymentsProps) 
                         )}
                       </p>
                     )}
-                    {(freq === 'biweekly' || freq === 'weekly') && (
-                      <p className="text-[#2D9CDB] text-sm font-medium flex items-center gap-1">
-                        <CheckCircle2 className="w-4 h-4" />
-                        Great choice — you&apos;re paying smarter
-                      </p>
+                    {isAccelerated && (
+                      <div className="space-y-2 pt-1">
+                        <label className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100/80 transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={isCommitted}
+                            onChange={e => handleCommitmentToggle(debt.id, freq, e.target.checked)}
+                            className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#FF6B35] focus:ring-[#FF6B35]"
+                          />
+                          <span className="text-sm font-medium text-gray-800">
+                            I&apos;m committed to this strategy
+                          </span>
+                        </label>
+                        {isCommitted && (
+                          <p className="text-emerald-700 text-sm font-medium flex items-center gap-1.5">
+                            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                            Strategy locked in ✓ Your plan has been updated
+                          </p>
+                        )}
+                      </div>
                     )}
                   </>
                 )}

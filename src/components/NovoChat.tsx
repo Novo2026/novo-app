@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, Send, Loader2 } from 'lucide-react';
 import { streamAnthropicMessage, stripMarkdown, type ChatMessage } from '../services/anthropic';
+import { StorageService } from '../services/storage';
+import { getPaymentCommitmentsPromptContext } from '../utils/paymentCalculations';
 
 /** Appended to every chat context passed into this panel. */
 export const NOVO_CONVERSATION_RULES =
-  'Ask only ONE question at a time. Wait for the user to respond before asking anything else. Keep responses short, warm, and conversational - like a knowledgeable friend, not a financial advisor reading from a checklist. If the user mentions not having extra money or struggling with cash flow, suggest they check the Smarter Payments tab where they can see how payment frequency changes save money without extra spending.';
+  'Ask only ONE question at a time. Wait for the user to respond before asking anything else. Keep responses short, warm, and conversational - like a knowledgeable friend, not a financial advisor reading from a checklist. If the user mentions not having extra money or struggling with cash flow, suggest they check the Smarter Payments tab where they can see how payment frequency changes save money without extra spending. Check localStorage for novo_payment_commitments. If the user has active payment commitments, reference them naturally in conversation — for example acknowledging they are already on an accelerated payoff plan.';
 
 export const CHAT_CONTEXT = {
   helocStrategy:
@@ -21,7 +23,9 @@ export const CHAT_CONTEXT = {
 
 function buildSystemPrompt(context: string): string {
   const base = context.trim();
-  return `${base}\n\n${NOVO_CONVERSATION_RULES}`;
+  const debts = StorageService.getDebts().filter(d => !d.isPaidOff && d.currentBalance > 0);
+  const commitmentsContext = getPaymentCommitmentsPromptContext(debts);
+  return `${base}\n\n${NOVO_CONVERSATION_RULES}${commitmentsContext}`;
 }
 
 /** Space reserved above the fixed input bar (textarea + padding + safe area + mobile browser chrome). */

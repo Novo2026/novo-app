@@ -212,7 +212,93 @@ export function projectPayoffForFrequency(
 }
 
 export const PAYMENT_FREQUENCIES_STORAGE_KEY = 'novo_payment_frequencies';
+export const PAYMENT_COMMITMENTS_STORAGE_KEY = 'novo_payment_commitments';
 export const SMARTER_PAYMENTS_VISITED_KEY = 'novo_smarter_payments_visited';
+
+export interface PaymentCommitment {
+  frequency: PaymentFrequency;
+  committedAt: string;
+}
+
+export function formatFrequencyLabel(frequency: PaymentFrequency): string {
+  switch (frequency) {
+    case 'biweekly':
+      return 'Bi-Weekly';
+    case 'weekly':
+      return 'Weekly';
+    default:
+      return 'Monthly';
+  }
+}
+
+export function loadPaymentCommitments(): Record<string, PaymentCommitment> {
+  try {
+    const raw = localStorage.getItem(PAYMENT_COMMITMENTS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, PaymentCommitment>;
+    const out: Record<string, PaymentCommitment> = {};
+    for (const [id, entry] of Object.entries(parsed)) {
+      if (
+        entry &&
+        (entry.frequency === 'monthly' ||
+          entry.frequency === 'biweekly' ||
+          entry.frequency === 'weekly') &&
+        entry.committedAt
+      ) {
+        out[id] = entry;
+      }
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+export function savePaymentCommitment(debtId: string, frequency: PaymentFrequency): void {
+  const all = loadPaymentCommitments();
+  all[debtId] = {
+    frequency,
+    committedAt: new Date().toISOString(),
+  };
+  localStorage.setItem(PAYMENT_COMMITMENTS_STORAGE_KEY, JSON.stringify(all));
+}
+
+export function removePaymentCommitment(debtId: string): void {
+  const all = loadPaymentCommitments();
+  delete all[debtId];
+  localStorage.setItem(PAYMENT_COMMITMENTS_STORAGE_KEY, JSON.stringify(all));
+}
+
+export function getPaymentCommitmentCount(): number {
+  return Object.keys(loadPaymentCommitments()).length;
+}
+
+export function getActiveCommitmentsSummary(
+  debts: Array<{ id: string; accountName: string }>
+): Array<{ debtId: string; accountName: string; frequency: PaymentFrequency; committedAt: string }> {
+  const commitments = loadPaymentCommitments();
+  return debts
+    .filter(d => commitments[d.id])
+    .map(d => ({
+      debtId: d.id,
+      accountName: d.accountName,
+      frequency: commitments[d.id].frequency,
+      committedAt: commitments[d.id].committedAt,
+    }));
+}
+
+/** Text appended to NovoChat system prompt when commitments exist. */
+export function getPaymentCommitmentsPromptContext(
+  debts: Array<{ id: string; accountName: string }>
+): string {
+  const active = getActiveCommitmentsSummary(debts);
+  if (active.length === 0) return '';
+  const lines = active.map(
+    c =>
+      `- ${c.accountName}: ${formatFrequencyLabel(c.frequency)} (committed ${new Date(c.committedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})`
+  );
+  return `\n\nThe user has active accelerated payment commitments:\n${lines.join('\n')}\nReference these naturally when relevant — acknowledge they are already on an accelerated payoff plan.`;
+}
 
 export function loadPaymentFrequencies(): Record<string, PaymentFrequency> {
   try {

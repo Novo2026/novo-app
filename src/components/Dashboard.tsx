@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, CreditCard as Edit2, Pencil, Trash2, TrendingUp, Target, Zap, Home, Sliders, CalendarClock } from 'lucide-react';
-import { hasSmarterPaymentsConfigured } from '../utils/paymentCalculations';
+import { getPaymentCommitmentCount } from '../utils/paymentCalculations';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import LogPaymentModal from './LogPaymentModal';
@@ -328,6 +328,7 @@ export default function Dashboard({
   };
 
   const recentActivity = getRecentActivity();
+  const paymentCommitmentCount = getPaymentCommitmentCount();
 
   if (debts.length === 0) {
     return (
@@ -354,6 +355,30 @@ export default function Dashboard({
       )}
 
       <DailyTip debts={debts} />
+
+      {paymentCommitmentCount > 0 && onNavigateToSmarterPayments && (
+        <button
+          type="button"
+          onClick={onNavigateToSmarterPayments}
+          className="w-full text-left bg-emerald-50 border border-emerald-200 rounded-xl p-4 shadow-sm hover:bg-emerald-100/80 hover:border-emerald-300 transition-colors group"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <CalendarClock className="w-5 h-5 text-emerald-700" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-emerald-900 text-sm sm:text-base">
+                  Smarter Payments Active — {paymentCommitmentCount}{' '}
+                  {paymentCommitmentCount === 1 ? 'debt' : 'debts'} on accelerated payoff
+                </p>
+                <p className="text-emerald-700 text-xs mt-0.5">View or update your payment strategies</p>
+              </div>
+            </div>
+            <ArrowRight className="w-5 h-5 text-emerald-600 flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
+          </div>
+        </button>
+      )}
 
       <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2D5A8A] text-white rounded-xl shadow-lg p-8">
         <h2 className="text-2xl font-bold mb-4">Total Debt Progress</h2>
@@ -405,16 +430,6 @@ export default function Dashboard({
                 {CalculationService.formatMonthYear(optimizedProjection.debtFreeDate)}
               </span>
             </p>
-            {hasSmarterPaymentsConfigured() && (
-              <button
-                type="button"
-                onClick={onNavigateToSmarterPayments}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold bg-white/20 hover:bg-white/30 text-white px-2.5 py-1 rounded-full transition-colors"
-              >
-                <CalendarClock className="w-3.5 h-3.5" />
-                Smarter Payments active
-              </button>
-            )}
           </div>
         )}
       </div>
