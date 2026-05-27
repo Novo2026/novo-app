@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { StorageService } from '../services/storage';
-import { getPayoffScheduleMonthCap } from '../utils/installmentLoan';
+import {
+  getInstallmentRemainingTermMonths,
+  hasCompleteInstallmentMetadata,
+} from '../utils/installmentLoan';
 import type { Debt } from '../types';
 
 interface SimulatorInputs {
@@ -27,7 +30,7 @@ interface SimDebt {
   annualRate: number;
   minimumPayment: number;
   transferredToHELOC?: boolean;
-  /** Installment loan: cap interest accrual months when loan metadata is complete */
+  /** Installment loan: max simulated months when loan metadata is complete */
   maxPayoffMonths?: number;
 }
 
@@ -125,18 +128,28 @@ const runPayoffSimulation = (debts: SimDebt[], baseExtraPayment: number, windfal
 
   let months = 0;
   let totalInterest = 0;
-  const debtMonthsActive = new Map<string, number>();
+  const debtMonthsSimulated = new Map<string, number>();
 
-  while (activeDebts.some((d) => d.balance > 0.005) && months < MAX_SIM_MONTHS) {
+  const canSimulateDebt = (debt: SimDebt) => {
+    if (debt.balance <= 0.005) return false;
+    const simulated = debtMonthsSimulated.get(debt.id) ?? 0;
+    if (debt.maxPayoffMonths != null && simulated >= debt.maxPayoffMonths) return false;
+    return true;
+  };
+
+  const isWithinInstallmentCap = (debt: SimDebt, monthsThisDebt: number) =>
+    debt.maxPayoffMonths == null || monthsThisDebt <= debt.maxPayoffMonths;
+
+  while (activeDebts.some(canSimulateDebt) && months < MAX_SIM_MONTHS) {
     months += 1;
     let freedMinimums = 0;
 
     // 1) Add monthly interest to each active debt balance.
     for (const debt of activeDebts) {
       if (debt.balance <= 0.005) continue;
-      const activeForDebt = (debtMonthsActive.get(debt.id) ?? 0) + 1;
-      debtMonthsActive.set(debt.id, activeForDebt);
-      if (debt.maxPayoffMonths != null && activeForDebt > debt.maxPayoffMonths) {
+      const monthsThisDebt = (debtMonthsSimulated.get(debt.id) ?? 0) + 1;
+      debtMonthsSimulated.set(debt.id, monthsThisDebt);
+      if (!isWithinInstallmentCap(debt, monthsThisDebt)) {
         continue;
       }
       const monthlyRate = debt.annualRate / 100 / 12;
@@ -148,6 +161,10 @@ const runPayoffSimulation = (debts: SimDebt[], baseExtraPayment: number, windfal
     // 2) Pay minimums on all active debts.
     for (const debt of activeDebts) {
       if (debt.balance <= 0.005) continue;
+      const monthsThisDebt = debtMonthsSimulated.get(debt.id) ?? 0;
+      if (!isWithinInstallmentCap(debt, monthsThisDebt)) {
+        continue;
+      }
       const minPay = Math.max(0, debt.minimumPayment);
       const payment = Math.min(minPay, debt.balance);
       debt.balance -= payment;
@@ -160,7 +177,11 @@ const runPayoffSimulation = (debts: SimDebt[], baseExtraPayment: number, windfal
 
     // 3) Avalanche extra to highest-rate remaining debt.
     const target = [...activeDebts]
-      .filter((d) => d.balance > 0.005)
+      .filter((d) => {
+        if (d.balance <= 0.005) return false;
+        const monthsThisDebt = debtMonthsSimulated.get(d.id) ?? 0;
+        return isWithinInstallmentCap(d, monthsThisDebt);
+      })
       .sort((a, b) => b.annualRate - a.annualRate || b.balance - a.balance)[0];
 
     if (target && extraPool > 0) {
@@ -199,7 +220,9 @@ export default function WhatIfSimulator() {
             annualRate: d.interestRate,
             minimumPayment: d.minimumPayment,
             transferredToHELOC: d.transferredToHELOC,
-            maxPayoffMonths: getPayoffScheduleMonthCap(d),
+            maxPayoffMonths: hasCompleteInstallmentMetadata(d)
+              ? getInstallmentRemainingTermMonths(d) ?? undefined
+              : undefined,
           })
         ),
     []

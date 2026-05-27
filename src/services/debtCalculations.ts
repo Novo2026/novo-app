@@ -291,7 +291,7 @@ export const DebtCalculations = {
       };
     }
 
-    // Initialize debt balances
+    // Initialize debt balances (installment loans may cap simulated months at remaining term)
     const debtBalances = activeDebts.map(debt => ({
       debtId: debt.id,
       debtName: debt.accountName,
@@ -300,6 +300,10 @@ export const DebtCalculations = {
       minPayment: debt.minimumPayment,
       paidOff: false,
       payoffMonth: 0,
+      monthsSimulated: 0,
+      maxPayoffMonths: hasCompleteInstallmentMetadata(debt)
+        ? getInstallmentRemainingTermMonths(debt)
+        : null,
     }));
 
     const monthlyProjections: OptimizedResult['monthlyProjections'] = [];
@@ -308,12 +312,19 @@ export const DebtCalculations = {
     let month = 0;
     let availableExtraCash = extraMonthlyPayment;
 
-    while (debtBalances.some(d => !d.paidOff) && month < maxMonths) {
+    const canSimulateDebt = (d: (typeof debtBalances)[number]) =>
+      !d.paidOff &&
+      (d.maxPayoffMonths == null || d.monthsSimulated < d.maxPayoffMonths);
+
+    const isWithinInstallmentCap = (d: (typeof debtBalances)[number]) =>
+      d.maxPayoffMonths == null || d.monthsSimulated <= d.maxPayoffMonths;
+
+    while (debtBalances.some(canSimulateDebt) && month < maxMonths) {
       month++;
 
-      // Sort by interest rate (highest first) - Debt Avalanche
+      // Sort by interest rate (highest first) - Debt Avalanche; skip term-expired debts
       const sortedDebts = debtBalances
-        .filter(d => !d.paidOff)
+        .filter(d => !d.paidOff && isWithinInstallmentCap(d))
         .sort((a, b) => b.rate - a.rate);
 
       const monthDebts: OptimizedResult['monthlyProjections'][0]['debts'] = [];
@@ -324,6 +335,19 @@ export const DebtCalculations = {
           monthDebts.push({
             debtId: debt.debtId,
             balance: 0,
+            payment: 0,
+            interest: 0,
+            principal: 0,
+          });
+          continue;
+        }
+
+        debt.monthsSimulated += 1;
+
+        if (!isWithinInstallmentCap(debt)) {
+          monthDebts.push({
+            debtId: debt.debtId,
+            balance: Math.round(debt.balance * 100) / 100,
             payment: 0,
             interest: 0,
             principal: 0,
