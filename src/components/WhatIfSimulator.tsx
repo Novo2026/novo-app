@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertTriangle, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import type { Debt } from '../types';
@@ -106,16 +106,9 @@ const applyWindfallToBalances = (debts: SimDebt[], windfall: number): number => 
 
 const runPayoffSimulation = (debts: SimDebt[], baseExtraPayment: number, windfall: number): SimResult => {
   const filteredDebts = filterTraditionalSimulationDebts(debts);
-  console.log('[NOVO What-If] simulation debts (HELOC excluded):', filteredDebts.map((d) => d.accountName));
   const working = cloneSimDebts(filteredDebts);
 
   const windfallApplied = applyWindfallToBalances(working, windfall);
-  if (windfallApplied > 0) {
-    console.log(
-      '[NOVO What-If] windfall principal reduced:',
-      working.map((d) => ({ name: d.accountName, balance: d.balance }))
-    );
-  }
 
   let extraPool = Math.max(0, baseExtraPayment);
   for (const debt of working) {
@@ -183,23 +176,23 @@ const runPayoffSimulation = (debts: SimDebt[], baseExtraPayment: number, windfal
 
 export default function WhatIfSimulator() {
   const profileAtLoad = useMemo(() => StorageService.getFinancialProfile(), []);
-  const simulationDebts = useMemo(() => {
-    const filtered = StorageService.getDebts()
-      .filter((d) => !d.isPaidOff && d.currentBalance > 0 && !shouldExcludeHelocDebt(d))
-      .map(
-        (d): SimDebt => ({
-          id: d.id,
-          accountName: d.accountName,
-          category: d.category,
-          balance: d.currentBalance,
-          annualRate: d.interestRate,
-          minimumPayment: d.minimumPayment,
-          transferredToHELOC: d.transferredToHELOC,
-        })
-      );
-    console.log('[NOVO What-If] debts included in simulation:', filtered.map((d) => d.accountName));
-    return filtered;
-  }, []);
+  const simulationDebts = useMemo(
+    () =>
+      StorageService.getDebts()
+        .filter((d) => !d.isPaidOff && d.currentBalance > 0 && !shouldExcludeHelocDebt(d))
+        .map(
+          (d): SimDebt => ({
+            id: d.id,
+            accountName: d.accountName,
+            category: d.category,
+            balance: d.currentBalance,
+            annualRate: d.interestRate,
+            minimumPayment: d.minimumPayment,
+            transferredToHELOC: d.transferredToHELOC,
+          })
+        ),
+    []
+  );
 
   const baselineInputs = useMemo<SimulatorInputs>(
     () => ({
@@ -255,30 +248,6 @@ export default function WhatIfSimulator() {
   const monthsDifference = baselineTotalMonths - scenarioTotalMonths;
   const estimatedInterestSaved = baselineTotalInterest - scenarioTotalInterest;
 
-  useEffect(() => {
-    console.log('[NOVO What-If comparison]', {
-      baselineTotalMonths,
-      scenarioTotalMonths,
-      monthsDifference,
-      baselineTotalInterest,
-      scenarioTotalInterest,
-      estimatedInterestSaved,
-      windfallApplied: scenarioResult.windfallApplied,
-      extraMonthlyApplied: Math.max(0, inputs.extraMonthlyContribution),
-      debtsIncluded: simulationDebts.length,
-    });
-  }, [
-    baselineTotalMonths,
-    scenarioTotalMonths,
-    monthsDifference,
-    baselineTotalInterest,
-    scenarioTotalInterest,
-    estimatedInterestSaved,
-    scenarioResult.windfallApplied,
-    inputs.extraMonthlyContribution,
-    simulationDebts.length,
-  ]);
-
   const setNumberInput = (field: keyof SimulatorInputs, value: string) => {
     const parsed = parseFloat(value);
     const nextValue = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
@@ -288,22 +257,6 @@ export default function WhatIfSimulator() {
   const resetToProfileValues = () => {
     setInputs(baselineInputs);
   };
-
-  console.log('BASELINE:', {
-    months: baselineResult.months,
-    interest: baselineResult.totalInterest,
-    debtsUsed: simulationDebts.length,
-  });
-  console.log('SCENARIO:', {
-    months: scenarioResult.months,
-    interest: scenarioResult.totalInterest,
-    windfall: inputs.oneTimeWindfall,
-    extraMonthly: inputs.extraMonthlyContribution,
-  });
-  console.log('DIFFERENCE:', {
-    monthsDiff: baselineResult.months - scenarioResult.months,
-    interestDiff: baselineResult.totalInterest - scenarioResult.totalInterest,
-  });
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
