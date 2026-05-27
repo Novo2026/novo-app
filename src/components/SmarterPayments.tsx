@@ -10,8 +10,8 @@ import {
   loadPaymentCommitments,
   savePaymentCommitment,
   removePaymentCommitment,
-  projectPayoffForFrequency,
-  calculateMonthlyPayoff,
+  projectPayoffForFrequencyForDebt,
+  calculateMonthlyPayoffForDebt,
   markSmarterPaymentsVisited,
   getMotivationalMessage,
   getJourneyStep,
@@ -90,17 +90,8 @@ export default function SmarterPayments({ onDataUpdate }: SmarterPaymentsProps) 
 
     for (const debt of debts) {
       const freq = frequencies[debt.id] ?? 'monthly';
-      const monthly = calculateMonthlyPayoff(
-        debt.currentBalance,
-        debt.interestRate,
-        debt.minimumPayment
-      );
-      const selected = projectPayoffForFrequency(
-        debt.currentBalance,
-        debt.interestRate,
-        debt.minimumPayment,
-        freq
-      );
+      const monthly = calculateMonthlyPayoffForDebt(debt);
+      const selected = projectPayoffForFrequencyForDebt(debt, freq);
 
       if (monthly.months < 999 && selected.months < 999) {
         const interestSaved = Math.max(0, monthly.totalInterest - selected.totalInterest);
@@ -175,17 +166,8 @@ export default function SmarterPayments({ onDataUpdate }: SmarterPaymentsProps) 
         <h2 className="text-lg font-bold text-gray-900">Your debts</h2>
         {debts.map(debt => {
           const freq = frequencies[debt.id] ?? 'monthly';
-          const monthly = calculateMonthlyPayoff(
-            debt.currentBalance,
-            debt.interestRate,
-            debt.minimumPayment
-          );
-          const selected = projectPayoffForFrequency(
-            debt.currentBalance,
-            debt.interestRate,
-            debt.minimumPayment,
-            freq
-          );
+          const monthly = calculateMonthlyPayoffForDebt(debt);
+          const selected = projectPayoffForFrequencyForDebt(debt, freq);
           const interestSaved =
             monthly.months < 999 && selected.months < 999
               ? Math.max(0, monthly.totalInterest - selected.totalInterest)

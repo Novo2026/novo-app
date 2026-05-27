@@ -21,6 +21,7 @@ export interface Debt {
   originalAmount?: number;
   loanStartDate?: string;
   loanTerm?: number;
+  loanTermUnit?: 'months' | 'years';
   isAmortized?: boolean;
   transferredToHELOC?: boolean;
   refinanceHistory?: RefinanceRecord[];

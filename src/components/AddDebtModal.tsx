@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { StorageService } from '../services/storage';
+import InstallmentLoanFields from './InstallmentLoanFields';
+import {
+  applyInstallmentFieldsToDebt,
+  isInstallmentLoanCategory,
+  type LoanTermUnit,
+} from '../utils/installmentLoan';
 import type { Debt, DebtCategory } from '../types';
 
 interface AddDebtModalProps {
@@ -24,6 +30,12 @@ export default function AddDebtModal({ onClose, onSuccess }: AddDebtModalProps) 
   const [balance, setBalance] = useState('');
   const [interestRate, setInterestRate] = useState('');
   const [minimumPayment, setMinimumPayment] = useState('');
+  const [originalAmount, setOriginalAmount] = useState('');
+  const [loanStartDate, setLoanStartDate] = useState('');
+  const [loanTerm, setLoanTerm] = useState('');
+  const [loanTermUnit, setLoanTermUnit] = useState<LoanTermUnit>('years');
+
+  const showInstallmentFields = isInstallmentLoanCategory(category);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +47,7 @@ export default function AddDebtModal({ onClose, onSuccess }: AddDebtModalProps) 
     if (isNaN(balanceNum) || isNaN(rateNum) || isNaN(minPaymentNum)) return;
     if (balanceNum <= 0 || rateNum < 0 || minPaymentNum < 0) return;
 
-    const newDebt: Debt = {
+    let newDebt: Debt = {
       id: `debt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       accountName: accountName.trim(),
       category,
@@ -47,16 +59,34 @@ export default function AddDebtModal({ onClose, onSuccess }: AddDebtModalProps) 
       createdAt: new Date().toISOString(),
     };
 
+    if (showInstallmentFields) {
+      newDebt = applyInstallmentFieldsToDebt(newDebt, {
+        originalAmount,
+        loanStartDate,
+        loanTerm,
+        loanTermUnit,
+      });
+    }
+
     const debts = StorageService.getDebts();
     debts.push(newDebt);
     StorageService.saveDebts(debts);
 
-    // Track debt added event in Google Analytics
     if (typeof window !== 'undefined' && (window as any).gtag) {
       (window as any).gtag('event', 'debt_added');
     }
 
     onSuccess();
+  };
+
+  const handleCategoryChange = (next: DebtCategory) => {
+    setCategory(next);
+    if (!isInstallmentLoanCategory(next)) {
+      setOriginalAmount('');
+      setLoanStartDate('');
+      setLoanTerm('');
+      setLoanTermUnit('years');
+    }
   };
 
   return (
@@ -90,7 +120,7 @@ export default function AddDebtModal({ onClose, onSuccess }: AddDebtModalProps) 
             </label>
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value as DebtCategory)}
+              onChange={(e) => handleCategoryChange(e.target.value as DebtCategory)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
               required
             >
@@ -156,6 +186,19 @@ export default function AddDebtModal({ onClose, onSuccess }: AddDebtModalProps) 
               />
             </div>
           </div>
+
+          {showInstallmentFields && (
+            <InstallmentLoanFields
+              originalAmount={originalAmount}
+              loanStartDate={loanStartDate}
+              loanTerm={loanTerm}
+              loanTermUnit={loanTermUnit}
+              onOriginalAmountChange={setOriginalAmount}
+              onLoanStartDateChange={setLoanStartDate}
+              onLoanTermChange={setLoanTerm}
+              onLoanTermUnitChange={setLoanTermUnit}
+            />
+          )}
 
           <div className="flex space-x-3 pt-4">
             <button

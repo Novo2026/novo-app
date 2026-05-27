@@ -1,6 +1,12 @@
 import type { Debt, Transaction, StrategyResult, Strategy, SavingsAccount, UnifiedPayment, HELOCTransaction, CheckingTransaction } from '../types';
 import { StorageService } from './storage';
 import { DebtCalculations } from './debtCalculations';
+import {
+  applyInstallmentPayoffMonthCap,
+  calculateMonthsElapsedSinceStart,
+  getInstallmentRemainingTermMonths,
+  hasCompleteInstallmentMetadata,
+} from '../utils/installmentLoan';
 
 export interface PaymentCalculation {
   interestCharged: number;
@@ -74,14 +80,7 @@ export const CalculationService = {
   },
 
   calculateMonthsElapsed(loanStartDate: string): number {
-    const [startMonth, startYear] = loanStartDate.split('/').map(Number);
-    const startDate = new Date(startYear, startMonth - 1, 1);
-    const currentDate = new Date();
-
-    const yearDiff = currentDate.getFullYear() - startDate.getFullYear();
-    const monthDiff = currentDate.getMonth() - startDate.getMonth();
-
-    return yearDiff * 12 + monthDiff;
+    return calculateMonthsElapsedSinceStart(loanStartDate);
   },
 
   calculateRemainingMonths(
@@ -446,16 +445,17 @@ export const CalculationService = {
     const minPayment = debt.minimumPayment;
     const monthlyRate = rate / 12 / 100;
 
-    // For amortizing loans with loan term info, calculate remaining months
-    if (debt.isAmortized && debt.loanTerm && debt.loanStartDate) {
-      const startDate = new Date(debt.loanStartDate);
-      const today = new Date();
-      const monthsElapsed = (today.getFullYear() - startDate.getFullYear()) * 12 +
-                           (today.getMonth() - startDate.getMonth());
-      const remainingMonths = Math.max(0, debt.loanTerm - monthsElapsed);
-
-      console.log(`  ${debt.accountName}: Amortized loan, ${debt.loanTerm} month term, ${monthsElapsed} elapsed, ${remainingMonths} remaining`);
-      return remainingMonths;
+    // Installment loans with full metadata: cap payoff months by time left on the loan
+    if (hasCompleteInstallmentMetadata(debt)) {
+      const capped = applyInstallmentPayoffMonthCap(
+        debt,
+        this.calculateRemainingMonths(balance, rate, minPayment)
+      );
+      const contractual = getInstallmentRemainingTermMonths(debt);
+      console.log(
+        `  ${debt.accountName}: Installment loan, ~${contractual ?? '?'} months left on term, ${capped} months to payoff at minimum`
+      );
+      return capped;
     }
 
     // For revolving debt or loans without term info, calculate based on minimum payment

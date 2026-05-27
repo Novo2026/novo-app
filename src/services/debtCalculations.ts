@@ -1,4 +1,9 @@
 import type { Debt } from '../types';
+import {
+  applyInstallmentPayoffMonthCap,
+  getInstallmentRemainingTermMonths,
+  hasCompleteInstallmentMetadata,
+} from '../utils/installmentLoan';
 
 export interface PaymentBreakdown {
   payment: number;
@@ -126,37 +131,27 @@ export const DebtCalculations = {
   },
 
   /**
-   * Calculate months elapsed since loan start
+   * Calculate remaining months for an installment loan with full metadata.
+   * Uses current balance + payment, capped by contractual time left on the loan.
    */
-  calculateMonthsElapsed(loanStartDate: string): number {
-    const [startMonth, startYear] = loanStartDate.split('/').map(Number);
-    const startDate = new Date(startYear, startMonth - 1, 1);
-    const currentDate = new Date();
+  calculateRemainingMonthsForInstallmentLoan(debt: Debt): number {
+    const formulaMonths = this.calculateRemainingMonths(
+      debt.currentBalance,
+      debt.minimumPayment,
+      debt.interestRate,
+      false
+    );
 
-    const yearDiff = currentDate.getFullYear() - startDate.getFullYear();
-    const monthDiff = currentDate.getMonth() - startDate.getMonth();
-
-    return yearDiff * 12 + monthDiff;
-  },
-
-  /**
-   * Calculate remaining months for an amortized loan
-   */
-  calculateRemainingMonthsForAmortizedLoan(debt: Debt): number {
-    if (!debt.isAmortized || !debt.loanTerm || !debt.loanStartDate) {
-      return this.calculateRemainingMonths(
-        debt.currentBalance,
-        debt.minimumPayment,
-        debt.interestRate,
-        false
-      );
+    if (!hasCompleteInstallmentMetadata(debt)) {
+      return formulaMonths;
     }
 
-    const totalMonths = debt.loanTerm * 12;
-    const monthsElapsed = this.calculateMonthsElapsed(debt.loanStartDate);
-    const remainingMonths = totalMonths - monthsElapsed;
+    return applyInstallmentPayoffMonthCap(debt, formulaMonths);
+  },
 
-    return Math.max(1, remainingMonths);
+  /** @deprecated Use calculateRemainingMonthsForInstallmentLoan */
+  calculateRemainingMonthsForAmortizedLoan(debt: Debt): number {
+    return this.calculateRemainingMonthsForInstallmentLoan(debt);
   },
 
   /**
@@ -225,8 +220,8 @@ export const DebtCalculations = {
     let longestDebtName = '';
 
     for (const debt of activeDebts) {
-      const monthsToPayoff = debt.isAmortized
-        ? this.calculateRemainingMonthsForAmortizedLoan(debt)
+      const monthsToPayoff = hasCompleteInstallmentMetadata(debt)
+        ? this.calculateRemainingMonthsForInstallmentLoan(debt)
         : this.calculateRemainingMonths(
             debt.currentBalance,
             debt.minimumPayment,
@@ -234,11 +229,14 @@ export const DebtCalculations = {
             false
           );
 
+      const scheduleMaxMonths =
+        getInstallmentRemainingTermMonths(debt) ?? monthsToPayoff;
+
       const projections = this.calculateAmortizationSchedule(
         debt.currentBalance,
         debt.minimumPayment,
         debt.interestRate,
-        monthsToPayoff
+        Math.min(monthsToPayoff, scheduleMaxMonths)
       );
 
       const totalInterest = projections.reduce((sum, p) => sum + p.interest, 0);

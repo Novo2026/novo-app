@@ -1,3 +1,10 @@
+import type { Debt } from '../types';
+import {
+  applyInstallmentPayoffMonthCap,
+  getPayoffScheduleMonthCap,
+  hasCompleteInstallmentMetadata,
+} from './installmentLoan';
+
 export type PaymentFrequency = 'monthly' | 'biweekly' | 'weekly';
 
 export interface PayoffProjection {
@@ -60,7 +67,8 @@ function runAmortizationSchedule(
   annualRate: number,
   payment: number,
   periodsPerYear: number,
-  scheduleLabel: string
+  scheduleLabel: string,
+  maxCalendarMonths?: number
 ): AmortizationSchedule {
   console.log('[NOVO payoff]', scheduleLabel, {
     balance,
@@ -85,7 +93,12 @@ function runAmortizationSchedule(
   }
 
   const periodRate = annualRate / 100 / periodsPerYear;
-  const maxPeriods = periodsPerYear * MAX_YEARS;
+  const maxPeriodsFromYears = periodsPerYear * MAX_YEARS;
+  const maxPeriodsFromTerm =
+    maxCalendarMonths != null && maxCalendarMonths > 0
+      ? Math.ceil((maxCalendarMonths / 12) * periodsPerYear)
+      : maxPeriodsFromYears;
+  const maxPeriods = Math.min(maxPeriodsFromYears, maxPeriodsFromTerm);
   let remaining = balance;
   let totalInterest = 0;
   let periodCount = 0;
@@ -161,26 +174,60 @@ export function calculateTotalInterest(
 export function calculateMonthlyPayoff(
   balance: number,
   annualRate: number,
-  monthlyPayment: number
+  monthlyPayment: number,
+  maxCalendarMonths?: number
 ): PayoffProjection {
   const schedule = runAmortizationSchedule(
     balance,
     annualRate,
     monthlyPayment,
     12,
-    'monthly'
+    'monthly',
+    maxCalendarMonths
   );
-  return scheduleToProjection(schedule);
+  const projection = scheduleToProjection(schedule);
+  if (maxCalendarMonths != null && projection.months > maxCalendarMonths) {
+    return {
+      ...projection,
+      months: maxCalendarMonths,
+      payoffDate: payoffDateFromMonths(maxCalendarMonths),
+    };
+  }
+  return projection;
+}
+
+export function calculateMonthlyPayoffForDebt(debt: Debt): PayoffProjection {
+  const cap = getPayoffScheduleMonthCap(debt);
+  const projection = calculateMonthlyPayoff(
+    debt.currentBalance,
+    debt.interestRate,
+    debt.minimumPayment,
+    cap
+  );
+  if (!hasCompleteInstallmentMetadata(debt)) return projection;
+  return {
+    ...projection,
+    months: applyInstallmentPayoffMonthCap(debt, projection.months),
+    payoffDate: payoffDateFromMonths(applyInstallmentPayoffMonthCap(debt, projection.months)),
+  };
 }
 
 /** 26 payments/year at half the monthly payment (13 full monthly payments per year). */
 export function calculateBiWeeklyPayoff(
   balance: number,
   annualRate: number,
-  monthlyPayment: number
+  monthlyPayment: number,
+  maxCalendarMonths?: number
 ): PayoffProjection {
   const payment = monthlyPayment / 2;
-  const schedule = runAmortizationSchedule(balance, annualRate, payment, 26, 'biweekly');
+  const schedule = runAmortizationSchedule(
+    balance,
+    annualRate,
+    payment,
+    26,
+    'biweekly',
+    maxCalendarMonths
+  );
   return scheduleToProjection(schedule);
 }
 
@@ -188,10 +235,18 @@ export function calculateBiWeeklyPayoff(
 export function calculateWeeklyPayoff(
   balance: number,
   annualRate: number,
-  monthlyPayment: number
+  monthlyPayment: number,
+  maxCalendarMonths?: number
 ): PayoffProjection {
   const payment = monthlyPayment / 4;
-  const schedule = runAmortizationSchedule(balance, annualRate, payment, 52, 'weekly');
+  const schedule = runAmortizationSchedule(
+    balance,
+    annualRate,
+    payment,
+    52,
+    'weekly',
+    maxCalendarMonths
+  );
   return scheduleToProjection(schedule);
 }
 
@@ -199,16 +254,38 @@ export function projectPayoffForFrequency(
   balance: number,
   annualRate: number,
   monthlyPayment: number,
-  frequency: PaymentFrequency
+  frequency: PaymentFrequency,
+  maxCalendarMonths?: number
 ): PayoffProjection {
   switch (frequency) {
     case 'biweekly':
-      return calculateBiWeeklyPayoff(balance, annualRate, monthlyPayment);
+      return calculateBiWeeklyPayoff(balance, annualRate, monthlyPayment, maxCalendarMonths);
     case 'weekly':
-      return calculateWeeklyPayoff(balance, annualRate, monthlyPayment);
+      return calculateWeeklyPayoff(balance, annualRate, monthlyPayment, maxCalendarMonths);
     default:
-      return calculateMonthlyPayoff(balance, annualRate, monthlyPayment);
+      return calculateMonthlyPayoff(balance, annualRate, monthlyPayment, maxCalendarMonths);
   }
+}
+
+export function projectPayoffForFrequencyForDebt(
+  debt: Debt,
+  frequency: PaymentFrequency
+): PayoffProjection {
+  const cap = getPayoffScheduleMonthCap(debt);
+  const projection = projectPayoffForFrequency(
+    debt.currentBalance,
+    debt.interestRate,
+    debt.minimumPayment,
+    frequency,
+    cap
+  );
+  if (!hasCompleteInstallmentMetadata(debt)) return projection;
+  const cappedMonths = applyInstallmentPayoffMonthCap(debt, projection.months);
+  return {
+    ...projection,
+    months: cappedMonths,
+    payoffDate: payoffDateFromMonths(cappedMonths),
+  };
 }
 
 export const PAYMENT_FREQUENCIES_STORAGE_KEY = 'novo_payment_frequencies';

@@ -137,6 +137,7 @@ function App() {
           originalAmount: parseCurrency(debt.originalAmount),
           loanStartDate: debt.loanStartDate,
           loanTerm: parseInt(debt.loanTerm || '30'),
+          loanTermUnit: 'years' as const,
           isAmortized: true,
         }),
       };

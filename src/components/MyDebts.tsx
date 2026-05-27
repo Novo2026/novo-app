@@ -12,6 +12,12 @@ import SoldHomeModal from './SoldHomeModal';
 import HomeSaleCelebrationModal from './HomeSaleCelebrationModal';
 import AddReplacementMortgageModal from './AddReplacementMortgageModal';
 import CelebrationModal from './CelebrationModal';
+import {
+  formatLoanStartDateForDisplay,
+  formatLoanTermForDisplay,
+  hasCompleteInstallmentMetadata,
+  isInstallmentLoanCategory,
+} from '../utils/installmentLoan';
 import type { Debt, Transaction, Milestone } from '../types';
 
 interface MyDebtsProps {
@@ -554,6 +560,43 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
           <div className="text-sm text-gray-600 mb-4">
             <p>Minimum Payment: {CalculationService.formatCurrency(debt.minimumPayment)}</p>
           </div>
+
+          {isInstallmentLoanCategory(debt.category) &&
+            (debt.originalAmount != null ||
+              debt.loanStartDate ||
+              (debt.loanTerm != null && debt.loanTerm > 0)) && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4 text-sm">
+                {debt.originalAmount != null && debt.originalAmount > 0 && (
+                  <div className="bg-slate-50 rounded-lg px-3 py-2">
+                    <p className="text-xs text-gray-500">Original balance</p>
+                    <p className="font-semibold text-gray-800">
+                      {CalculationService.formatCurrency(debt.originalAmount)}
+                    </p>
+                  </div>
+                )}
+                {debt.loanStartDate && (
+                  <div className="bg-slate-50 rounded-lg px-3 py-2">
+                    <p className="text-xs text-gray-500">Loan start</p>
+                    <p className="font-semibold text-gray-800">
+                      {formatLoanStartDateForDisplay(debt.loanStartDate)}
+                    </p>
+                  </div>
+                )}
+                {debt.loanTerm != null && debt.loanTerm > 0 && (
+                  <div className="bg-slate-50 rounded-lg px-3 py-2">
+                    <p className="text-xs text-gray-500">Term</p>
+                    <p className="font-semibold text-gray-800">
+                      {formatLoanTermForDisplay(debt.loanTerm, debt.loanTermUnit, debt.isAmortized)}
+                      {hasCompleteInstallmentMetadata(debt) && (
+                        <span className="block text-xs font-normal text-gray-500 mt-0.5">
+                          Installment-aware payoff estimates
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
           <div className="flex flex-col space-y-2">
             {isZeroBalance && (

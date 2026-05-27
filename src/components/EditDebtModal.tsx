@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { StorageService } from '../services/storage';
+import InstallmentLoanFields from './InstallmentLoanFields';
+import {
+  applyInstallmentFieldsToDebt,
+  isInstallmentLoanCategory,
+  readInstallmentFieldsFromDebt,
+  type LoanTermUnit,
+} from '../utils/installmentLoan';
 import type { Debt, DebtCategory } from '../types';
 
 interface EditDebtModalProps {
@@ -20,14 +27,19 @@ const DEBT_CATEGORIES: DebtCategory[] = [
 ];
 
 export default function EditDebtModal({ debt, onClose, onSuccess }: EditDebtModalProps) {
+  const initialInstallment = readInstallmentFieldsFromDebt(debt);
+
   const [accountName, setAccountName] = useState(debt.accountName);
   const [category, setCategory] = useState<DebtCategory>(debt.category);
   const [balance, setBalance] = useState(debt.currentBalance.toString());
   const [interestRate, setInterestRate] = useState(debt.interestRate.toString());
   const [minimumPayment, setMinimumPayment] = useState(debt.minimumPayment.toString());
-  const [originalAmount, setOriginalAmount] = useState(debt.originalAmount?.toString() || '');
-  const [loanStartDate, setLoanStartDate] = useState(debt.loanStartDate || '');
-  const [loanTerm, setLoanTerm] = useState(debt.loanTerm?.toString() || '30');
+  const [originalAmount, setOriginalAmount] = useState(initialInstallment.originalAmount);
+  const [loanStartDate, setLoanStartDate] = useState(initialInstallment.loanStartDate);
+  const [loanTerm, setLoanTerm] = useState(initialInstallment.loanTerm);
+  const [loanTermUnit, setLoanTermUnit] = useState<LoanTermUnit>(initialInstallment.loanTermUnit);
+
+  const showInstallmentFields = isInstallmentLoanCategory(category);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +51,7 @@ export default function EditDebtModal({ debt, onClose, onSuccess }: EditDebtModa
     if (isNaN(balanceNum) || isNaN(rateNum) || isNaN(minPaymentNum)) return;
     if (balanceNum < 0 || rateNum < 0 || minPaymentNum < 0) return;
 
-    const updatedDebt: Debt = {
+    let updatedDebt: Debt = {
       ...debt,
       accountName: accountName.trim(),
       category,
@@ -49,12 +61,12 @@ export default function EditDebtModal({ debt, onClose, onSuccess }: EditDebtModa
       isPaidOff: balanceNum === 0,
     };
 
-    if (category === 'Mortgage' && originalAmount && loanStartDate) {
-      updatedDebt.originalAmount = parseFloat(originalAmount);
-      updatedDebt.loanStartDate = loanStartDate;
-      updatedDebt.loanTerm = parseInt(loanTerm || '30');
-      updatedDebt.isAmortized = true;
-    }
+    updatedDebt = applyInstallmentFieldsToDebt(updatedDebt, {
+      originalAmount,
+      loanStartDate,
+      loanTerm,
+      loanTermUnit,
+    });
 
     const debts = StorageService.getDebts();
     const index = debts.findIndex(d => d.id === debt.id);
@@ -64,6 +76,16 @@ export default function EditDebtModal({ debt, onClose, onSuccess }: EditDebtModa
     }
 
     onSuccess();
+  };
+
+  const handleCategoryChange = (next: DebtCategory) => {
+    setCategory(next);
+    if (!isInstallmentLoanCategory(next)) {
+      setOriginalAmount('');
+      setLoanStartDate('');
+      setLoanTerm('');
+      setLoanTermUnit('years');
+    }
   };
 
   return (
@@ -97,7 +119,7 @@ export default function EditDebtModal({ debt, onClose, onSuccess }: EditDebtModa
             </label>
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value as DebtCategory)}
+              onChange={(e) => handleCategoryChange(e.target.value as DebtCategory)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
               required
             >
@@ -164,55 +186,17 @@ export default function EditDebtModal({ debt, onClose, onSuccess }: EditDebtModa
             </div>
           </div>
 
-          {category === 'Mortgage' && (
-            <>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Original Loan Amount
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2 text-gray-500">$</span>
-                  <input
-                    type="number"
-                    value={originalAmount}
-                    onChange={(e) => setOriginalAmount(e.target.value)}
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
-                    placeholder="0.00"
-                    step="0.01"
-                    min="0"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Loan Start Date
-                </label>
-                <input
-                  type="date"
-                  value={loanStartDate}
-                  onChange={(e) => setLoanStartDate(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Loan Term (years)
-                </label>
-                <select
-                  value={loanTerm}
-                  onChange={(e) => setLoanTerm(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
-                >
-                  <option value="10">10 years</option>
-                  <option value="15">15 years</option>
-                  <option value="20">20 years</option>
-                  <option value="25">25 years</option>
-                  <option value="30">30 years</option>
-                </select>
-              </div>
-            </>
+          {showInstallmentFields && (
+            <InstallmentLoanFields
+              originalAmount={originalAmount}
+              loanStartDate={loanStartDate}
+              loanTerm={loanTerm}
+              loanTermUnit={loanTermUnit}
+              onOriginalAmountChange={setOriginalAmount}
+              onLoanStartDateChange={setLoanStartDate}
+              onLoanTermChange={setLoanTerm}
+              onLoanTermUnitChange={setLoanTermUnit}
+            />
           )}
 
           <div className="flex space-x-3 pt-4">

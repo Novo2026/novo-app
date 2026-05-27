@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { StorageService } from '../services/storage';
+import { getPayoffScheduleMonthCap } from '../utils/installmentLoan';
 import type { Debt } from '../types';
 
 interface SimulatorInputs {
@@ -26,6 +27,8 @@ interface SimDebt {
   annualRate: number;
   minimumPayment: number;
   transferredToHELOC?: boolean;
+  /** Installment loan: cap interest accrual months when loan metadata is complete */
+  maxPayoffMonths?: number;
 }
 
 interface SimResult {
@@ -80,6 +83,7 @@ const cloneSimDebts = (debts: SimDebt[]): SimDebt[] =>
     annualRate: d.annualRate,
     minimumPayment: d.minimumPayment,
     transferredToHELOC: d.transferredToHELOC,
+    maxPayoffMonths: d.maxPayoffMonths,
   }));
 
 /** Apply one-time principal reduction (highest rate first); always subtracts from balance. */
@@ -121,6 +125,7 @@ const runPayoffSimulation = (debts: SimDebt[], baseExtraPayment: number, windfal
 
   let months = 0;
   let totalInterest = 0;
+  const debtMonthsActive = new Map<string, number>();
 
   while (activeDebts.some((d) => d.balance > 0.005) && months < MAX_SIM_MONTHS) {
     months += 1;
@@ -129,6 +134,11 @@ const runPayoffSimulation = (debts: SimDebt[], baseExtraPayment: number, windfal
     // 1) Add monthly interest to each active debt balance.
     for (const debt of activeDebts) {
       if (debt.balance <= 0.005) continue;
+      const activeForDebt = (debtMonthsActive.get(debt.id) ?? 0) + 1;
+      debtMonthsActive.set(debt.id, activeForDebt);
+      if (debt.maxPayoffMonths != null && activeForDebt > debt.maxPayoffMonths) {
+        continue;
+      }
       const monthlyRate = debt.annualRate / 100 / 12;
       const interest = debt.balance * monthlyRate;
       totalInterest += interest;
@@ -189,6 +199,7 @@ export default function WhatIfSimulator() {
             annualRate: d.interestRate,
             minimumPayment: d.minimumPayment,
             transferredToHELOC: d.transferredToHELOC,
+            maxPayoffMonths: getPayoffScheduleMonthCap(d),
           })
         ),
     []

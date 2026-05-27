@@ -63,6 +63,7 @@ export default function AddReplacementMortgageModal({
       originalAmount: origNum,
       loanStartDate,
       loanTerm: parseInt(loanTerm),
+      loanTermUnit: 'years',
       isAmortized: true,
       replacedDebtId: previousMortgageId,
       replacedDebtName: previousMortgageName,
