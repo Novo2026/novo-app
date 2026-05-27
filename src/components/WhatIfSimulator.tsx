@@ -71,39 +71,70 @@ const shouldExcludeHelocDebt = (debt: {
 const filterTraditionalSimulationDebts = (debts: SimDebt[]): SimDebt[] =>
   debts.filter((d) => !shouldExcludeHelocDebt(d));
 
-const cloneSimDebts = (debts: SimDebt[]): SimDebt[] => debts.map((d) => ({ ...d }));
+const cloneSimDebts = (debts: SimDebt[]): SimDebt[] =>
+  debts.map((d) => ({
+    id: d.id,
+    accountName: d.accountName,
+    category: d.category,
+    balance: d.balance,
+    annualRate: d.annualRate,
+    minimumPayment: d.minimumPayment,
+    transferredToHELOC: d.transferredToHELOC,
+  }));
+
+/** Apply one-time principal reduction (highest rate first); always subtracts from balance. */
+const applyWindfallToBalances = (debts: SimDebt[], windfall: number): number => {
+  const safeWindfall = Math.max(0, Number(windfall) || 0);
+  if (safeWindfall <= 0) return 0;
+
+  let remainingWindfall = safeWindfall;
+  let windfallApplied = 0;
+  const targets = [...debts]
+    .filter((d) => d.balance > 0.005)
+    .sort((a, b) => b.annualRate - a.annualRate || b.balance - a.balance);
+
+  for (const target of targets) {
+    if (remainingWindfall <= 0.005) break;
+    const principalReduction = Math.min(remainingWindfall, target.balance);
+    target.balance = Math.max(0, target.balance - principalReduction);
+    windfallApplied += principalReduction;
+    remainingWindfall -= principalReduction;
+  }
+
+  return Math.round(windfallApplied * 100) / 100;
+};
 
 const runPayoffSimulation = (debts: SimDebt[], baseExtraPayment: number, windfall: number): SimResult => {
   const filteredDebts = filterTraditionalSimulationDebts(debts);
   console.log('[NOVO What-If] simulation debts (HELOC excluded):', filteredDebts.map((d) => d.accountName));
   const working = cloneSimDebts(filteredDebts);
-  let windfallApplied = 0;
 
-  if (windfall > 0) {
-    let remainingWindfall = windfall;
-    const targets = [...working]
-      .filter((d) => d.balance > 0)
-      .sort((a, b) => b.annualRate - a.annualRate || b.balance - a.balance);
+  const windfallApplied = applyWindfallToBalances(working, windfall);
+  if (windfallApplied > 0) {
+    console.log(
+      '[NOVO What-If] windfall principal reduced:',
+      working.map((d) => ({ name: d.accountName, balance: d.balance }))
+    );
+  }
 
-    for (const target of targets) {
-      if (remainingWindfall <= 0) break;
-      const applied = Math.min(remainingWindfall, target.balance);
-      target.balance = Math.max(0, target.balance - applied);
-      windfallApplied += applied;
-      remainingWindfall -= applied;
+  let extraPool = Math.max(0, baseExtraPayment);
+  for (const debt of working) {
+    if (debt.balance <= 0.005 && debt.minimumPayment > 0) {
+      extraPool += debt.minimumPayment;
     }
   }
 
+  const activeDebts = working.filter((d) => d.balance > 0.005);
+
   let months = 0;
   let totalInterest = 0;
-  let extraPool = Math.max(0, baseExtraPayment);
 
-  while (working.some((d) => d.balance > 0.005) && months < MAX_SIM_MONTHS) {
+  while (activeDebts.some((d) => d.balance > 0.005) && months < MAX_SIM_MONTHS) {
     months += 1;
     let freedMinimums = 0;
 
     // 1) Add monthly interest to each active debt balance.
-    for (const debt of working) {
+    for (const debt of activeDebts) {
       if (debt.balance <= 0.005) continue;
       const monthlyRate = debt.annualRate / 100 / 12;
       const interest = debt.balance * monthlyRate;
@@ -112,7 +143,7 @@ const runPayoffSimulation = (debts: SimDebt[], baseExtraPayment: number, windfal
     }
 
     // 2) Pay minimums on all active debts.
-    for (const debt of working) {
+    for (const debt of activeDebts) {
       if (debt.balance <= 0.005) continue;
       const minPay = Math.max(0, debt.minimumPayment);
       const payment = Math.min(minPay, debt.balance);
@@ -125,7 +156,7 @@ const runPayoffSimulation = (debts: SimDebt[], baseExtraPayment: number, windfal
     }
 
     // 3) Avalanche extra to highest-rate remaining debt.
-    const target = [...working]
+    const target = [...activeDebts]
       .filter((d) => d.balance > 0.005)
       .sort((a, b) => b.annualRate - a.annualRate || b.balance - a.balance)[0];
 
