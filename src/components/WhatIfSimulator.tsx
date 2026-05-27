@@ -25,6 +25,7 @@ interface SimDebt {
   balance: number;
   annualRate: number;
   minimumPayment: number;
+  transferredToHELOC?: boolean;
 }
 
 interface SimResult {
@@ -50,15 +51,32 @@ const formatMonthYearFromMonths = (monthsFromNow: number): string => {
   return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 };
 
-const isHelocLikeDebt = (debt: Debt): boolean => {
-  const haystack = `${debt.accountName} ${debt.category} ${debt.id}`.toLowerCase();
-  return haystack.includes('heloc') || debt.transferredToHELOC === true;
+const shouldExcludeHelocDebt = (debt: {
+  accountName: string;
+  category: string;
+  id: string;
+  transferredToHELOC?: boolean;
+}): boolean => {
+  const name = debt.accountName.toLowerCase();
+  const type = debt.category.toLowerCase();
+  const id = debt.id.toLowerCase();
+  return (
+    name.includes('heloc') ||
+    type.includes('heloc') ||
+    id.includes('heloc') ||
+    debt.transferredToHELOC === true
+  );
 };
+
+const filterTraditionalSimulationDebts = (debts: SimDebt[]): SimDebt[] =>
+  debts.filter((d) => !shouldExcludeHelocDebt(d));
 
 const cloneSimDebts = (debts: SimDebt[]): SimDebt[] => debts.map((d) => ({ ...d }));
 
 const runPayoffSimulation = (debts: SimDebt[], baseExtraPayment: number, windfall: number): SimResult => {
-  const working = cloneSimDebts(debts);
+  const filteredDebts = filterTraditionalSimulationDebts(debts);
+  console.log('[NOVO What-If] simulation debts (HELOC excluded):', filteredDebts.map((d) => d.accountName));
+  const working = cloneSimDebts(filteredDebts);
   let windfallApplied = 0;
 
   if (windfall > 0) {
@@ -134,22 +152,23 @@ const runPayoffSimulation = (debts: SimDebt[], baseExtraPayment: number, windfal
 
 export default function WhatIfSimulator() {
   const profileAtLoad = useMemo(() => StorageService.getFinancialProfile(), []);
-  const simulationDebts = useMemo(
-    () =>
-      StorageService.getDebts()
-        .filter((d) => !d.isPaidOff && d.currentBalance > 0 && !isHelocLikeDebt(d))
-        .map(
-          (d): SimDebt => ({
-            id: d.id,
-            accountName: d.accountName,
-            category: d.category,
-            balance: d.currentBalance,
-            annualRate: d.interestRate,
-            minimumPayment: d.minimumPayment,
-          })
-        ),
-    []
-  );
+  const simulationDebts = useMemo(() => {
+    const filtered = StorageService.getDebts()
+      .filter((d) => !d.isPaidOff && d.currentBalance > 0 && !shouldExcludeHelocDebt(d))
+      .map(
+        (d): SimDebt => ({
+          id: d.id,
+          accountName: d.accountName,
+          category: d.category,
+          balance: d.currentBalance,
+          annualRate: d.interestRate,
+          minimumPayment: d.minimumPayment,
+          transferredToHELOC: d.transferredToHELOC,
+        })
+      );
+    console.log('[NOVO What-If] debts included in simulation:', filtered.map((d) => d.accountName));
+    return filtered;
+  }, []);
 
   const baselineInputs = useMemo<SimulatorInputs>(
     () => ({
@@ -183,19 +202,19 @@ export default function WhatIfSimulator() {
     ]
   );
 
-  const baselineResult = useMemo(() => runPayoffSimulation(simulationDebts, baseMonthlySurplus, 0), [
-    simulationDebts,
-    baseMonthlySurplus,
-  ]);
-  const scenarioResult = useMemo(
-    () =>
-      runPayoffSimulation(
-        simulationDebts,
-        baseMonthlySurplus + Math.max(0, inputs.extraMonthlyContribution),
-        Math.max(0, inputs.oneTimeWindfall)
-      ),
-    [simulationDebts, baseMonthlySurplus, inputs.extraMonthlyContribution, inputs.oneTimeWindfall]
-  );
+  const baselineResult = useMemo(() => {
+    const debtsForBaseline = filterTraditionalSimulationDebts(simulationDebts);
+    return runPayoffSimulation(debtsForBaseline, baseMonthlySurplus, 0);
+  }, [simulationDebts, baseMonthlySurplus]);
+
+  const scenarioResult = useMemo(() => {
+    const debtsForScenario = filterTraditionalSimulationDebts(simulationDebts);
+    return runPayoffSimulation(
+      debtsForScenario,
+      baseMonthlySurplus + Math.max(0, inputs.extraMonthlyContribution),
+      Math.max(0, inputs.oneTimeWindfall)
+    );
+  }, [simulationDebts, baseMonthlySurplus, inputs.extraMonthlyContribution, inputs.oneTimeWindfall]);
   const baselineTotalMonths = baselineResult.months;
   const scenarioTotalMonths = scenarioResult.months;
   const baselineTotalInterest = baselineResult.totalInterest;
