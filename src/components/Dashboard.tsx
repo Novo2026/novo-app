@@ -368,6 +368,8 @@ export default function Dashboard({
         </div>
       )}
 
+      <DailyTip debts={debts} />
+
       <FinancialHealthScore
         monthlyGrossIncome={financialProfile?.monthlyGrossIncome ?? 0}
         totalMinimumPayments={totalMinimumPayments}
@@ -376,8 +378,6 @@ export default function Dashboard({
         monthlySavingsGoal={financialProfile?.monthlySavingsGoal ?? 0}
         monthlySavingsRate={savingsMetrics.monthlySavingsRate}
       />
-
-      <DailyTip debts={debts} />
 
       {paymentCommitmentCount > 0 && onNavigateToSmarterPayments && (
         <div className="bg-white border border-emerald-300 border-l-4 border-l-emerald-500 rounded-xl p-4 shadow-sm">

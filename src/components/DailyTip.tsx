@@ -1,12 +1,11 @@
-import { useState } from 'react';
-import { Lightbulb, ChevronRight, ChevronLeft, ArrowRight } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Debt } from '../types';
 
 interface Tip {
   id: number;
   text: string;
   category: 'general' | 'mortgage' | 'credit_card' | 'auto' | 'student' | 'behavioral' | 'heloc';
-  isCoachingTip?: boolean;
 }
 
 const ALL_TIPS: Tip[] = [
@@ -48,10 +47,11 @@ const ALL_TIPS: Tip[] = [
   { id: 36, category: 'heloc', text: 'When using a HELOC to accelerate payoff, track your draws carefully. The strategy works best with disciplined spending and consistent income deposits.' },
 ];
 
-const COACHING_TIP_INTERVAL = 10;
+const ROTATE_MS = 5000;
+const FADE_MS = 400;
 
 function getPersonalizedTips(debts: Debt[]): Tip[] {
-  const categories = new Set(debts.map(d => d.category));
+  const categories = new Set(debts.map((d) => d.category));
   const hasHELOC = categories.has('HELOC');
   const hasMortgage = categories.has('Mortgage');
   const hasCreditCard = categories.has('Credit Card');
@@ -65,27 +65,44 @@ function getPersonalizedTips(debts: Debt[]): Tip[] {
   if (hasStudent) priority.push('student');
   if (hasHELOC) priority.push('heloc');
 
-  const sorted = [...ALL_TIPS].sort((a, b) => {
+  return [...ALL_TIPS].sort((a, b) => {
     const ai = priority.indexOf(a.category);
     const bi = priority.indexOf(b.category);
     return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
   });
-
-  return sorted;
 }
 
 function getDayOfYear(): number {
   const now = new Date();
   const start = new Date(now.getFullYear(), 0, 0);
-  const diff = now.getTime() - start.getTime();
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
+  return Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
 }
+
+const STORAGE_KEY = 'novo_tip_index_offset';
+
+const categoryLabel: Record<Tip['category'], string> = {
+  general: 'General',
+  mortgage: 'Mortgage',
+  credit_card: 'Credit',
+  auto: 'Auto',
+  student: 'Student',
+  behavioral: 'Mindset',
+  heloc: 'HELOC',
+};
+
+const categoryColor: Record<Tip['category'], string> = {
+  general: 'bg-sky-100 text-sky-700',
+  mortgage: 'bg-amber-100 text-amber-700',
+  credit_card: 'bg-red-100 text-red-700',
+  auto: 'bg-emerald-100 text-emerald-700',
+  student: 'bg-violet-100 text-violet-700',
+  behavioral: 'bg-teal-100 text-teal-700',
+  heloc: 'bg-blue-100 text-blue-700',
+};
 
 interface DailyTipProps {
   debts?: Debt[];
 }
-
-const STORAGE_KEY = 'novo_tip_index_offset';
 
 export default function DailyTip({ debts = [] }: DailyTipProps) {
   const tips = getPersonalizedTips(debts);
@@ -97,86 +114,83 @@ export default function DailyTip({ debts = [] }: DailyTipProps) {
   };
 
   const [offset, setOffset] = useState(getStoredOffset);
+  const [tipVisible, setTipVisible] = useState(true);
 
   const currentIdx = (dayBase + offset) % tips.length;
   const tip = tips[currentIdx];
-  const showCoachingCta = (currentIdx + 1) % COACHING_TIP_INTERVAL === 0;
-  const tipNumber = currentIdx + 1;
 
-  const go = (dir: 1 | -1) => {
-    const newOffset = (offset + dir + tips.length) % tips.length;
-    setOffset(newOffset);
-    localStorage.setItem(STORAGE_KEY, String(newOffset));
-  };
+  const fadeTimeoutRef = useRef<number | null>(null);
+  const rotateIntervalRef = useRef<number | null>(null);
 
-  const categoryLabel: Record<Tip['category'], string> = {
-    general: 'General',
-    mortgage: 'Mortgage',
-    credit_card: 'Credit Cards',
-    auto: 'Auto Loans',
-    student: 'Student Loans',
-    behavioral: 'Mindset',
-    heloc: 'HELOC',
-  };
+  const navigateTip = useCallback(
+    (dir: 1 | -1) => {
+      if (fadeTimeoutRef.current) window.clearTimeout(fadeTimeoutRef.current);
+      setTipVisible(false);
+      fadeTimeoutRef.current = window.setTimeout(() => {
+        setOffset((prev) => {
+          const next = (prev + dir + tips.length) % tips.length;
+          localStorage.setItem(STORAGE_KEY, String(next));
+          return next;
+        });
+        setTipVisible(true);
+      }, FADE_MS);
+    },
+    [tips.length]
+  );
 
-  const categoryColor: Record<Tip['category'], string> = {
-    general: 'bg-sky-100 text-sky-700',
-    mortgage: 'bg-amber-100 text-amber-700',
-    credit_card: 'bg-red-100 text-red-700',
-    auto: 'bg-emerald-100 text-emerald-700',
-    student: 'bg-violet-100 text-violet-700',
-    behavioral: 'bg-teal-100 text-teal-700',
-    heloc: 'bg-blue-100 text-blue-700',
+  const startAutoRotate = useCallback(() => {
+    if (rotateIntervalRef.current) window.clearInterval(rotateIntervalRef.current);
+    rotateIntervalRef.current = window.setInterval(() => navigateTip(1), ROTATE_MS);
+  }, [navigateTip]);
+
+  useEffect(() => {
+    startAutoRotate();
+    return () => {
+      if (rotateIntervalRef.current) window.clearInterval(rotateIntervalRef.current);
+      if (fadeTimeoutRef.current) window.clearTimeout(fadeTimeoutRef.current);
+    };
+  }, [startAutoRotate]);
+
+  const handleManualNav = (dir: 1 | -1) => {
+    navigateTip(dir);
+    startAutoRotate();
   };
 
   return (
-    <div className="bg-gradient-to-br from-sky-50 to-blue-50 border border-sky-200 rounded-xl p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3 flex-1 min-w-0">
-          <div className="flex-shrink-0 w-9 h-9 bg-sky-500 rounded-lg flex items-center justify-center mt-0.5">
-            <Lightbulb className="w-5 h-5 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <p className="text-sm font-bold text-sky-700 leading-none">Tip of the Day</p>
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${categoryColor[tip.category]}`}>
-                {categoryLabel[tip.category]}
-              </span>
-            </div>
-            <p className="text-gray-700 text-sm leading-relaxed">{tip.text}</p>
+    <div className="bg-slate-50 border border-slate-200/80 rounded-lg px-3 py-2.5 sm:px-4">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <button
+          type="button"
+          onClick={() => handleManualNav(-1)}
+          className="flex-shrink-0 p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
+          aria-label="Previous tip"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
 
-            {showCoachingCta && (
-              <a
-                href="#"
-                className="inline-flex items-center gap-1 mt-3 text-sm font-semibold text-sky-600 hover:text-sky-800 transition-colors"
-                onClick={e => e.preventDefault()}
-              >
-                Want personalized guidance? Learn about 1-on-1 coaching
-                <ArrowRight className="w-3.5 h-3.5" />
-              </a>
-            )}
-          </div>
-        </div>
-
-        <div className="flex-shrink-0 flex items-center gap-1">
-          <button
-            onClick={() => go(-1)}
-            className="p-1.5 rounded-lg text-sky-400 hover:text-sky-600 hover:bg-sky-100 transition-colors"
-            title="Previous tip"
+        <div className="flex-1 min-w-0 flex items-center gap-2">
+          <span
+            className={`flex-shrink-0 text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 rounded ${categoryColor[tip.category]}`}
           >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <span className="text-xs text-sky-400 font-medium min-w-[36px] text-center">
-            {tipNumber}/{tips.length}
+            {categoryLabel[tip.category]}
           </span>
-          <button
-            onClick={() => go(1)}
-            className="p-1.5 rounded-lg text-sky-400 hover:text-sky-600 hover:bg-sky-100 transition-colors"
-            title="Next tip"
+          <p
+            className={`text-xs sm:text-sm text-slate-700 leading-snug line-clamp-2 transition-opacity duration-[400ms] ease-in-out ${
+              tipVisible ? 'opacity-100' : 'opacity-0'
+            }`}
           >
-            <ChevronRight className="w-4 h-4" />
-          </button>
+            {tip.text}
+          </p>
         </div>
+
+        <button
+          type="button"
+          onClick={() => handleManualNav(1)}
+          className="flex-shrink-0 p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
+          aria-label="Next tip"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
       </div>
     </div>
   );
