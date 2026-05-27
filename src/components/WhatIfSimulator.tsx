@@ -258,6 +258,22 @@ export default function WhatIfSimulator() {
     setInputs(baselineInputs);
   };
 
+  console.log('BASELINE:', {
+    months: baselineResult.months,
+    interest: baselineResult.totalInterest,
+    debtsUsed: simulationDebts.length,
+  });
+  console.log('SCENARIO:', {
+    months: scenarioResult.months,
+    interest: scenarioResult.totalInterest,
+    windfall: inputs.oneTimeWindfall,
+    extraMonthly: inputs.extraMonthlyContribution,
+  });
+  console.log('DIFFERENCE:', {
+    monthsDiff: baselineResult.months - scenarioResult.months,
+    interestDiff: baselineResult.totalInterest - scenarioResult.totalInterest,
+  });
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div className="bg-amber-50 border-2 border-amber-400 text-amber-900 rounded-xl p-4 flex items-start gap-3">
