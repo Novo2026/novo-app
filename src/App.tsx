@@ -15,6 +15,7 @@ import SmarterPayments from './components/SmarterPayments';
 import OnboardingModal from './components/OnboardingModal';
 import WelcomeTourModal from './components/WelcomeTourModal';
 import AuthModal from './components/AuthModal';
+import NovoChat from './components/NovoChat';
 import { supabase } from './lib/supabase';
 import { pushLocalStorageToCloud } from './services/cloudSync';
 import { StorageService } from './services/storage';
@@ -40,6 +41,7 @@ function App() {
     return localStorage.getItem('trackerTabNewSeen') !== 'true' && StorageService.getFeaturePreferences().helocEnabled;
   });
   const [askNovoClicked, setAskNovoClicked] = useState(false);
+  const [showNovoChat, setShowNovoChat] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [menuOpenCount, setMenuOpenCount] = useState(() => {
     return parseInt(localStorage.getItem('menuOpenCount') || '0', 10);
@@ -263,7 +265,7 @@ function App() {
       (window as any).gtag('event', 'ask_novo_clicked');
     }
 
-    window.open('https://chatgpt.com/g/g-68c32b52752c819199d83ce4a6d6435e-novo-gpt', '_blank');
+    setShowNovoChat(true);
   };
 
   const renderSection = () => {
@@ -616,6 +618,12 @@ function App() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div key={refreshKey}>{renderSection()}</div>
       </main>
+
+      <NovoChat
+        open={showNovoChat}
+        onClose={() => setShowNovoChat(false)}
+        context="You are NOVO, a friendly debt payoff and financial coaching assistant built by Ben Hulshof, a mortgage broker with 27 years of experience. The user is asking a general question about their finances, debt payoff, or mortgage readiness. Be warm, conversational, and helpful. Ask one question at a time."
+      />
 
       {showHelocWelcome && (
         <div className="fixed bottom-8 right-8 z-50 animate-slide-up">
