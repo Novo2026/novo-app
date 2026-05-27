@@ -371,12 +371,12 @@ function App() {
             { section: 'dashboard' as Section, label: 'Dashboard', icon: Home },
             { section: 'debts' as Section, label: 'My Debts', icon: CreditCard },
             { section: 'strategies' as Section, label: 'My Plan', icon: TrendingUp },
-            { section: 'what-if' as Section, label: 'What-If Simulator', icon: Sliders },
-            { section: 'smarter-payments' as Section, label: 'Smarter Payments', icon: CalendarClock },
             ...((featurePreferences.helocEnabled || featurePreferences.checkingEnabled)
               ? [{ section: 'tracker' as Section, label: featurePreferences.helocEnabled ? 'HELOC Tracker' : 'Cash Flow', icon: Wallet, isNew: showTrackerNewBadge && featurePreferences.helocEnabled }]
               : []),
             { section: 'savings' as Section, label: 'Savings', icon: PiggyBank },
+            { section: 'what-if' as Section, label: 'What-If Simulator', icon: Sliders },
+            { section: 'smarter-payments' as Section, label: 'Smarter Payments', icon: CalendarClock },
             { section: 'progress' as Section, label: 'Progress', icon: BarChart3 },
             { section: 'home-ready' as Section, label: 'Home Ready', icon: Building2 },
             { section: 'settings' as Section, label: 'Settings', icon: SettingsIcon },
@@ -517,28 +517,6 @@ function App() {
               <TrendingUp className="w-4 h-4" />
               <span>My Plan</span>
             </button>
-            <button
-              onClick={() => setCurrentSection('what-if')}
-              className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
-                currentSection === 'what-if'
-                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <Sliders className="w-4 h-4" />
-              <span>What-If Simulator</span>
-            </button>
-            <button
-              onClick={() => setCurrentSection('smarter-payments')}
-              className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
-                currentSection === 'smarter-payments'
-                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <CalendarClock className="w-4 h-4" />
-              <span>Smarter Payments</span>
-            </button>
             {(featurePreferences.helocEnabled || featurePreferences.checkingEnabled) && (
               <button
                 onClick={() => {
@@ -573,6 +551,28 @@ function App() {
             >
               <PiggyBank className="w-4 h-4" />
               <span>Savings</span>
+            </button>
+            <button
+              onClick={() => setCurrentSection('what-if')}
+              className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
+                currentSection === 'what-if'
+                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <Sliders className="w-4 h-4" />
+              <span>What-If Simulator</span>
+            </button>
+            <button
+              onClick={() => setCurrentSection('smarter-payments')}
+              className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
+                currentSection === 'smarter-payments'
+                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <CalendarClock className="w-4 h-4" />
+              <span>Smarter Payments</span>
             </button>
             <button
               onClick={() => setCurrentSection('progress')}
