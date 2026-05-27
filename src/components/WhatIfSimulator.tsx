@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { StorageService } from '../services/storage';
-import { CalculationService } from '../services/calculations';
+import type { Debt } from '../types';
 
 interface SimulatorInputs {
   monthlyNetIncome: number;
@@ -18,10 +18,132 @@ const clampPercentToStep = (value: number): number => {
   return Math.round(clamped / 5) * 5;
 };
 
+interface SimDebt {
+  id: string;
+  accountName: string;
+  category: string;
+  balance: number;
+  annualRate: number;
+  minimumPayment: number;
+}
+
+interface SimResult {
+  months: number;
+  totalInterest: number;
+  windfallApplied: number;
+}
+
+const MAX_SIM_MONTHS = 1200;
+
+const formatCurrency = (value: number): string =>
+  new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+
+const formatMonthYearFromMonths = (monthsFromNow: number): string => {
+  if (monthsFromNow <= 0) return 'No active debt';
+  const date = new Date();
+  date.setMonth(date.getMonth() + monthsFromNow);
+  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+};
+
+const isHelocLikeDebt = (debt: Debt): boolean => {
+  const haystack = `${debt.accountName} ${debt.category} ${debt.id}`.toLowerCase();
+  return haystack.includes('heloc') || debt.transferredToHELOC === true;
+};
+
+const cloneSimDebts = (debts: SimDebt[]): SimDebt[] => debts.map((d) => ({ ...d }));
+
+const runPayoffSimulation = (debts: SimDebt[], baseExtraPayment: number, windfall: number): SimResult => {
+  const working = cloneSimDebts(debts);
+  let windfallApplied = 0;
+
+  if (windfall > 0) {
+    const highestRate = [...working]
+      .filter((d) => d.balance > 0)
+      .sort((a, b) => b.annualRate - a.annualRate || b.balance - a.balance)[0];
+
+    if (highestRate) {
+      windfallApplied = Math.min(windfall, highestRate.balance);
+      highestRate.balance = Math.max(0, highestRate.balance - windfallApplied);
+    }
+  }
+
+  let months = 0;
+  let totalInterest = 0;
+  let extraPool = Math.max(0, baseExtraPayment);
+
+  while (working.some((d) => d.balance > 0.005) && months < MAX_SIM_MONTHS) {
+    months += 1;
+    let freedMinimums = 0;
+
+    // 1) Add monthly interest to each active debt balance.
+    for (const debt of working) {
+      if (debt.balance <= 0.005) continue;
+      const monthlyRate = debt.annualRate / 100 / 12;
+      const interest = debt.balance * monthlyRate;
+      totalInterest += interest;
+      debt.balance += interest;
+    }
+
+    // 2) Pay minimums on all active debts.
+    for (const debt of working) {
+      if (debt.balance <= 0.005) continue;
+      const minPay = Math.max(0, debt.minimumPayment);
+      const payment = Math.min(minPay, debt.balance);
+      debt.balance -= payment;
+
+      if (debt.balance <= 0.005) {
+        debt.balance = 0;
+        freedMinimums += minPay;
+      }
+    }
+
+    // 3) Avalanche extra to highest-rate remaining debt.
+    const target = [...working]
+      .filter((d) => d.balance > 0.005)
+      .sort((a, b) => b.annualRate - a.annualRate || b.balance - a.balance)[0];
+
+    if (target && extraPool > 0) {
+      const extraPayment = Math.min(extraPool, target.balance);
+      target.balance -= extraPayment;
+
+      if (target.balance <= 0.005) {
+        target.balance = 0;
+        freedMinimums += Math.max(0, target.minimumPayment);
+      }
+    }
+
+    // 4) Snowball/snowflake effect: freed minimums increase future extra pool.
+    extraPool += freedMinimums;
+  }
+
+  return {
+    months,
+    totalInterest: Math.round(totalInterest * 100) / 100,
+    windfallApplied: Math.round(windfallApplied * 100) / 100,
+  };
+};
+
 export default function WhatIfSimulator() {
   const profileAtLoad = useMemo(() => StorageService.getFinancialProfile(), []);
-  const debtSnapshotAtLoad = useMemo(
-    () => StorageService.getDebts().filter((d) => !d.isPaidOff).map((d) => ({ ...d })),
+  const simulationDebts = useMemo(
+    () =>
+      StorageService.getDebts()
+        .filter((d) => !d.isPaidOff && d.currentBalance > 0 && !isHelocLikeDebt(d))
+        .map(
+          (d): SimDebt => ({
+            id: d.id,
+            accountName: d.accountName,
+            category: d.category,
+            balance: d.currentBalance,
+            annualRate: d.interestRate,
+            minimumPayment: d.minimumPayment,
+          })
+        ),
     []
   );
 
@@ -40,30 +162,40 @@ export default function WhatIfSimulator() {
 
   const [inputs, setInputs] = useState<SimulatorInputs>(baselineInputs);
 
-  /** Current plan: same slider values as scenario but no windfall or extra monthly add-on. */
-  const currentPlanInputs = useMemo<SimulatorInputs>(
-    () => ({
-      ...inputs,
-      oneTimeWindfall: 0,
-      extraMonthlyContribution: 0,
-    }),
-    [inputs]
+  const baseMonthlySurplus = useMemo(
+    () =>
+      Math.max(
+        0,
+        inputs.monthlyNetIncome -
+          inputs.monthlyEssentialExpenses -
+          inputs.monthlyDiscretionaryExpenses -
+          inputs.monthlySavingsGoal
+      ),
+    [
+      inputs.monthlyNetIncome,
+      inputs.monthlyEssentialExpenses,
+      inputs.monthlyDiscretionaryExpenses,
+      inputs.monthlySavingsGoal,
+    ]
   );
 
-  const baselineResult = useMemo(
-    () => CalculationService.simulateDashboardStylePayoff(debtSnapshotAtLoad, currentPlanInputs),
-    [debtSnapshotAtLoad, currentPlanInputs]
-  );
-
+  const baselineResult = useMemo(() => runPayoffSimulation(simulationDebts, baseMonthlySurplus, 0), [
+    simulationDebts,
+    baseMonthlySurplus,
+  ]);
   const scenarioResult = useMemo(
-    () => CalculationService.simulateDashboardStylePayoff(debtSnapshotAtLoad, inputs),
-    [debtSnapshotAtLoad, inputs]
+    () =>
+      runPayoffSimulation(
+        simulationDebts,
+        baseMonthlySurplus + Math.max(0, inputs.extraMonthlyContribution),
+        Math.max(0, inputs.oneTimeWindfall)
+      ),
+    [simulationDebts, baseMonthlySurplus, inputs.extraMonthlyContribution, inputs.oneTimeWindfall]
   );
-
-  const baselineTotalMonths = baselineResult.projection.totalMonths;
-  const scenarioTotalMonths = scenarioResult.projection.totalMonths;
-  const baselineTotalInterest = baselineResult.projection.totalInterest;
-  const scenarioTotalInterest = scenarioResult.projection.totalInterest;
+  const baselineTotalMonths = baselineResult.months;
+  const scenarioTotalMonths = scenarioResult.months;
+  const baselineTotalInterest = baselineResult.totalInterest;
+  const scenarioTotalInterest = scenarioResult.totalInterest;
 
   /** Positive = scenario pays off sooner / saves interest vs current plan. */
   const monthsDifference = baselineTotalMonths - scenarioTotalMonths;
@@ -77,8 +209,9 @@ export default function WhatIfSimulator() {
       baselineTotalInterest,
       scenarioTotalInterest,
       estimatedInterestSaved,
-      windfall: inputs.oneTimeWindfall,
-      extraMonthlyContribution: inputs.extraMonthlyContribution,
+      windfallApplied: scenarioResult.windfallApplied,
+      extraMonthlyApplied: Math.max(0, inputs.extraMonthlyContribution),
+      debtsIncluded: simulationDebts.length,
     });
   }, [
     baselineTotalMonths,
@@ -87,8 +220,9 @@ export default function WhatIfSimulator() {
     baselineTotalInterest,
     scenarioTotalInterest,
     estimatedInterestSaved,
-    inputs.oneTimeWindfall,
+    scenarioResult.windfallApplied,
     inputs.extraMonthlyContribution,
+    simulationDebts.length,
   ]);
 
   const setNumberInput = (field: keyof SimulatorInputs, value: string) => {
@@ -109,7 +243,7 @@ export default function WhatIfSimulator() {
           <p className="font-bold">Sandbox Mode - No data is saved</p>
           <p className="text-sm">
             This simulator is a safe what-if space. Changes here do not affect your real NOVO profile,
-            strategy, or debts. Payoff math uses the same calculation service as the Dashboard.
+            strategy, or debts. This version uses a local, explicit month-by-month avalanche loop.
           </p>
         </div>
       </div>
@@ -249,27 +383,23 @@ export default function WhatIfSimulator() {
           <div className="space-y-3">
             <div className="flex justify-between border-b border-gray-100 pb-2">
               <span className="text-gray-600">Total surplus available</span>
-              <span className="font-bold text-gray-900">
-                {CalculationService.formatCurrency(scenarioResult.cashFlow.surplusAfterSavings)}
-              </span>
+              <span className="font-bold text-gray-900">{formatCurrency(baseMonthlySurplus)}</span>
             </div>
             <div className="flex justify-between border-b border-gray-100 pb-2">
               <span className="text-gray-600">Amount going to savings</span>
-              <span className="font-bold text-[#27AE60]">
-                {CalculationService.formatCurrency(scenarioResult.cashFlow.savingsCarveOut)}
-              </span>
+              <span className="font-bold text-[#27AE60]">{formatCurrency(inputs.monthlySavingsGoal)}</span>
             </div>
             <div className="flex justify-between border-b border-gray-100 pb-2">
               <span className="text-gray-600">Amount going to debt</span>
               <span className="font-bold text-[#1E3A5F]">
-                {CalculationService.formatCurrency(scenarioResult.extraPayment)}
+                {formatCurrency(baseMonthlySurplus + Math.max(0, inputs.extraMonthlyContribution))}
               </span>
             </div>
             <div className="flex justify-between border-b border-gray-100 pb-2">
               <span className="text-gray-600">Projected debt-free date</span>
               <span className="font-bold text-[#1E3A5F]">
-                {scenarioResult.projection.totalMonths > 0
-                  ? CalculationService.formatMonthYear(scenarioResult.projection.debtFreeDate)
+                {scenarioTotalMonths > 0
+                  ? formatMonthYearFromMonths(scenarioTotalMonths)
                   : 'No active debt'}
               </span>
             </div>
@@ -277,7 +407,7 @@ export default function WhatIfSimulator() {
               <span className="text-gray-600">Estimated interest saved</span>
               <span className={`font-bold ${estimatedInterestSaved >= 0 ? 'text-[#27AE60]' : 'text-red-600'}`}>
                 {estimatedInterestSaved >= 0 ? '+' : '-'}{' '}
-                {CalculationService.formatCurrency(Math.abs(estimatedInterestSaved))}
+                {formatCurrency(Math.abs(estimatedInterestSaved))}
               </span>
             </div>
           </div>
