@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
@@ -40,9 +40,19 @@ export default function WhatIfSimulator() {
 
   const [inputs, setInputs] = useState<SimulatorInputs>(baselineInputs);
 
+  /** Current plan: same slider values as scenario but no windfall or extra monthly add-on. */
+  const currentPlanInputs = useMemo<SimulatorInputs>(
+    () => ({
+      ...inputs,
+      oneTimeWindfall: 0,
+      extraMonthlyContribution: 0,
+    }),
+    [inputs]
+  );
+
   const baselineResult = useMemo(
-    () => CalculationService.simulateDashboardStylePayoff(debtSnapshotAtLoad, baselineInputs),
-    [debtSnapshotAtLoad, baselineInputs]
+    () => CalculationService.simulateDashboardStylePayoff(debtSnapshotAtLoad, currentPlanInputs),
+    [debtSnapshotAtLoad, currentPlanInputs]
   );
 
   const scenarioResult = useMemo(
@@ -50,10 +60,36 @@ export default function WhatIfSimulator() {
     [debtSnapshotAtLoad, inputs]
   );
 
-  const monthsDifference =
-    baselineResult.projection.totalMonths - scenarioResult.projection.totalMonths;
-  const estimatedInterestSaved =
-    baselineResult.projection.totalInterest - scenarioResult.projection.totalInterest;
+  const baselineTotalMonths = baselineResult.projection.totalMonths;
+  const scenarioTotalMonths = scenarioResult.projection.totalMonths;
+  const baselineTotalInterest = baselineResult.projection.totalInterest;
+  const scenarioTotalInterest = scenarioResult.projection.totalInterest;
+
+  /** Positive = scenario pays off sooner / saves interest vs current plan. */
+  const monthsDifference = baselineTotalMonths - scenarioTotalMonths;
+  const estimatedInterestSaved = baselineTotalInterest - scenarioTotalInterest;
+
+  useEffect(() => {
+    console.log('[NOVO What-If comparison]', {
+      baselineTotalMonths,
+      scenarioTotalMonths,
+      monthsDifference,
+      baselineTotalInterest,
+      scenarioTotalInterest,
+      estimatedInterestSaved,
+      windfall: inputs.oneTimeWindfall,
+      extraMonthlyContribution: inputs.extraMonthlyContribution,
+    });
+  }, [
+    baselineTotalMonths,
+    scenarioTotalMonths,
+    monthsDifference,
+    baselineTotalInterest,
+    scenarioTotalInterest,
+    estimatedInterestSaved,
+    inputs.oneTimeWindfall,
+    inputs.extraMonthlyContribution,
+  ]);
 
   const setNumberInput = (field: keyof SimulatorInputs, value: string) => {
     const parsed = parseFloat(value);

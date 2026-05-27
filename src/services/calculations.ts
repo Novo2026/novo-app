@@ -277,18 +277,37 @@ export const CalculationService = {
       .filter((d) => !d.isPaidOff && d.currentBalance > 0)
       .sort((a, b) => b.interestRate - a.interestRate || a.id.localeCompare(b.id));
 
+    let principalApplied = 0;
     for (const d of targets) {
       if (remaining <= 0) break;
       const pay = Math.min(d.currentBalance, remaining);
       d.currentBalance = Math.round((d.currentBalance - pay) * 100) / 100;
       remaining = Math.round((remaining - pay) * 100) / 100;
+      principalApplied += pay;
       if (d.currentBalance <= 0) {
         d.currentBalance = 0;
         d.isPaidOff = true;
       }
     }
 
+    console.log('[NOVO What-If windfall]', {
+      windfall,
+      principalApplied: Math.round(principalApplied * 100) / 100,
+      remainingUnapplied: Math.round(remaining * 100) / 100,
+      targets: targets.map((d) => ({
+        name: d.accountName,
+        rate: d.interestRate,
+        balanceAfter: d.currentBalance,
+        paidOff: d.isPaidOff,
+      })),
+    });
+
     return clones;
+  },
+
+  /** Exclude stored HELOC rows; projectDebtPayoff adds tracker HELOC once as HELOC_VIRTUAL. */
+  filterDebtsForPayoffProjection(debts: Debt[]): Debt[] {
+    return debts.filter((d) => d.category !== 'HELOC' && d.id !== 'HELOC_VIRTUAL');
   },
 
   /**
@@ -308,8 +327,10 @@ export const CalculationService = {
       extraMonthlyContribution: number;
     }
   ) {
-    const afterWindfall = this.applySimulatorWindfall(debtSnapshot, inputs.oneTimeWindfall);
-    const activeDebts = afterWindfall.filter((d) => !d.isPaidOff);
+    const tradDebts = this.filterDebtsForPayoffProjection(debtSnapshot);
+    const windfall = Math.max(0, inputs.oneTimeWindfall ?? 0);
+    const afterWindfall = this.applySimulatorWindfall(tradDebts, windfall);
+    const activeDebts = afterWindfall.filter((d) => !d.isPaidOff && d.currentBalance > 0);
     const totalMinimumPayments = activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
 
     const cashFlow = this.calculateCashFlow(
@@ -321,10 +342,13 @@ export const CalculationService = {
       inputs.surplusCommitmentPercent
     );
 
-    const extraPayment = Math.max(0, cashFlow.recommendedExtraPayment + inputs.extraMonthlyContribution);
+    const extraPayment = Math.max(
+      0,
+      cashFlow.recommendedExtraPayment + Math.max(0, inputs.extraMonthlyContribution ?? 0)
+    );
     const projection = this.projectDebtPayoff(activeDebts, extraPayment);
 
-    return { cashFlow, extraPayment, projection };
+    return { cashFlow, extraPayment, projection, activeDebtCount: activeDebts.length };
   },
 
   calculateHomeEquityMetrics(homeValue: number, mortgageBalance: number) {
@@ -367,9 +391,10 @@ export const CalculationService = {
       isAmortized: false,
     } : null;
 
-    // Include HELOC in debts if it has a balance
-    const allDebts = helocDebt ? [...debts, helocDebt] : debts;
-    const activeDebts = allDebts.filter(d => !d.isPaidOff);
+    // Include HELOC in debts if it has a balance (avoid duplicating a HELOC already in the list)
+    const tradDebts = this.filterDebtsForPayoffProjection(debts);
+    const allDebts = helocDebt ? [...tradDebts, helocDebt] : tradDebts;
+    const activeDebts = allDebts.filter((d) => !d.isPaidOff && d.currentBalance > 0);
 
     if (activeDebts.length === 0) {
       return {
