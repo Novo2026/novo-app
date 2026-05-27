@@ -1,5 +1,3 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Debt } from '../types';
 
 interface Tip {
@@ -47,38 +45,13 @@ const ALL_TIPS: Tip[] = [
   { id: 36, category: 'heloc', text: 'When using a HELOC to accelerate payoff, track your draws carefully. The strategy works best with disciplined spending and consistent income deposits.' },
 ];
 
-const ROTATE_MS = 5000;
-const FADE_MS = 400;
-
-function getPersonalizedTips(debts: Debt[]): Tip[] {
-  const categories = new Set(debts.map((d) => d.category));
-  const hasHELOC = categories.has('HELOC');
-  const hasMortgage = categories.has('Mortgage');
-  const hasCreditCard = categories.has('Credit Card');
-  const hasAuto = categories.has('Auto Loan');
-  const hasStudent = categories.has('Student Loan');
-
-  const priority: Tip['category'][] = ['general', 'behavioral'];
-  if (hasMortgage) priority.unshift('mortgage');
-  if (hasCreditCard) priority.unshift('credit_card');
-  if (hasAuto) priority.push('auto');
-  if (hasStudent) priority.push('student');
-  if (hasHELOC) priority.push('heloc');
-
-  return [...ALL_TIPS].sort((a, b) => {
-    const ai = priority.indexOf(a.category);
-    const bi = priority.indexOf(b.category);
-    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-  });
-}
+const TICKER_DURATION_S = 22.5;
 
 function getDayOfYear(): number {
   const now = new Date();
   const start = new Date(now.getFullYear(), 0, 0);
   return Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
 }
-
-const STORAGE_KEY = 'novo_tip_index_offset';
 
 const categoryLabel: Record<Tip['category'], string> = {
   general: 'General',
@@ -91,106 +64,63 @@ const categoryLabel: Record<Tip['category'], string> = {
 };
 
 const categoryColor: Record<Tip['category'], string> = {
-  general: 'bg-sky-100 text-sky-700',
-  mortgage: 'bg-amber-100 text-amber-700',
-  credit_card: 'bg-red-100 text-red-700',
-  auto: 'bg-emerald-100 text-emerald-700',
-  student: 'bg-violet-100 text-violet-700',
-  behavioral: 'bg-teal-100 text-teal-700',
-  heloc: 'bg-blue-100 text-blue-700',
+  general: 'bg-sky-400 text-slate-900',
+  mortgage: 'bg-amber-400 text-slate-900',
+  credit_card: 'bg-red-400 text-slate-900',
+  auto: 'bg-emerald-400 text-slate-900',
+  student: 'bg-violet-400 text-slate-900',
+  behavioral: 'bg-teal-400 text-slate-900',
+  heloc: 'bg-blue-400 text-slate-900',
 };
 
 interface DailyTipProps {
   debts?: Debt[];
 }
 
-export default function DailyTip({ debts = [] }: DailyTipProps) {
-  const tips = getPersonalizedTips(debts);
-  const dayBase = getDayOfYear() % tips.length;
-
-  const getStoredOffset = (): number => {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? parseInt(raw, 10) : 0;
-  };
-
-  const [offset, setOffset] = useState(getStoredOffset);
-  const [tipVisible, setTipVisible] = useState(true);
-
-  const currentIdx = (dayBase + offset) % tips.length;
-  const tip = tips[currentIdx];
-
-  const fadeTimeoutRef = useRef<number | null>(null);
-  const rotateIntervalRef = useRef<number | null>(null);
-
-  const navigateTip = useCallback(
-    (dir: 1 | -1) => {
-      if (fadeTimeoutRef.current) window.clearTimeout(fadeTimeoutRef.current);
-      setTipVisible(false);
-      fadeTimeoutRef.current = window.setTimeout(() => {
-        setOffset((prev) => {
-          const next = (prev + dir + tips.length) % tips.length;
-          localStorage.setItem(STORAGE_KEY, String(next));
-          return next;
-        });
-        setTipVisible(true);
-      }, FADE_MS);
-    },
-    [tips.length]
-  );
-
-  const startAutoRotate = useCallback(() => {
-    if (rotateIntervalRef.current) window.clearInterval(rotateIntervalRef.current);
-    rotateIntervalRef.current = window.setInterval(() => navigateTip(1), ROTATE_MS);
-  }, [navigateTip]);
-
-  useEffect(() => {
-    startAutoRotate();
-    return () => {
-      if (rotateIntervalRef.current) window.clearInterval(rotateIntervalRef.current);
-      if (fadeTimeoutRef.current) window.clearTimeout(fadeTimeoutRef.current);
-    };
-  }, [startAutoRotate]);
-
-  const handleManualNav = (dir: 1 | -1) => {
-    navigateTip(dir);
-    startAutoRotate();
-  };
+export default function DailyTip({ debts: _debts = [] }: DailyTipProps) {
+  const tipIndex = getDayOfYear() % ALL_TIPS.length;
+  const tip = ALL_TIPS[tipIndex];
 
   return (
-    <div className="bg-slate-50 border border-slate-200/80 rounded-lg px-3 py-2.5 sm:px-4">
-      <div className="flex items-center gap-2 sm:gap-3">
-        <button
-          type="button"
-          onClick={() => handleManualNav(-1)}
-          className="flex-shrink-0 p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
-          aria-label="Previous tip"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
+    <div
+      className="flex h-10 rounded-lg overflow-hidden bg-slate-800 border border-slate-700/80"
+      role="marquee"
+      aria-live="off"
+      aria-label={`Daily tip: ${tip.text}`}
+    >
+      <style>{`
+        @keyframes novo-tip-ticker {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(-50%);
+          }
+        }
+        .novo-tip-ticker-track {
+          display: inline-flex;
+          white-space: nowrap;
+          padding-left: 100%;
+          animation: novo-tip-ticker ${TICKER_DURATION_S}s linear infinite;
+          will-change: transform;
+        }
+      `}</style>
 
-        <div className="flex-1 min-w-0 flex items-center gap-2">
-          <span
-            className={`flex-shrink-0 text-[10px] sm:text-xs font-semibold px-1.5 py-0.5 rounded ${categoryColor[tip.category]}`}
-          >
-            {categoryLabel[tip.category]}
-          </span>
-          <p
-            className={`text-xs sm:text-sm text-slate-700 leading-snug line-clamp-2 transition-opacity duration-[400ms] ease-in-out ${
-              tipVisible ? 'opacity-100' : 'opacity-0'
-            }`}
-          >
+      <div className="flex-shrink-0 flex items-center px-3 border-r border-slate-600/80 bg-slate-800 z-10">
+        <span
+          className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${categoryColor[tip.category]}`}
+        >
+          {categoryLabel[tip.category]}
+        </span>
+      </div>
+
+      <div className="flex-1 min-w-0 overflow-hidden relative">
+        <div className="novo-tip-ticker-track h-full items-center text-sm text-white">
+          <span className="pr-24">{tip.text}</span>
+          <span className="pr-24" aria-hidden="true">
             {tip.text}
-          </p>
+          </span>
         </div>
-
-        <button
-          type="button"
-          onClick={() => handleManualNav(1)}
-          className="flex-shrink-0 p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
-          aria-label="Next tip"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
       </div>
     </div>
   );
