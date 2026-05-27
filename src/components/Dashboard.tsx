@@ -6,6 +6,7 @@ import LogPaymentModal from './LogPaymentModal';
 import EditPaymentModal from './EditPaymentModal';
 import EditDebtModal from './EditDebtModal';
 import DailyTip from './DailyTip';
+import FinancialHealthScore from './FinancialHealthScore';
 import type { Debt, Transaction } from '../types';
 
 interface DashboardProps {
@@ -366,6 +367,15 @@ export default function Dashboard({
           <p className="text-gray-600 mt-1">Here's your debt freedom progress</p>
         </div>
       )}
+
+      <FinancialHealthScore
+        monthlyGrossIncome={financialProfile?.monthlyGrossIncome ?? 0}
+        totalMinimumPayments={totalMinimumPayments}
+        monthlySurplus={cashFlowMetrics?.grossSurplus ?? null}
+        debtProgressPercent={metrics.progressPercentage}
+        monthlySavingsGoal={financialProfile?.monthlySavingsGoal ?? 0}
+        monthlySavingsRate={savingsMetrics.monthlySavingsRate}
+      />
 
       <DailyTip debts={debts} />
 
