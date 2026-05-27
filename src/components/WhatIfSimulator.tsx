@@ -62,13 +62,17 @@ const runPayoffSimulation = (debts: SimDebt[], baseExtraPayment: number, windfal
   let windfallApplied = 0;
 
   if (windfall > 0) {
-    const highestRate = [...working]
+    let remainingWindfall = windfall;
+    const targets = [...working]
       .filter((d) => d.balance > 0)
-      .sort((a, b) => b.annualRate - a.annualRate || b.balance - a.balance)[0];
+      .sort((a, b) => b.annualRate - a.annualRate || b.balance - a.balance);
 
-    if (highestRate) {
-      windfallApplied = Math.min(windfall, highestRate.balance);
-      highestRate.balance = Math.max(0, highestRate.balance - windfallApplied);
+    for (const target of targets) {
+      if (remainingWindfall <= 0) break;
+      const applied = Math.min(remainingWindfall, target.balance);
+      target.balance = Math.max(0, target.balance - applied);
+      windfallApplied += applied;
+      remainingWindfall -= applied;
     }
   }
 
