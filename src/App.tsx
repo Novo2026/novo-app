@@ -303,7 +303,7 @@ function App() {
       case 'what-if':
         return <WhatIfSimulator />;
       case 'tracker':
-        return <Tracker />;
+        return <Tracker onDataUpdate={handleDataUpdate} />;
       case 'savings':
         return <SavingsTracker />;
       case 'progress':

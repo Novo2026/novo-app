@@ -22,7 +22,7 @@ interface SuccessBanner {
   newBalance: number;
 }
 
-export function HELOCTracker() {
+export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
   const [trackingType, setTrackingType] = useState<TrackingType>(() => {
     const saved = localStorage.getItem('novo_tracking_type');
     return (saved as TrackingType) || 'heloc';
@@ -442,12 +442,14 @@ export function HELOCTracker() {
                     }
 
                     setRefreshTrigger(prev => prev + 1);
+                    onDataUpdate?.();
                   } else {
                     if (confirm('Delete this transaction? All balances will be recalculated from this point forward.')) {
                       const filtered = transactions.filter(t => t.id !== id);
                       recalculateBalances(filtered);
                       localStorage.setItem('novo_heloc_transactions', JSON.stringify(filtered));
                       setRefreshTrigger(prev => prev + 1);
+                      onDataUpdate?.();
                     }
                   }
                 }}
@@ -727,7 +729,7 @@ export function HELOCTracker() {
       )}
 
       {(trackingType === 'checking' || trackingType === 'both') && (
-        <CheckingTracker />
+        <CheckingTracker onDataUpdate={onDataUpdate} />
       )}
 
       {showDrawModal && (
@@ -741,6 +743,7 @@ export function HELOCTracker() {
             setEditingTransaction(null);
             setSuccessBanner({ type: 'draw', amount, newBalance });
             setRefreshTrigger(prev => prev + 1);
+            onDataUpdate?.();
             setTransactionJustLogged(true);
           }}
           currentBalance={currentBalance}
@@ -759,6 +762,7 @@ export function HELOCTracker() {
             setEditingTransaction(null);
             setSuccessBanner({ type: 'payment', amount, newBalance });
             setRefreshTrigger(prev => prev + 1);
+            onDataUpdate?.();
             setTransactionJustLogged(true);
           }}
           currentBalance={currentBalance}
@@ -777,6 +781,7 @@ export function HELOCTracker() {
             setEditingTransaction(null);
             setSuccessBanner({ type: 'interest', amount, newBalance });
             setRefreshTrigger(prev => prev + 1);
+            onDataUpdate?.();
             setTransactionJustLogged(true);
           }}
           currentBalance={currentBalance}

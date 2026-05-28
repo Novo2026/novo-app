@@ -5,7 +5,11 @@ import { StorageService } from '../services/storage';
 
 type TrackerView = 'checking' | 'heloc';
 
-export function Tracker() {
+interface TrackerProps {
+  onDataUpdate?: () => void;
+}
+
+export function Tracker({ onDataUpdate }: TrackerProps) {
   const featurePreferences = StorageService.getFeaturePreferences();
   const { helocEnabled, checkingEnabled } = featurePreferences;
 
@@ -37,8 +41,8 @@ export function Tracker() {
         </div>
       )}
 
-      {currentView === 'checking' && checkingEnabled && <CheckingTracker />}
-      {currentView === 'heloc' && helocEnabled && <HELOCTracker />}
+      {currentView === 'checking' && checkingEnabled && <CheckingTracker onDataUpdate={onDataUpdate} />}
+      {currentView === 'heloc' && helocEnabled && <HELOCTracker onDataUpdate={onDataUpdate} />}
 
       {!checkingEnabled && !helocEnabled && (
         <div className="bg-white rounded-lg shadow-md p-8 text-center">

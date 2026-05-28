@@ -44,7 +44,7 @@ const DISCRETIONARY_CATEGORIES = [
   'Other Discretionary'
 ];
 
-export function CheckingTracker() {
+export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
   const [showModal, setShowModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<CheckingTransaction | null>(null);
@@ -268,6 +268,7 @@ export function CheckingTracker() {
           }
 
           setRefreshTrigger(prev => prev + 1);
+          onDataUpdate?.();
           setTimeout(() => setSuccessMessage(null), 5000);
         }}
       />
@@ -298,6 +299,7 @@ export function CheckingTracker() {
             setEditingTransaction(null);
             setSuccessMessage(message);
             setRefreshTrigger(prev => prev + 1);
+            onDataUpdate?.();
             setTimeout(() => setSuccessMessage(null), 5000);
           }}
           currentBalance={currentBalance}
