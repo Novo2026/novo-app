@@ -34,13 +34,12 @@ export default function InstallmentLoanFields({
         <div className="relative">
           <span className="absolute left-3 top-2 text-gray-500">$</span>
           <input
-            type="number"
+            type="text"
+            inputMode="decimal"
             value={originalAmount}
             onChange={(e) => onOriginalAmountChange(e.target.value)}
             className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
             placeholder="0.00"
-            step="0.01"
-            min="0"
           />
         </div>
       </div>

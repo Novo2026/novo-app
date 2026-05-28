@@ -14,6 +14,13 @@ export function isInstallmentLoanCategory(category: DebtCategory): boolean {
 }
 
 /** All three optional fields present — enables remaining-term-aware payoff math. */
+/** Parse currency text from installment form fields (preserves commas in input). */
+export function parseInstallmentCurrencyInput(value: string): number {
+  const cleaned = value.replace(/[^0-9.]/g, '');
+  if (!cleaned) return NaN;
+  return parseFloat(cleaned);
+}
+
 export function hasCompleteInstallmentMetadata(debt: Debt): boolean {
   return (
     isInstallmentLoanCategory(debt.category) &&
@@ -166,9 +173,12 @@ export function applyInstallmentFieldsToDebt(
     return next;
   }
 
-  const originalNum = parseFloat(fields.originalAmount);
+  const trimmedOriginal = fields.originalAmount.trim();
+  const originalNum = trimmedOriginal
+    ? parseInstallmentCurrencyInput(trimmedOriginal)
+    : NaN;
   const termNum = parseInt(fields.loanTerm, 10);
-  const hasOriginal = !Number.isNaN(originalNum) && originalNum > 0;
+  const hasOriginal = trimmedOriginal.length > 0 && !Number.isNaN(originalNum) && originalNum > 0;
   const hasStart = Boolean(fields.loanStartDate.trim());
   const hasTerm = !Number.isNaN(termNum) && termNum > 0;
 
@@ -190,4 +200,54 @@ export function applyInstallmentFieldsToDebt(
 export function getPayoffScheduleMonthCap(debt: Debt): number | undefined {
   const remaining = getInstallmentRemainingTermMonths(debt);
   return remaining != null && remaining > 0 ? remaining : undefined;
+}
+
+/** Installment loan with start date + term — contractual maturity (display only). */
+export function hasProjectedPayoffMetadata(debt: Debt): boolean {
+  return (
+    isInstallmentLoanCategory(debt.category) &&
+    Boolean(debt.loanStartDate?.trim()) &&
+    debt.loanTerm != null &&
+    debt.loanTerm > 0
+  );
+}
+
+/** Contractual payoff date: loan start + full term in months. */
+export function getProjectedPayoffDate(debt: Debt): Date | null {
+  if (!hasProjectedPayoffMetadata(debt) || !debt.loanStartDate) return null;
+
+  const start = parseLoanStartDate(debt.loanStartDate);
+  const termMonths = getLoanTermInMonths(debt);
+  if (!start || termMonths == null) return null;
+
+  const payoff = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  payoff.setMonth(payoff.getMonth() + termMonths);
+  return payoff;
+}
+
+export function formatProjectedPayoffMonthYear(debt: Debt): string | null {
+  const payoff = getProjectedPayoffDate(debt);
+  if (!payoff) return null;
+  return payoff.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
+
+export function getMonthsRemainingUntilProjectedPayoff(debt: Debt): number | null {
+  const payoff = getProjectedPayoffDate(debt);
+  if (!payoff) return null;
+
+  const today = new Date();
+  const months =
+    (payoff.getFullYear() - today.getFullYear()) * 12 +
+    (payoff.getMonth() - today.getMonth());
+  const dayAdjust = payoff.getDate() < today.getDate() ? -1 : 0;
+  return Math.max(0, months + dayAdjust);
+}
+
+export function formatOriginalAmountForDisplay(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
 }

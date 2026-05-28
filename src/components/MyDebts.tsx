@@ -15,7 +15,11 @@ import CelebrationModal from './CelebrationModal';
 import {
   formatLoanStartDateForDisplay,
   formatLoanTermForDisplay,
+  formatOriginalAmountForDisplay,
+  formatProjectedPayoffMonthYear,
+  getMonthsRemainingUntilProjectedPayoff,
   hasCompleteInstallmentMetadata,
+  hasProjectedPayoffMetadata,
   isInstallmentLoanCategory,
 } from '../utils/installmentLoan';
 import type { Debt, Transaction, Milestone } from '../types';
@@ -570,7 +574,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                   <div className="bg-slate-50 rounded-lg px-3 py-2">
                     <p className="text-xs text-gray-500">Original balance</p>
                     <p className="font-semibold text-gray-800">
-                      {CalculationService.formatCurrency(debt.originalAmount)}
+                      {formatOriginalAmountForDisplay(debt.originalAmount)}
                     </p>
                   </div>
                 )}
@@ -593,6 +597,17 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                         </span>
                       )}
                     </p>
+                    {hasProjectedPayoffMetadata(debt) && formatProjectedPayoffMonthYear(debt) && (
+                      <p className="text-xs text-[#1E3A5F] mt-1.5 font-medium">
+                        Projected payoff: {formatProjectedPayoffMonthYear(debt)}
+                        {(() => {
+                          const monthsLeft = getMonthsRemainingUntilProjectedPayoff(debt);
+                          return monthsLeft != null
+                            ? ` · ${monthsLeft} month${monthsLeft !== 1 ? 's' : ''} left`
+                            : '';
+                        })()}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

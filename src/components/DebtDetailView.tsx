@@ -3,6 +3,15 @@ import { useState } from 'react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  formatLoanStartDateForDisplay,
+  formatLoanTermForDisplay,
+  formatOriginalAmountForDisplay,
+  formatProjectedPayoffMonthYear,
+  getMonthsRemainingUntilProjectedPayoff,
+  hasProjectedPayoffMetadata,
+  isInstallmentLoanCategory,
+} from '../utils/installmentLoan';
 import type { Debt, Transaction } from '../types';
 
 interface DebtDetailViewProps {
@@ -135,6 +144,63 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
         {!debt.isPaidOff && (
           <div className="text-sm text-gray-600">
             Minimum Payment: {CalculationService.formatCurrency(debt.minimumPayment)}
+          </div>
+        )}
+
+        {isInstallmentLoanCategory(debt.category) &&
+          (debt.originalAmount != null ||
+            debt.loanStartDate ||
+            (debt.loanTerm != null && debt.loanTerm > 0)) && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
+                Loan details
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                {debt.originalAmount != null && debt.originalAmount > 0 && (
+                  <div>
+                    <p className="text-gray-500 text-xs mb-0.5">Original balance</p>
+                    <p className="font-semibold text-gray-800">
+                      {formatOriginalAmountForDisplay(debt.originalAmount)}
+                    </p>
+                  </div>
+                )}
+                {debt.loanStartDate && (
+                  <div>
+                    <p className="text-gray-500 text-xs mb-0.5">Loan start</p>
+                    <p className="font-semibold text-gray-800">
+                      {formatLoanStartDateForDisplay(debt.loanStartDate)}
+                    </p>
+                  </div>
+                )}
+                {debt.loanTerm != null && debt.loanTerm > 0 && (
+                  <div>
+                    <p className="text-gray-500 text-xs mb-0.5">Term</p>
+                    <p className="font-semibold text-gray-800">
+                      {formatLoanTermForDisplay(debt.loanTerm, debt.loanTermUnit, debt.isAmortized)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+        {hasProjectedPayoffMetadata(debt) && formatProjectedPayoffMonthYear(debt) && (
+          <div className="mt-4 bg-slate-50 border border-slate-200 rounded-lg px-4 py-3">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              Projected Payoff
+            </p>
+            <p className="text-lg font-bold text-[#1E3A5F]">
+              {formatProjectedPayoffMonthYear(debt)}
+            </p>
+            {(() => {
+              const monthsLeft = getMonthsRemainingUntilProjectedPayoff(debt);
+              if (monthsLeft == null) return null;
+              return (
+                <p className="text-sm text-gray-600 mt-0.5">
+                  {monthsLeft} month{monthsLeft !== 1 ? 's' : ''} remaining
+                </p>
+              );
+            })()}
           </div>
         )}
       </div>

@@ -44,7 +44,12 @@ export default function AddReplacementMortgageModal({
     const balanceNum = parseFloat(balance) || 0;
     const rateNum = parseFloat(interestRate) || 0;
     const paymentNum = parseFloat(minimumPayment) || 0;
-    const origNum = parseFloat(originalAmount) || balanceNum;
+    const trimmedOriginal = originalAmount.trim();
+    const parsedOriginal = trimmedOriginal
+      ? parseFloat(trimmedOriginal.replace(/[^0-9.]/g, ''))
+      : NaN;
+    const hasOriginal =
+      trimmedOriginal.length > 0 && !Number.isNaN(parsedOriginal) && parsedOriginal > 0;
 
     if (balanceNum <= 0 || rateNum < 0 || paymentNum < 0) return;
 
@@ -54,17 +59,18 @@ export default function AddReplacementMortgageModal({
       id: newDebtId,
       accountName: accountName.trim() || (lender ? `${lender} Mortgage` : 'New Mortgage'),
       category: 'Mortgage',
-      startingBalance: origNum,
+      startingBalance: balanceNum,
       currentBalance: balanceNum,
       interestRate: rateNum,
       minimumPayment: paymentNum,
       isPaidOff: false,
       createdAt: new Date().toISOString(),
-      originalAmount: origNum,
+      ...(hasOriginal ? { originalAmount: parsedOriginal } : {}),
       loanStartDate,
       loanTerm: parseInt(loanTerm),
       loanTermUnit: 'years',
-      isAmortized: true,
+      isAmortized:
+        hasOriginal && Boolean(loanStartDate.trim()) && !Number.isNaN(parseInt(loanTerm, 10)),
       replacedDebtId: previousMortgageId,
       replacedDebtName: previousMortgageName,
       replacementRelationship: relationship,
