@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Plus, Download, CreditCard as Edit2, X, DollarSign, CreditCard, TrendingUp, TrendingDown, Link2, ArrowRightLeft, PiggyBank } from 'lucide-react';
+import { Plus, Download, Upload, CreditCard as Edit2, X, DollarSign, CreditCard, TrendingUp, TrendingDown, Link2, ArrowRightLeft, PiggyBank } from 'lucide-react';
+import StatementUploadModal from './StatementUploadModal';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CalculationService } from '../services/calculations';
 import { StorageService } from '../services/storage';
@@ -46,6 +47,7 @@ const DISCRETIONARY_CATEGORIES = [
 
 export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
   const [showModal, setShowModal] = useState(false);
+  const [showStatementUpload, setShowStatementUpload] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showSavingsTransferModal, setShowSavingsTransferModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<CheckingTransaction | null>(null);
@@ -192,6 +194,13 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
           >
             <CreditCard className="w-4 h-4" />
             <span>Record Debt Payment</span>
+          </button>
+          <button
+            onClick={() => setShowStatementUpload(true)}
+            className="flex items-center space-x-2 bg-white text-[#1E3A5F] border-2 border-[#1E3A5F] hover:bg-[#1E3A5F] hover:text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+          >
+            <Upload className="w-4 h-4" />
+            <span>Import Statement</span>
           </button>
           <button
             onClick={() => setShowSavingsTransferModal(true)}
@@ -343,6 +352,21 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
           }}
           currentBalance={currentBalance}
           startingBalance={startingBalance}
+        />
+      )}
+
+      {showStatementUpload && (
+        <StatementUploadModal
+          onClose={() => setShowStatementUpload(false)}
+          onSuccess={(message) => {
+            setShowStatementUpload(false);
+            setSuccessMessage(message);
+            setRefreshTrigger(prev => prev + 1);
+            onDataUpdate?.();
+            setTimeout(() => setSuccessMessage(null), 5000);
+          }}
+          startingBalance={startingBalance}
+          currentBalance={currentBalance}
         />
       )}
     </div>
