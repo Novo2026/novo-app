@@ -25,6 +25,7 @@ export default function LogSavingsTransactionModal({
     amount: '',
     description: '',
   });
+  const [transferToChecking, setTransferToChecking] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -109,6 +110,44 @@ export default function LogSavingsTransactionModal({
     );
 
     StorageService.saveSavingsAccounts(updatedAccounts);
+
+    if (transactionType === 'withdrawal' && transferToChecking) {
+      const checkingTransactions = JSON.parse(
+        localStorage.getItem('novo_checking_transactions') || '[]'
+      );
+      const startingBalance = parseFloat(
+        localStorage.getItem('novo_checking_starting_balance') || '0'
+      );
+
+      const newCheckingTx = {
+        id: `checking_${Date.now()}`,
+        date: formData.date,
+        type: 'deposit' as const,
+        amount: amount,
+        description: `Transfer from ${account.name}`,
+        balance: 0,
+        category: undefined,
+      };
+
+      checkingTransactions.push(newCheckingTx);
+      checkingTransactions.sort((a: { date: string }, b: { date: string }) =>
+        new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+
+      let running = startingBalance;
+      checkingTransactions.forEach((tx: { type: string; amount: number; balance: number }) => {
+        if (tx.type === 'deposit' || tx.type === 'transfer_from_heloc') {
+          running += tx.amount;
+        } else {
+          running -= tx.amount;
+        }
+        running = Math.max(0, running);
+        tx.balance = Math.round(running * 100) / 100;
+      });
+
+      localStorage.setItem('novo_checking_transactions', JSON.stringify(checkingTransactions));
+    }
+
     onSuccess();
   };
 
@@ -198,10 +237,26 @@ export default function LogSavingsTransactionModal({
           </div>
 
           {transactionType === 'withdrawal' && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-              <p className="text-sm text-yellow-800">
-                <span className="font-semibold">Warning:</span> This will reduce your account balance to ${(account.balance - parseFloat(formData.amount || '0')).toFixed(2)}
-              </p>
+            <div className="space-y-3">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p className="text-sm text-yellow-800">
+                  <span className="font-semibold">Heads up:</span> This will reduce your savings balance to ${(account.balance - parseFloat(formData.amount || '0')).toFixed(2)}
+                </p>
+              </div>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={transferToChecking}
+                    onChange={(e) => setTransferToChecking(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#27AE60] focus:ring-[#27AE60]"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-green-900">Also deposit into Checking Tracker</p>
+                    <p className="text-xs text-green-700 mt-0.5">Automatically records this amount as a deposit in your Checking account</p>
+                  </div>
+                </label>
+              </div>
             </div>
           )}
           </div>
