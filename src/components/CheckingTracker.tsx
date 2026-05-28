@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { CalculationService } from '../services/calculations';
 import { StorageService } from '../services/storage';
 import DatePicker from './DatePicker';
+import PaymentCommitmentReminder from './PaymentCommitmentReminder';
 import type { UnifiedPayment } from '../types';
 
 interface CheckingTransaction {
@@ -800,6 +801,16 @@ function TransactionModal({
               </div>
             );
           })()}
+
+          {type === 'debt_payment' && selectedDebtObj && (
+            <PaymentCommitmentReminder
+              debtId={selectedDebtObj.id}
+              minimumPayment={selectedDebtObj.minimumPayment}
+              onSelectSuggestedAmount={(suggested) => {
+                setAmount(suggested.toFixed(2));
+              }}
+            />
+          )}
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Amount</label>
