@@ -4,7 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { CalculationService } from '../services/calculations';
 import { StorageService } from '../services/storage';
 import DatePicker from './DatePicker';
-import PaymentCommitmentReminder from './PaymentCommitmentReminder';
+import PaymentLoggingGuidance from './PaymentLoggingGuidance';
 import type { UnifiedPayment } from '../types';
 
 interface CheckingTransaction {
@@ -730,84 +730,12 @@ function TransactionModal({
             </div>
           )}
 
-          {type === 'debt_payment' && selectedDebtObj && (() => {
-            const guidance = CalculationService.getPaymentGuidance(selectedDebtObj.id);
-            if (!guidance) return null;
-
-            return (
-              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r">
-                <h4 className="font-semibold text-blue-900 mb-3 flex items-center">
-                  <span className="mr-2">💡</span>
-                  Payment Strategy Guidance
-                </h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-blue-800">Minimum payment:</span>
-                    <span className="font-semibold text-blue-900">
-                      {CalculationService.formatCurrency(guidance.minimumPayment)}
-                    </span>
-                  </div>
-                  {guidance.hasStrategy && guidance.recommendedPayment > guidance.minimumPayment && (
-                    <>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-blue-800">Recommended:</span>
-                        <span className="font-bold text-blue-900">
-                          {CalculationService.formatCurrency(guidance.recommendedPayment)}
-                        </span>
-                      </div>
-                      <p className="text-xs text-blue-700 italic">
-                        (minimum + {CalculationService.formatCurrency(guidance.extraAmount)} extra cash flow)
-                      </p>
-                    </>
-                  )}
-                  {guidance.availableCashFlow > 0 && (
-                    <div className="flex justify-between text-sm pt-2 border-t border-blue-200">
-                      <span className="text-blue-800">Your available cash flow:</span>
-                      <span className="font-semibold text-blue-900">
-                        {CalculationService.formatCurrency(guidance.availableCashFlow)}
-                      </span>
-                    </div>
-                  )}
-                  <div className={`mt-3 p-2 rounded ${
-                    guidance.isPriority ? 'bg-yellow-100 border border-yellow-300' : 'bg-blue-100'
-                  }`}>
-                    <p className={`text-xs font-semibold ${
-                      guidance.isPriority ? 'text-yellow-900' : 'text-blue-900'
-                    }`}>
-                      {guidance.priorityReason}
-                    </p>
-                  </div>
-                </div>
-                {guidance.hasStrategy && (
-                  <div className="flex gap-2 mt-4">
-                    <button
-                      type="button"
-                      onClick={() => setAmount(guidance.minimumPayment.toFixed(2))}
-                      className="flex-1 bg-white hover:bg-gray-50 text-blue-700 text-xs font-semibold py-2 px-3 rounded border border-blue-300 transition-colors"
-                    >
-                      Pay Minimum: {CalculationService.formatCurrency(guidance.minimumPayment)}
-                    </button>
-                    {guidance.recommendedPayment > guidance.minimumPayment && (
-                      <button
-                        type="button"
-                        onClick={() => setAmount(guidance.recommendedPayment.toFixed(2))}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded transition-colors"
-                      >
-                        Pay Recommended: {CalculationService.formatCurrency(guidance.recommendedPayment)}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-
           {type === 'debt_payment' && selectedDebtObj && (
-            <PaymentCommitmentReminder
+            <PaymentLoggingGuidance
               debtId={selectedDebtObj.id}
               minimumPayment={selectedDebtObj.minimumPayment}
-              onSelectSuggestedAmount={(suggested) => {
-                setAmount(suggested.toFixed(2));
+              onSelectAmount={(amount) => {
+                setAmount(amount.toFixed(2));
               }}
             />
           )}

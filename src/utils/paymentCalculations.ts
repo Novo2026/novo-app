@@ -297,6 +297,37 @@ export interface PaymentCommitment {
   committedAt: string;
 }
 
+/** Next scheduled payment date from commitment start (14-day or 7-day cadence). */
+export function getNextCommitmentDueDate(
+  committedAt: string,
+  frequency: Exclude<PaymentFrequency, 'monthly'>
+): Date {
+  const start = new Date(committedAt);
+  const intervalDays = frequency === 'biweekly' ? 14 : 7;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const next = new Date(start);
+  next.setHours(0, 0, 0, 0);
+  while (next.getTime() <= today.getTime()) {
+    next.setDate(next.getDate() + intervalDays);
+  }
+  return next;
+}
+
+export function formatCommitmentDueDate(date: Date): string {
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+export function getCommitmentFollowUpMessage(
+  frequency: Exclude<PaymentFrequency, 'monthly'>
+): string {
+  if (frequency === 'weekly') {
+    return 'Great — this includes your weekly amount plus extra. Log again next week for your next scheduled payment.';
+  }
+  return 'Great — this includes your bi-weekly amount plus extra. Log again in 2 weeks for your next scheduled payment.';
+}
+
 export function formatFrequencyLabel(frequency: PaymentFrequency): string {
   switch (frequency) {
     case 'biweekly':

@@ -5,7 +5,7 @@ import { CalculationService } from '../services/calculations';
 import CelebrationModal from './CelebrationModal';
 import EditDebtModal from './EditDebtModal';
 import DatePicker from './DatePicker';
-import PaymentCommitmentReminder from './PaymentCommitmentReminder';
+import PaymentLoggingGuidance from './PaymentLoggingGuidance';
 import type { Debt, Transaction, Milestone, CheckingTransaction, HELOCTransaction, UnifiedPayment } from '../types';
 
 interface LogPaymentModalProps {
@@ -583,16 +583,23 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
           </div>
 
           {selectedDebt && (
-            <div className="bg-emerald-50 border-2 border-emerald-200 rounded-lg p-4">
-              <PaymentCommitmentReminder
-                debtId={selectedDebt.id}
-                minimumPayment={selectedDebt.minimumPayment}
-                onSelectSuggestedAmount={(suggested) => {
-                  setPaymentType('custom');
-                  setCustomAmount(suggested.toFixed(2));
+            <>
+            <PaymentLoggingGuidance
+              debtId={selectedDebt.id}
+              minimumPayment={selectedDebt.minimumPayment}
+              onSelectAmount={(amount, source) => {
+                if (source === 'minimum') {
+                  setPaymentType('minimum');
+                  setCustomAmount('');
                   setExtraAmount('');
-                }}
-              />
+                } else {
+                  setPaymentType('custom');
+                  setCustomAmount(amount.toFixed(2));
+                  setExtraAmount('');
+                }
+              }}
+            />
+            <div className="bg-emerald-50 border-2 border-emerald-200 rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-semibold text-gray-700">Payment Amount</span>
                 <span className="text-xs text-emerald-700 font-semibold">
@@ -701,6 +708,7 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
                 </label>
               </div>
             </div>
+            </>
           )}
 
           <DatePicker
