@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Download, CreditCard as Edit2, X, DollarSign, CreditCard, TrendingUp, TrendingDown, Link2, ArrowRightLeft } from 'lucide-react';
+import { Plus, Download, CreditCard as Edit2, X, DollarSign, CreditCard, TrendingUp, TrendingDown, Link2, ArrowRightLeft, PiggyBank } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CalculationService } from '../services/calculations';
 import { StorageService } from '../services/storage';
@@ -10,7 +10,7 @@ import type { UnifiedPayment } from '../types';
 interface CheckingTransaction {
   id: string;
   date: string;
-  type: 'deposit' | 'withdrawal' | 'debt_payment' | 'transfer_to_heloc' | 'transfer_from_heloc';
+  type: 'deposit' | 'withdrawal' | 'debt_payment' | 'transfer_to_heloc' | 'transfer_from_heloc' | 'transfer_to_savings';
   amount: number;
   description: string;
   balance: number;
@@ -47,6 +47,7 @@ const DISCRETIONARY_CATEGORIES = [
 export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
   const [showModal, setShowModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showSavingsTransferModal, setShowSavingsTransferModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<CheckingTransaction | null>(null);
   const [modalType, setModalType] = useState<'deposit' | 'withdrawal' | 'debt_payment'>('deposit');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -193,6 +194,13 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
             <span>Record Debt Payment</span>
           </button>
           <button
+            onClick={() => setShowSavingsTransferModal(true)}
+            className="flex items-center space-x-2 bg-[#F59E0B] hover:bg-[#D97706] text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+          >
+            <PiggyBank className="w-4 h-4" />
+            <span>Transfer to Savings</span>
+          </button>
+          <button
             onClick={() => setShowTransferModal(true)}
             className="flex items-center space-x-2 bg-[#9B59B6] hover:bg-[#8E44AD] font-semibold py-2 px-4 rounded-lg transition-colors"
           >
@@ -316,6 +324,21 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
             setShowTransferModal(false);
             setSuccessMessage(message);
             setRefreshTrigger(prev => prev + 1);
+            setTimeout(() => setSuccessMessage(null), 5000);
+          }}
+          currentBalance={currentBalance}
+          startingBalance={startingBalance}
+        />
+      )}
+
+      {showSavingsTransferModal && (
+        <TransferToSavingsModal
+          onClose={() => setShowSavingsTransferModal(false)}
+          onSuccess={(message) => {
+            setShowSavingsTransferModal(false);
+            setSuccessMessage(message);
+            setRefreshTrigger(prev => prev + 1);
+            onDataUpdate?.();
             setTimeout(() => setSuccessMessage(null), 5000);
           }}
           currentBalance={currentBalance}
@@ -496,11 +519,13 @@ function TransactionLedger({
                       <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
                         transaction.type === 'deposit' ? 'bg-green-100 text-green-800' :
                         transaction.type === 'debt_payment' ? 'bg-blue-100 text-blue-800' :
+                        transaction.type === 'transfer_to_savings' ? 'bg-yellow-100 text-yellow-800' :
                         transaction.type === 'transfer_from_heloc' ? 'bg-purple-100 text-purple-800' :
                         transaction.type === 'transfer_to_heloc' ? 'bg-purple-100 text-purple-800' :
                         'bg-red-100 text-red-800'
                       }`}>
                         {transaction.type === 'debt_payment' ? 'Debt Payment' :
+                         transaction.type === 'transfer_to_savings' ? 'To Savings' :
                          transaction.type === 'transfer_from_heloc' ? 'From HELOC' :
                          transaction.type === 'transfer_to_heloc' ? 'To HELOC' :
                          transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
@@ -1134,6 +1159,169 @@ function TransferToHelocModal({
             className="flex-1 bg-[#9B59B6] hover:bg-[#8E44AD] text-white font-semibold py-3 px-6 rounded-lg transition-colors"
           >
             Record Transfer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TransferToSavingsModal({
+  onClose,
+  onSuccess,
+  currentBalance,
+  startingBalance,
+}: {
+  onClose: () => void;
+  onSuccess: (message: string) => void;
+  currentBalance: number;
+  startingBalance: number;
+}) {
+  const [amount, setAmount] = useState('');
+  const [date, setDate] = useState(CalculationService.getTodayDateString());
+  const [description, setDescription] = useState('');
+  const [selectedAccountId, setSelectedAccountId] = useState('');
+
+  const savingsAccounts = StorageService.getSavingsAccounts().filter(a => !('isArchived' in a && a.isArchived));
+
+  const transferAmount = parseFloat(amount) || 0;
+  const newBalance = Math.max(0, currentBalance - transferAmount);
+  const selectedAccount = savingsAccounts.find(a => a.id === selectedAccountId);
+
+  const handleSubmit = () => {
+    if (!transferAmount || transferAmount <= 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
+    if (transferAmount > currentBalance) {
+      alert('Transfer amount cannot exceed current checking balance');
+      return;
+    }
+    if (!selectedAccountId) {
+      alert('Please select a savings account');
+      return;
+    }
+
+    // Record outflow in checking
+    const checkingTransactions = JSON.parse(localStorage.getItem('novo_checking_transactions') || '[]');
+    const newCheckingTx = {
+      id: `checking_${Date.now()}`,
+      date,
+      type: 'transfer_to_savings' as const,
+      amount: transferAmount,
+      description: description || `Transfer to ${selectedAccount?.name || 'Savings'}`,
+      balance: 0,
+    };
+    checkingTransactions.push(newCheckingTx);
+    checkingTransactions.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    recalculateBalances(checkingTransactions, startingBalance);
+    localStorage.setItem('novo_checking_transactions', JSON.stringify(checkingTransactions));
+
+    // Auto-deposit into the selected savings account
+    const allAccounts = StorageService.getSavingsAccounts();
+    const accountIndex = allAccounts.findIndex(a => a.id === selectedAccountId);
+    if (accountIndex !== -1) {
+      const account = allAccounts[accountIndex];
+      const newTransaction = {
+        id: `savings_tx_${Date.now()}`,
+        date,
+        type: 'deposit' as const,
+        amount: transferAmount,
+        description: description || 'Transfer from Checking',
+        balanceAfter: account.balance + transferAmount,
+      };
+      account.balance = account.balance + transferAmount;
+      account.transactions = [...(account.transactions || []), newTransaction];
+      allAccounts[accountIndex] = account;
+      StorageService.saveSavingsAccounts(allAccounts);
+    }
+
+    onSuccess(`✓ Transferred ${CalculationService.formatCurrency(transferAmount)} to ${selectedAccount?.name || 'Savings'}. New checking balance: ${CalculationService.formatCurrency(newBalance)}`);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+        <h3 className="text-xl font-bold text-gray-800 mb-2">Transfer to Savings</h3>
+        <p className="text-sm text-gray-600 mb-4">Move money from checking into a savings account</p>
+
+        {savingsAccounts.length === 0 ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+            <p className="text-amber-800 text-sm font-medium">No savings accounts set up yet.</p>
+            <p className="text-amber-700 text-xs mt-1">Add a savings account in the Savings tab first.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Select Savings Account</label>
+              <select
+                value={selectedAccountId}
+                onChange={(e) => setSelectedAccountId(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
+              >
+                <option value="">Choose account...</option>
+                {savingsAccounts.map(a => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} — Balance: {CalculationService.formatCurrency(a.balance)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Amount</label>
+              <div className="relative">
+                <span className="absolute left-3 top-2 text-gray-600">$</span>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
+                  placeholder="0.00"
+                  step="0.01"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Available: {CalculationService.formatCurrency(currentBalance)}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Description (optional)</label>
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
+                placeholder="e.g. Monthly savings deposit"
+              />
+            </div>
+
+            {transferAmount > 0 && (
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Checking balance after:</span>
+                  <span className="font-semibold text-gray-800">{CalculationService.formatCurrency(newBalance)}</span>
+                </div>
+                {selectedAccount && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Savings balance after:</span>
+                    <span className="font-semibold text-green-700">{CalculationService.formatCurrency(selectedAccount.balance + transferAmount)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex space-x-3 mt-6">
+          <button onClick={onClose} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={savingsAccounts.length === 0}
+            className="flex-1 bg-[#F59E0B] hover:bg-[#D97706] disabled:opacity-50 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+          >
+            Transfer
           </button>
         </div>
       </div>
