@@ -65,15 +65,22 @@ export default function PaymentLoggingGuidance({
     : null;
 
   return (
-    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r">
-      <h4 className="font-semibold text-blue-900 mb-2 text-sm">Payment coaching</h4>
+    <div className={`${hasCommitment ? 'bg-teal-50 border-l-4 border-teal-500' : 'bg-blue-50 border-l-4 border-blue-500'} p-4 rounded-r`}>
+      <h4 className={`font-semibold mb-2 text-sm ${hasCommitment ? 'text-teal-900' : 'text-blue-900'}`}>
+        {hasCommitment ? '✓ Smarter Payments commitment active' : 'Payment coaching'}
+      </h4>
 
       {hasCommitment && suggestedAmount != null && nextDueDate && (
-        <p className="text-sm text-blue-900 leading-relaxed mb-2">
-          You committed to {frequencyLabel} payments. Your next payment of{' '}
-          {CalculationService.formatCurrencyDetailed(suggestedAmount)} is due around{' '}
-          {formatCommitmentDueDate(nextDueDate)}.
-        </p>
+        <>
+          <p className="text-sm text-teal-900 leading-relaxed mb-2">
+            You committed to <strong>{frequencyLabel}</strong> payments on this debt. Your next scheduled payment of{' '}
+            <strong>{CalculationService.formatCurrencyDetailed(suggestedAmount)}</strong> is due around{' '}
+            <strong>{formatCommitmentDueDate(nextDueDate)}</strong>.
+          </p>
+          <p className="text-xs text-teal-700 leading-relaxed mb-2">
+            💡 After logging this payment, consider adding extra principal whenever you have spare cash to accelerate your payoff further.
+          </p>
+        </>
       )}
 
       {hasCommitment && isFocusWithExtra && (
@@ -122,7 +129,7 @@ export default function PaymentLoggingGuidance({
               setShowRecommendedFollowUp(false);
               onSelectAmount(suggestedAmount, 'commitment');
             }}
-            className="flex-1 min-w-[140px] bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold py-2.5 px-3 rounded-md transition-colors"
+            className="flex-1 min-w-[140px] bg-teal-600 hover:bg-teal-700 text-white text-sm font-bold py-3 px-3 rounded-md transition-colors shadow-sm"
           >
             {logCommitmentLabel}
           </button>
