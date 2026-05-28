@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarClock, Sparkles, CheckCircle2 } from 'lucide-react';
+import { CalendarClock, Sparkles, CheckCircle2, Info } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import { getHomeReadyFullAnalysisForReport } from '../utils/homeReadySnapshot';
@@ -12,6 +12,7 @@ import {
   removePaymentCommitment,
   projectPayoffForFrequencyForDebt,
   calculateMonthlyPayoffForDebt,
+  paymentAmountForFrequency,
   markSmarterPaymentsVisited,
   getMotivationalMessage,
   getJourneyStep,
@@ -260,27 +261,46 @@ export default function SmarterPayments({ onDataUpdate }: SmarterPaymentsProps) 
                         )}
                       </p>
                     )}
-                    {isAccelerated && (
-                      <div className="space-y-2 pt-1">
-                        <label className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100/80 transition-colors">
-                          <input
-                            type="checkbox"
-                            checked={isCommitted}
-                            onChange={e => handleCommitmentToggle(debt.id, freq, e.target.checked)}
-                            className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#FF6B35] focus:ring-[#FF6B35]"
-                          />
-                          <span className="text-sm font-medium text-gray-800">
-                            I&apos;m committed to this strategy
-                          </span>
-                        </label>
-                        {isCommitted && (
-                          <p className="text-emerald-700 text-sm font-medium flex items-center gap-1.5">
-                            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
-                            Strategy locked in ✓ Your plan has been updated
-                          </p>
-                        )}
-                      </div>
-                    )}
+                    {isAccelerated && (() => {
+                      const perPayment = paymentAmountForFrequency(debt.minimumPayment, freq as 'biweekly' | 'weekly');
+                      const freqLabel = freq === 'biweekly' ? 'bi-weekly' : 'weekly';
+                      const freqInterval = freq === 'biweekly' ? '2 weeks' : 'week';
+                      return (
+                        <div className="space-y-2 pt-1">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-1.5">
+                            <p className="text-sm font-semibold text-blue-900 flex items-center gap-1.5">
+                              <Info className="w-4 h-4 flex-shrink-0" />
+                              Your {freqLabel} payment plan
+                            </p>
+                            <p className="text-sm text-blue-800">
+                              Make a payment of{' '}
+                              <span className="font-bold text-blue-900">{CalculationService.formatCurrency(perPayment)}</span>{' '}
+                              every {freqInterval} — this is your scheduled {freqLabel} amount.
+                            </p>
+                            <p className="text-xs text-blue-700 leading-relaxed">
+                              💡 <strong>Power move:</strong> Stick to your {freqLabel} schedule, then add extra principal payments whenever you have spare cash — even $25–$50 extra accelerates your payoff significantly.
+                            </p>
+                          </div>
+                          <label className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200 cursor-pointer hover:bg-gray-100/80 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={isCommitted}
+                              onChange={e => handleCommitmentToggle(debt.id, freq, e.target.checked)}
+                              className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#FF6B35] focus:ring-[#FF6B35]"
+                            />
+                            <span className="text-sm font-medium text-gray-800">
+                              I&apos;m committed to this strategy
+                            </span>
+                          </label>
+                          {isCommitted && (
+                            <p className="text-emerald-700 text-sm font-medium flex items-center gap-1.5">
+                              <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                              Strategy locked in ✓ Your plan has been updated
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
               </div>

@@ -147,13 +147,23 @@ function App() {
 
     StorageService.saveDebts(newDebts);
 
+    const netIncome = parseCurrency(data.monthlyIncome);
+    const essential = parseCurrency(data.essentialExpenses);
+    const discretionary = parseCurrency(data.discretionaryExpenses);
+    const savingsGoal = parseCurrency(data.monthlySavingsGoal || '');
+    const totalSurplus = Math.max(0, netIncome - essential - discretionary);
+    const derivedSurplusCommitmentPercent =
+      totalSurplus > 0 && savingsGoal > 0
+        ? Math.round(Math.min(100, Math.max(0, ((totalSurplus - savingsGoal) / totalSurplus) * 100)))
+        : 100;
+
     const financialProfile = {
       monthlyGrossIncome: parseCurrency(data.grossIncome),
-      monthlyNetIncome: parseCurrency(data.monthlyIncome),
-      monthlyEssentialExpenses: parseCurrency(data.essentialExpenses),
-      monthlyDiscretionaryExpenses: parseCurrency(data.discretionaryExpenses),
-      monthlySavingsGoal: parseCurrency(data.monthlySavingsGoal || ''),
-      surplusCommitmentPercent: 100,
+      monthlyNetIncome: netIncome,
+      monthlyEssentialExpenses: essential,
+      monthlyDiscretionaryExpenses: discretionary,
+      monthlySavingsGoal: savingsGoal,
+      surplusCommitmentPercent: derivedSurplusCommitmentPercent,
     };
     StorageService.saveFinancialProfile(financialProfile);
 
