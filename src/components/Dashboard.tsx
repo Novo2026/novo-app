@@ -7,6 +7,7 @@ import LogPaymentModal from './LogPaymentModal';
 import EditPaymentModal from './EditPaymentModal';
 import EditDebtModal from './EditDebtModal';
 import DailyTip from './DailyTip';
+import StartHereRibbon from './StartHereRibbon';
 import FinancialHealthScore from './FinancialHealthScore';
 import type { Debt, Transaction } from '../types';
 
@@ -15,6 +16,8 @@ interface DashboardProps {
   onNavigateToSavings?: () => void;
   onNavigateToTracker?: () => void;
   onNavigateToSmarterPayments?: () => void;
+  onNavigate?: (section: string) => void;
+  onOpenChat?: (context: string) => void;
 }
 
 const PAYMENT_COMMITMENTS_KEY = 'novo_payment_commitments';
@@ -35,6 +38,8 @@ export default function Dashboard({
   onNavigateToSavings,
   onNavigateToTracker,
   onNavigateToSmarterPayments,
+  onNavigate,
+  onOpenChat,
 }: DashboardProps) {
   const paymentCommitmentCount = countPaymentCommitments();
 
@@ -362,11 +367,17 @@ export default function Dashboard({
     );
   }
 
-  const userName = localStorage.getItem('userName');
+  const userName = localStorage.getItem('userName') || 'there';
 
   return (
     <div className="space-y-8">
-      {userName && (
+      <StartHereRibbon
+        userName={userName}
+        onNavigate={(section) => onNavigate?.(section)}
+        onOpenChat={(context) => onOpenChat?.(context)}
+      />
+
+      {localStorage.getItem('userName') && (
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">{getGreeting()}!</h1>
           <p className="text-gray-600 mt-1">Here's your debt freedom progress</p>

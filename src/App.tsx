@@ -13,7 +13,6 @@ import HomeReady from './components/HomeReady';
 import Settings from './components/Settings';
 import SmarterPayments from './components/SmarterPayments';
 import OnboardingModal from './components/OnboardingModal';
-import WelcomeTourModal from './components/WelcomeTourModal';
 import AuthModal from './components/AuthModal';
 import NovoChat from './components/NovoChat';
 import SpendingAnalysisPanel from './components/SpendingAnalysisPanel';
@@ -36,8 +35,6 @@ function App() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showWelcomeTour, setShowWelcomeTour] = useState(false);
-  const [welcomeTourData, setWelcomeTourData] = useState<{ userName: string; hasHELOC: boolean }>({ userName: '', hasHELOC: false });
   const [featurePreferences, setFeaturePreferences] = useState<FeaturePreferences>({
     helocEnabled: false,
     checkingEnabled: true,
@@ -198,15 +195,6 @@ function App() {
     if (uid) {
       pushLocalStorageToCloud(uid).catch(err => console.error('NOVO cloud sync failed:', err));
     }
-
-    const shouldShowTour = localStorage.getItem('welcomeTourCompleted') !== 'true';
-    if (shouldShowTour) {
-      setWelcomeTourData({
-        userName: data.userName,
-        hasHELOC: data.hasHELOC || false,
-      });
-      setShowWelcomeTour(true);
-    }
   };
 
   const loadData = () => {
@@ -236,18 +224,6 @@ function App() {
     if (section === 'tracker') {
       setShowTrackerNewBadge(false);
       localStorage.setItem('trackerTabNewSeen', 'true');
-    }
-  };
-
-  const handleWelcomeTourNavigate = (section: 'dashboard' | 'strategies', scrollTo?: string) => {
-    setCurrentSection(section);
-    if (scrollTo) {
-      setTimeout(() => {
-        const element = document.getElementById(scrollTo);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 100);
     }
   };
 
@@ -295,6 +271,11 @@ function App() {
             onNavigateToSavings={() => setCurrentSection('savings')}
             onNavigateToTracker={() => setCurrentSection('tracker')}
             onNavigateToSmarterPayments={() => setCurrentSection('smarter-payments')}
+            onNavigate={(section) => setCurrentSection(section as Section)}
+            onOpenChat={(context) => {
+              setNovoChatContext(context);
+              setShowNovoChat(true);
+            }}
           />
         );
       case 'debts':
@@ -356,15 +337,6 @@ function App() {
         />
       )}
       {showOnboarding && <OnboardingModal onComplete={handleOnboardingComplete} />}
-      {showWelcomeTour && (
-        <WelcomeTourModal
-          userName={welcomeTourData.userName}
-          hasHELOC={welcomeTourData.hasHELOC}
-          onNavigate={handleWelcomeTourNavigate}
-          onAskNovo={handleAskNovoClick}
-          onClose={() => setShowWelcomeTour(false)}
-        />
-      )}
 
       {/* Mobile slide-out menu overlay */}
       {mobileMenuOpen && (
