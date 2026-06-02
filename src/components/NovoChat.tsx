@@ -58,27 +58,140 @@ export const CHAT_CONTEXT = {
     'The user wants to explore adding income to accelerate debt payoff. Ask about their skills, available time, and current employment situation. Help them think through realistic options — side work, overtime, selling assets — and estimate the monthly impact on their payoff timeline.',
 } as const;
 
+function buildRichUserContext(): string {
+  try {
+    const profile = StorageService.getFinancialProfile();
+    const homeEquity = StorageService.getHomeEquity();
+    const allDebts = StorageService.getDebts();
+    const activeDebts = allDebts.filter(d => !d.isPaidOff && d.currentBalance > 0);
+    const paidOffDebts = allDebts.filter(d => d.isPaidOff);
+    const strategyResult = StorageService.getStrategyResult();
+    const savingsAccounts = StorageService.getSavingsAccounts();
+    const userName = localStorage.getItem('userName') || 'the user';
+
+    const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+    const pct = (n: number) => `${Math.round(n * 10) / 10}%`;
+
+    const isHomeowner = homeEquity?.ownsHome || false;
+    const hasHELOC = homeEquity?.hasHELOC || false;
+    const identityLines = [
+      `User name: ${userName}`,
+      `Homeowner: ${isHomeowner ? 'Yes' : 'No — renter working toward first home'}`,
+      hasHELOC ? `Has HELOC: Yes — balance ${fmt(homeEquity?.helocBalance || 0)}, limit ${fmt(homeEquity?.helocLimit || 0)}, rate ${pct(homeEquity?.helocRate || 0)}` : 'No HELOC',
+    ];
+
+    let profileLines: string[] = [];
+    if (profile) {
+      const surplus = profile.monthlyNetIncome - profile.monthlyEssentialExpenses - profile.monthlyDiscretionaryExpenses;
+      const monthlyDebtPayments = activeDebts.reduce((s, d) => s + d.minimumPayment, 0);
+      const dti = profile.monthlyGrossIncome > 0
+        ? Math.round((monthlyDebtPayments / profile.monthlyGrossIncome) * 100)
+        : 0;
+      const savingsGoal = profile.monthlySavingsGoal || 0;
+      profileLines = [
+        `Monthly gross income: ${fmt(profile.monthlyGrossIncome)}`,
+        `Monthly net income: ${fmt(profile.monthlyNetIncome)}`,
+        `Monthly essential expenses: ${fmt(profile.monthlyEssentialExpenses)}`,
+        `Monthly discretionary expenses: ${fmt(profile.monthlyDiscretionaryExpenses)}`,
+        savingsGoal > 0 ? `Monthly savings goal: ${fmt(savingsGoal)}` : null,
+        `Monthly cash flow surplus: ${fmt(Math.max(0, surplus))}`,
+        `Surplus committed to debt payoff: ${profile.surplusCommitmentPercent || 100}%`,
+        `Current DTI ratio: ${dti}% (monthly debt payments vs gross income)`,
+        dti < 36 ? '→ DTI is in excellent mortgage qualifying range' :
+        dti < 43 ? '→ DTI is in acceptable mortgage qualifying range' :
+        dti < 50 ? '→ DTI is above ideal — reducing debt will improve qualification' :
+        '→ DTI is high — significant debt reduction needed before mortgage qualification',
+      ].filter(Boolean) as string[];
+    }
+
+    const debtLines = activeDebts.map(d => {
+      const totalStarting = d.startingBalance || d.currentBalance;
+      const paidDown = totalStarting - d.currentBalance;
+      const paidPct = totalStarting > 0 ? Math.round((paidDown / totalStarting) * 100) : 0;
+      return `  • ${d.accountName} (${d.category}): ${fmt(d.currentBalance)} remaining at ${pct(d.interestRate)} — min payment ${fmt(d.minimumPayment)}${paidDown > 0 ? ` — ${fmt(paidDown)} paid down (${paidPct}%)` : ''}`;
+    });
+
+    const paidOffLines = paidOffDebts.length > 0
+      ? [`Debts paid off (${paidOffDebts.length}): ${paidOffDebts.map(d => d.accountName).join(', ')}`]
+      : [];
+
+    const totalStartingBalance = allDebts.reduce((s, d) => s + (d.startingBalance || d.currentBalance), 0);
+    const totalCurrentBalance = allDebts.reduce((s, d) => s + d.currentBalance, 0);
+    const totalPaidDown = totalStartingBalance - totalCurrentBalance;
+    const progressLines = totalPaidDown > 0 ? [
+      `Total debt paid down: ${fmt(totalPaidDown)} (${Math.round((totalPaidDown / totalStartingBalance) * 100)}% of original debt eliminated)`,
+    ] : [];
+
+    let strategyLines: string[] = [];
+    if (strategyResult) {
+      const strategy = strategyResult.strategy;
+      const strategyMethod = (strategy as { method?: string }).method;
+      const strategyLabel =
+        strategyMethod === 'avalanche' ? 'Debt Avalanche (highest rate first)' :
+        strategyMethod === 'snowball' ? 'Debt Snowball (lowest balance first)' :
+        strategy.type === 'heloc-velocity' ? 'HELOC Velocity Banking' :
+        strategy.type === 'hybrid' ? 'Hybrid (HELOC + extra payments)' :
+        'Extra Payment Strategy';
+      strategyLines = [
+        `Payoff strategy: ${strategyLabel}`,
+        `Extra monthly payment toward debt: ${fmt(strategy.extraMonthlyPayment || 0)}`,
+        `Projected debt-free date: ${strategyResult.debtFreeDate}`,
+        `Total months to debt free: ${strategyResult.totalMonths}`,
+        `Total interest to be paid: ${fmt(strategyResult.totalInterest)}`,
+        `Total to be paid: ${fmt(strategyResult.totalPaid)}`,
+        strategyResult.payoffTimeline?.length > 0
+          ? `Payoff order: ${strategyResult.payoffTimeline.map(t => `${t.debtName} (month ${t.payoffMonth})`).join(' → ')}`
+          : null,
+      ].filter(Boolean) as string[];
+    }
+
+    let savingsLines: string[] = [];
+    if (savingsAccounts.length > 0) {
+      const totalSavings = savingsAccounts.reduce((s, a) => s + a.balance, 0);
+      savingsLines = [
+        `Total savings: ${fmt(totalSavings)} across ${savingsAccounts.length} account${savingsAccounts.length > 1 ? 's' : ''}`,
+        ...savingsAccounts.map(a => `  • ${a.name}: ${fmt(a.balance)}${a.goalAmount ? ` (goal: ${fmt(a.goalAmount)})` : ''}`),
+      ];
+    }
+
+    let spendingLines: string[] = [];
+    try {
+      const stored = localStorage.getItem('novo_checking_transactions');
+      if (stored) {
+        const txns = JSON.parse(stored);
+        if (txns.length > 0) {
+          const analysis = analyzeSpending(txns, profile, 60);
+          spendingLines = [buildSpendingAnalysisContext(analysis)];
+        }
+      }
+    } catch { /* spending context is enhancement not requirement */ }
+
+    const commitmentsContext = getPaymentCommitmentsPromptContext(activeDebts);
+
+    const sections = [
+      ['USER PROFILE', identityLines],
+      profileLines.length > 0 ? ['FINANCIAL SNAPSHOT', profileLines] : null,
+      activeDebts.length > 0 ? [`ACTIVE DEBTS (${activeDebts.length})`, debtLines] : null,
+      paidOffLines.length > 0 ? ['PROGRESS', [...progressLines, ...paidOffLines]] : progressLines.length > 0 ? ['PROGRESS', progressLines] : null,
+      strategyLines.length > 0 ? ['PAYOFF PLAN', strategyLines] : null,
+      savingsLines.length > 0 ? ['SAVINGS', savingsLines] : null,
+    ].filter(Boolean) as [string, string[]][];
+
+    const contextBlock = sections
+      .map(([title, lines]) => `${title}:\n${lines.join('\n')}`)
+      .join('\n\n');
+
+    return contextBlock + (spendingLines.length > 0 ? '\n\n' + spendingLines[0] : '') + commitmentsContext;
+  } catch (err) {
+    console.error('Failed to build rich context:', err);
+    return '';
+  }
+}
+
 function buildSystemPrompt(context: string): string {
   const base = context.trim();
-  const debts = StorageService.getDebts().filter(d => !d.isPaidOff && d.currentBalance > 0);
-  const commitmentsContext = getPaymentCommitmentsPromptContext(debts);
-
-  let spendingContext = '';
-  try {
-    const stored = localStorage.getItem('novo_checking_transactions');
-    if (stored) {
-      const txns = JSON.parse(stored);
-      if (txns.length > 0) {
-        const profile = StorageService.getFinancialProfile();
-        const analysis = analyzeSpending(txns, profile, 60);
-        spendingContext = '\n\n' + buildSpendingAnalysisContext(analysis);
-      }
-    }
-  } catch {
-    // Silently fail — spending context is enhancement not requirement
-  }
-
-  return `${base}\n\n${NOVO_CONVERSATION_RULES}${commitmentsContext}${spendingContext}`;
+  const richContext = buildRichUserContext();
+  return `${base}\n\n${NOVO_CONVERSATION_RULES}\n\nHERE IS EVERYTHING I KNOW ABOUT THIS USER RIGHT NOW — use this to give specific, personalized answers. Never ask them for information that is already here:\n\n${richContext}`;
 }
 
 /** Space reserved above the fixed input bar (textarea + padding + safe area + mobile browser chrome). */
