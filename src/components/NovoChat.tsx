@@ -3,6 +3,7 @@ import { X, Send, Loader2 } from 'lucide-react';
 import { streamAnthropicMessage, stripMarkdown, type ChatMessage } from '../services/anthropic';
 import { StorageService } from '../services/storage';
 import { getPaymentCommitmentsPromptContext } from '../utils/paymentCalculations';
+import { analyzeSpending, buildSpendingAnalysisContext } from '../utils/spendingAnalysis';
 
 /** Appended to every chat context passed into this panel. */
 export const NOVO_CONVERSATION_RULES =
@@ -61,7 +62,23 @@ function buildSystemPrompt(context: string): string {
   const base = context.trim();
   const debts = StorageService.getDebts().filter(d => !d.isPaidOff && d.currentBalance > 0);
   const commitmentsContext = getPaymentCommitmentsPromptContext(debts);
-  return `${base}\n\n${NOVO_CONVERSATION_RULES}${commitmentsContext}`;
+
+  let spendingContext = '';
+  try {
+    const stored = localStorage.getItem('novo_checking_transactions');
+    if (stored) {
+      const txns = JSON.parse(stored);
+      if (txns.length > 0) {
+        const profile = StorageService.getFinancialProfile();
+        const analysis = analyzeSpending(txns, profile, 60);
+        spendingContext = '\n\n' + buildSpendingAnalysisContext(analysis);
+      }
+    }
+  } catch {
+    // Silently fail — spending context is enhancement not requirement
+  }
+
+  return `${base}\n\n${NOVO_CONVERSATION_RULES}${commitmentsContext}${spendingContext}`;
 }
 
 /** Space reserved above the fixed input bar (textarea + padding + safe area + mobile browser chrome). */

@@ -16,12 +16,16 @@ import OnboardingModal from './components/OnboardingModal';
 import WelcomeTourModal from './components/WelcomeTourModal';
 import AuthModal from './components/AuthModal';
 import NovoChat from './components/NovoChat';
+import SpendingAnalysisPanel from './components/SpendingAnalysisPanel';
 import { supabase } from './lib/supabase';
 import { pushLocalStorageToCloud } from './services/cloudSync';
 import { StorageService } from './services/storage';
 import type { Debt, Transaction, FeaturePreferences } from './types';
 
 type Section = 'dashboard' | 'debts' | 'strategies' | 'smarter-payments' | 'what-if' | 'tracker' | 'savings' | 'progress' | 'home-ready' | 'guide' | 'settings';
+
+const DEFAULT_NOVO_CHAT_CONTEXT =
+  'You are NOVO, a friendly debt payoff and financial coaching assistant built by Ben Hulshof, a mortgage broker with 27 years of experience. The user is asking a general question about their finances, debt payoff, or mortgage readiness. Be warm, conversational, and helpful. Ask one question at a time.';
 
 function App() {
   const [authSession, setAuthSession] = useState<Session | null | undefined>(undefined);
@@ -42,6 +46,7 @@ function App() {
   });
   const [askNovoClicked, setAskNovoClicked] = useState(false);
   const [showNovoChat, setShowNovoChat] = useState(false);
+  const [novoChatContext, setNovoChatContext] = useState(DEFAULT_NOVO_CHAT_CONTEXT);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [menuOpenCount, setMenuOpenCount] = useState(() => {
     return parseInt(localStorage.getItem('menuOpenCount') || '0', 10);
@@ -275,6 +280,7 @@ function App() {
       (window as any).gtag('event', 'ask_novo_clicked');
     }
 
+    setNovoChatContext(DEFAULT_NOVO_CHAT_CONTEXT);
     setShowNovoChat(true);
   };
 
@@ -303,7 +309,17 @@ function App() {
       case 'what-if':
         return <WhatIfSimulator />;
       case 'tracker':
-        return <Tracker onDataUpdate={handleDataUpdate} />;
+        return (
+          <div className="space-y-6">
+            <Tracker onDataUpdate={handleDataUpdate} />
+            <SpendingAnalysisPanel
+              onOpenChat={(context) => {
+                setNovoChatContext(context);
+                setShowNovoChat(true);
+              }}
+            />
+          </div>
+        );
       case 'savings':
         return <SavingsTracker />;
       case 'progress':
@@ -632,7 +648,7 @@ function App() {
       <NovoChat
         open={showNovoChat}
         onClose={() => setShowNovoChat(false)}
-        context="You are NOVO, a friendly debt payoff and financial coaching assistant built by Ben Hulshof, a mortgage broker with 27 years of experience. The user is asking a general question about their finances, debt payoff, or mortgage readiness. Be warm, conversational, and helpful. Ask one question at a time."
+        context={novoChatContext}
       />
 
       {showHelocWelcome && (
