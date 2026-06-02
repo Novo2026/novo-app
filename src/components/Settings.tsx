@@ -5,6 +5,7 @@ import { assembleNovoReportPayload } from '../utils/novoReportData';
 import { buildNovoFullReportHtml, printHtmlDocument } from '../utils/novoPrintReport';
 import LearnHELOCModal from './LearnHELOCModal';
 import HelocSuccessModal from './HelocSuccessModal';
+import BenTaskPanel from './BenTaskPanel';
 import type { FinancialProfile, FeaturePreferences, HomeEquity } from '../types';
 
 interface SettingsProps {
@@ -1195,6 +1196,8 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
           </div>
         )}
       </div>
+
+      <BenTaskPanel />
 
       <div className="bg-[#2D9CDB]/10 border border-[#2D9CDB] rounded-lg p-6">
         <h3 className="font-bold text-gray-800 mb-2">About NOVO</h3>

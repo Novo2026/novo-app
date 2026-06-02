@@ -17,6 +17,8 @@ import WelcomeTourModal from './components/WelcomeTourModal';
 import AuthModal from './components/AuthModal';
 import NovoChat from './components/NovoChat';
 import SpendingAnalysisPanel from './components/SpendingAnalysisPanel';
+import ProactiveNOVOMessages from './components/ProactiveNOVOMessages';
+import BenTaskPanel from './components/BenTaskPanel';
 import { supabase } from './lib/supabase';
 import { pushLocalStorageToCloud } from './services/cloudSync';
 import { StorageService } from './services/storage';
@@ -649,6 +651,13 @@ function App() {
         open={showNovoChat}
         onClose={() => setShowNovoChat(false)}
         context={novoChatContext}
+      />
+
+      <ProactiveNOVOMessages
+        onOpenChat={(context) => {
+          setNovoChatContext(context);
+          setShowNovoChat(true);
+        }}
       />
 
       {showHelocWelcome && (

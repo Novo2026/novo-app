@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, CreditCard as Edit2, Pencil, Trash2, TrendingUp, Target, Zap, Home, Sliders, CalendarClock } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
+import { runMilestoneDetection } from '../utils/milestoneEngine';
 import LogPaymentModal from './LogPaymentModal';
 import EditPaymentModal from './EditPaymentModal';
 import EditDebtModal from './EditDebtModal';
@@ -36,6 +37,10 @@ export default function Dashboard({
   onNavigateToSmarterPayments,
 }: DashboardProps) {
   const paymentCommitmentCount = countPaymentCommitments();
+
+  useEffect(() => {
+    runMilestoneDetection();
+  }, []);
 
   const [showLogPayment, setShowLogPayment] = useState(false);
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
