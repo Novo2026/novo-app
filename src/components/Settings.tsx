@@ -1131,6 +1131,24 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
         </button>
       </div>
 
+      <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 space-y-3">
+        <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+          <span>🔄</span> Reset Coaching Messages
+        </h3>
+        <p className="text-sm text-gray-500">
+          Clear milestone history and proactive messages only. Your debts, transactions, and profile data are not affected.
+        </p>
+        <button
+          onClick={() => {
+            clearMilestoneHistory();
+            alert('Coaching messages reset. Reload the page to see updated messages.');
+          }}
+          className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors text-sm"
+        >
+          Reset Coaching Messages
+        </button>
+      </div>
+
       <div className="bg-white rounded-lg shadow-md border-2 border-red-200 p-6">
         <div className="flex items-start space-x-3 mb-4">
           <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
