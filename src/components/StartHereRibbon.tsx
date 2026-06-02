@@ -55,9 +55,9 @@ function getSteps(hasHELOC: boolean, _isHomeowner: boolean): StartHereStep[] {
       ctaLabel: 'Build my plan',
       ctaSection: 'strategies',
       checkComplete: () => {
-        const profile = StorageService.getFinancialProfile() as { selectedStrategy?: string } | null;
-        const strategy = localStorage.getItem('novo_selected_strategy');
-        return !!(profile?.selectedStrategy || strategy);
+        const strategy = localStorage.getItem('novo_strategy');
+        const strategyResult = localStorage.getItem('novo_strategy_result');
+        return !!(strategy || strategyResult);
       },
     },
     {
