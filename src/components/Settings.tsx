@@ -6,6 +6,7 @@ import { buildNovoFullReportHtml, printHtmlDocument } from '../utils/novoPrintRe
 import LearnHELOCModal from './LearnHELOCModal';
 import HelocSuccessModal from './HelocSuccessModal';
 import BenTaskPanel from './BenTaskPanel';
+import { clearMilestoneHistory } from '../utils/milestoneEngine';
 import type { FinancialProfile, FeaturePreferences, HomeEquity } from '../types';
 
 interface SettingsProps {
@@ -263,6 +264,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
     }
 
     StorageService.clearAllData();
+    clearMilestoneHistory();
     localStorage.removeItem('userName');
     localStorage.removeItem('lastVisit');
     localStorage.removeItem('userAddress');

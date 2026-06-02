@@ -89,7 +89,34 @@ function formatCurrency(amount: number): string {
 function getUserFirstName(): string {
   try {
     const profile = StorageService.getFinancialProfile() as { firstName?: string } | null;
-    return profile?.firstName || 'there';
+    if (profile?.firstName) return profile.firstName;
+
+    const onboarding = localStorage.getItem('novo_onboarding_data');
+    if (onboarding) {
+      const data = JSON.parse(onboarding);
+      if (data?.firstName) return data.firstName;
+      if (data?.fullName) return data.fullName.split(' ')[0];
+    }
+
+    const userProfile = localStorage.getItem('novo_user_profile');
+    if (userProfile) {
+      const data = JSON.parse(userProfile);
+      if (data?.firstName) return data.firstName;
+      if (data?.name) return data.name.split(' ')[0];
+    }
+
+    const keys = Object.keys(localStorage);
+    for (const key of keys) {
+      if (key.includes('novo') || key.includes('profile')) {
+        try {
+          const val = JSON.parse(localStorage.getItem(key) || '');
+          if (val?.firstName) return val.firstName;
+          if (val?.name && typeof val.name === 'string') return val.name.split(' ')[0];
+        } catch { continue; }
+      }
+    }
+
+    return 'there';
   } catch { return 'there'; }
 }
 
@@ -225,7 +252,7 @@ export function runMilestoneDetection(): void {
     );
   }
 
-  if (!isHomeowner && dti > 0 && dti < 43 && !hasTriggered('dti_under_43')) {
+  if (!isHomeowner && dti > 0 && dti < 43 && dti >= 36 && !hasTriggered('dti_under_43')) {
     triggerMilestone(
       'dti_under_43',
       { dti },
@@ -277,6 +304,12 @@ export function runMilestoneDetection(): void {
       true
     );
   }
+}
+
+export function clearMilestoneHistory(): void {
+  localStorage.removeItem('novo_detected_milestones');
+  localStorage.removeItem('novo_proactive_messages');
+  localStorage.removeItem('novo_ben_tasks');
 }
 
 export { getProactiveMessages, saveProactiveMessages, getBenTasks, saveBenTasks };
