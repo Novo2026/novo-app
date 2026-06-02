@@ -88,34 +88,10 @@ function formatCurrency(amount: number): string {
 
 function getUserFirstName(): string {
   try {
-    const profile = StorageService.getFinancialProfile() as { firstName?: string } | null;
-    if (profile?.firstName) return profile.firstName;
-
-    const onboarding = localStorage.getItem('novo_onboarding_data');
-    if (onboarding) {
-      const data = JSON.parse(onboarding);
-      if (data?.firstName) return data.firstName;
-      if (data?.fullName) return data.fullName.split(' ')[0];
+    const userName = localStorage.getItem('userName');
+    if (userName && userName.trim()) {
+      return userName.trim().split(' ')[0];
     }
-
-    const userProfile = localStorage.getItem('novo_user_profile');
-    if (userProfile) {
-      const data = JSON.parse(userProfile);
-      if (data?.firstName) return data.firstName;
-      if (data?.name) return data.name.split(' ')[0];
-    }
-
-    const keys = Object.keys(localStorage);
-    for (const key of keys) {
-      if (key.includes('novo') || key.includes('profile')) {
-        try {
-          const val = JSON.parse(localStorage.getItem(key) || '');
-          if (val?.firstName) return val.firstName;
-          if (val?.name && typeof val.name === 'string') return val.name.split(' ')[0];
-        } catch { continue; }
-      }
-    }
-
     return 'there';
   } catch { return 'there'; }
 }
