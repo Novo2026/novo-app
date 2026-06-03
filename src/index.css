@@ -106,10 +106,33 @@
     transform: rotate(15deg);
   }
 
-  /* Dot grid texture */
-  .dot-grid {
-    background-image: radial-gradient(circle, rgba(30,58,95,0.06) 1px, transparent 1px);
-    background-size: 24px 24px;
+  .novo-background {
+    position: relative;
+  }
+
+  .novo-background::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 900' preserveAspectRatio='xMidYMid slice'%3E%3C!-- Rolling hills --%3E%3Cpath d='M0,720 Q200,660 400,690 Q600,720 800,670 Q1000,620 1200,655 Q1350,678 1440,650 L1440,900 L0,900Z' fill='%231E3A5F' opacity='0.04'/%3E%3Cpath d='M0,760 Q250,710 500,740 Q750,770 1000,730 Q1200,698 1440,720 L1440,900 L0,900Z' fill='%231E3A5F' opacity='0.03'/%3E%3C!-- Windmill 1 large --%3E%3Crect x='198' y='540' width='6' height='185' fill='%231E3A5F' opacity='0.05'/%3E%3Crect x='188' y='718' width='26' height='7' rx='2' fill='%231E3A5F' opacity='0.05'/%3E%3Cg opacity='0.06'%3E%3Crect x='195' y='478' width='8' height='58' rx='4' fill='%23FF6B35'/%3E%3Crect x='195' y='548' width='8' height='58' rx='4' fill='%23FF6B35' opacity='0.7'/%3E%3Crect x='137' y='537' width='58' height='8' rx='4' fill='%23FF6B35' opacity='0.6'/%3E%3Crect x='207' y='537' width='58' height='8' rx='4' fill='%23FF6B35' opacity='0.8'/%3E%3Ccircle cx='199' cy='545' r='12' fill='%231E3A5F'/%3E%3C/g%3E%3C!-- Windmill 2 medium --%3E%3Crect x='748' y='568' width='4' height='140' fill='%231E3A5F' opacity='0.04'/%3E%3Cg opacity='0.045'%3E%3Crect x='745' y='522' width='6' height='44' rx='3' fill='%23FF6B35'/%3E%3Crect x='745' y='572' width='6' height='44' rx='3' fill='%23FF6B35' opacity='0.7'/%3E%3Crect x='704' y='565' width='44' height='6' rx='3' fill='%23FF6B35' opacity='0.6'/%3E%3Crect x='752' y='565' width='44' height='6' rx='3' fill='%23FF6B35' opacity='0.8'/%3E%3Ccircle cx='750' cy='568' r='9' fill='%231E3A5F'/%3E%3C/g%3E%3C!-- Windmill 3 small far --%3E%3Crect x='1148' y='595' width='3' height='100' fill='%231E3A5F' opacity='0.03'/%3E%3Cg opacity='0.035'%3E%3Crect x='1146' y='562' width='4' height='32' rx='2' fill='%23FF6B35'/%3E%3Crect x='1146' y='600' width='4' height='32' rx='2' fill='%23FF6B35' opacity='0.7'/%3E%3Crect x='1116' y='594' width='32' height='4' rx='2' fill='%23FF6B35' opacity='0.5'/%3E%3Crect x='1152' y='594' width='32' height='4' rx='2' fill='%23FF6B35' opacity='0.7'/%3E%3Ccircle cx='1150' cy='596' r='6' fill='%231E3A5F'/%3E%3C/g%3E%3C!-- Topographic lines subtle --%3E%3Cpath d='M0,400 Q360,340 720,380 Q1080,420 1440,370' fill='none' stroke='%231E3A5F' stroke-width='1' opacity='0.025'/%3E%3Cpath d='M0,450 Q360,390 720,430 Q1080,470 1440,420' fill='none' stroke='%231E3A5F' stroke-width='0.8' opacity='0.02'/%3E%3Cpath d='M0,350 Q360,290 720,330 Q1080,370 1440,320' fill='none' stroke='%23FF6B35' stroke-width='0.8' opacity='0.02'/%3E%3C/svg%3E");
+    background-size: cover;
+    background-position: center bottom;
+    background-repeat: no-repeat;
+  }
+
+  .novo-background::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at 100% 0%, rgba(255,107,53,0.08) 0%, transparent 45%),
+      radial-gradient(ellipse at 0% 100%, rgba(30,58,95,0.08) 0%, transparent 45%),
+      radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.75) 0%, transparent 70%),
+      linear-gradient(135deg, #EEF2F7 0%, #F5EDE8 100%);
   }
 
   /* Animations */

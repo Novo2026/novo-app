@@ -378,7 +378,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-brand-cream dot-grid">
+    <div className="min-h-screen novo-background">
       {authSession === null && (
         <AuthModal
           onAuthenticated={() => {
@@ -551,7 +551,7 @@ function App() {
         </div>
       </header>
 
-      <nav className="bg-brand-cream border-b border-brand-cream-border sticky top-[64px] z-10 hidden md:block dot-grid" style={{ boxShadow: '0 1px 0 rgba(232,216,196,0.8)' }}>
+      <nav className="bg-brand-cream border-b border-brand-cream-border sticky top-[64px] z-20 hidden md:block" style={{ boxShadow: '0 1px 0 rgba(232,216,196,0.8)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex overflow-x-auto">
             <button
@@ -682,7 +682,7 @@ function App() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 pb-20 md:pb-0 animate-fade-in">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 pb-20 md:pb-0 animate-fade-in relative z-10">
         <div key={refreshKey}>{renderSection()}</div>
       </main>
 
