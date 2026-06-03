@@ -346,7 +346,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-brand-cream dot-grid">
       {authSession === null && (
         <AuthModal
           onAuthenticated={() => {
@@ -372,9 +372,10 @@ function App() {
         role="dialog"
         aria-modal="true"
         aria-label="Navigation menu"
-        className={`fixed top-0 left-0 h-full w-[280px] bg-white z-50 shadow-2xl flex flex-col md:hidden transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 h-full w-[280px] z-50 shadow-2xl flex flex-col md:hidden transition-transform duration-300 ease-in-out ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
+        style={{ backgroundColor: '#FDF6EE', borderRight: '1px solid #e8d8c4' }}
         onKeyDown={(e) => { if (e.key === 'Escape') closeMobileMenu(); }}
       >
         <div className="flex items-center justify-between px-4 py-4 bg-[#1E3A5F]">
@@ -414,8 +415,8 @@ function App() {
               }}
               className={`w-full flex items-center gap-3 px-5 py-4 text-left transition-colors min-h-[48px] ${
                 currentSection === section
-                  ? 'bg-brand-orange/10 text-brand-orange font-bold border-l-4 border-brand-orange'
-                  : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent'
+                  ? 'bg-[#FF6B35]/10 text-[#FF6B35] font-bold border-l-4 border-[#FF6B35]'
+                  : 'text-[#1E3A5F]/70 hover:bg-white/60 border-l-4 border-transparent hover:text-[#1E3A5F]'
               }`}
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
@@ -440,7 +441,10 @@ function App() {
         </div>
       </div>
 
-      <header className="bg-gradient-hero text-white shadow-lg sticky top-0 z-20 border-b border-white/10">
+      <header
+        className="bg-[#1E3A5F] shadow-md sticky top-0 z-20 border-b border-white/10 text-white"
+        style={{ backgroundImage: 'radial-gradient(ellipse at 80% 50%, rgba(255,107,53,0.15) 0%, transparent 60%), radial-gradient(ellipse at 20% 50%, rgba(45,90,142,0.3) 0%, transparent 50%)' }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Mobile: hamburger + logo | Desktop: logo + subtitle */}
@@ -457,14 +461,23 @@ function App() {
               </button>
               <button
                 onClick={() => setCurrentSection('dashboard')}
-                className="flex items-center space-x-3 group cursor-pointer"
+                className="flex items-center group cursor-pointer"
               >
-                <img
-                  src="/novo_primary.png"
-                  alt="NOVO Logo"
-                  className="h-10 w-auto transition-transform duration-200 group-hover:scale-105"
-                />
-                <div className="hidden sm:block text-sm text-gray-300">Debt Free. Home Ready.</div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#FF6B35' }}>
+                    <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
+                      <rect x="9.5" y="1" width="3" height="9" rx="1.5" fill="white"/>
+                      <rect x="9.5" y="12" width="3" height="9" rx="1.5" fill="white" opacity="0.7"/>
+                      <rect x="1" y="9.5" width="9" height="3" rx="1.5" fill="white" opacity="0.6"/>
+                      <rect x="12" y="9.5" width="9" height="3" rx="1.5" fill="white" opacity="0.9"/>
+                      <circle cx="11" cy="11" r="2.5" fill="#FF6B35" stroke="white" strokeWidth="1.5"/>
+                    </svg>
+                  </div>
+                  <div className="hidden sm:block text-left">
+                    <div className="text-white font-bold text-base tracking-tight leading-none">NOVO</div>
+                    <div className="text-white/50 text-[10px] tracking-wide">Debt Free. Home Ready.</div>
+                  </div>
+                </div>
               </button>
             </div>
 
@@ -491,7 +504,7 @@ function App() {
               )}
               <button
                 onClick={handleAskNovoClick}
-                className={`group flex items-center space-x-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-bold px-4 py-2.5 rounded-xl transition-all transform hover:scale-105 shadow-md hover:shadow-lg ${
+                className={`group flex items-center space-x-2 bg-[#FF6B35] hover:bg-[#E55A25] text-white font-bold px-4 py-2.5 rounded-xl transition-all transform hover:scale-105 shadow-md hover:shadow-lg ${
                   !askNovoClicked ? 'animate-gentle-pulse' : ''
                 }`}
                 title="Get personalized debt coaching from NOVO's AI assistant"
@@ -504,15 +517,15 @@ function App() {
         </div>
       </header>
 
-      <nav className="bg-white border-b border-gray-100 sticky top-[64px] z-10 shadow-sm hidden md:block">
+      <nav className="bg-brand-cream border-b border-brand-cream-border sticky top-[64px] z-10 hidden md:block" style={{ boxShadow: '0 1px 0 rgba(232,216,196,0.8)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex overflow-x-auto">
             <button
               onClick={() => setCurrentSection('dashboard')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'dashboard'
-                  ? 'border-brand-orange text-brand-navy font-bold'
-                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
+                  ? 'border-[#FF6B35] text-[#1E3A5F] font-bold bg-white/60'
+                  : 'border-transparent text-[#1E3A5F]/60 font-medium hover:text-[#1E3A5F] hover:border-[#e8d8c4] transition-colors'
               }`}
             >
               <Home className="w-4 h-4" />
@@ -522,8 +535,8 @@ function App() {
               onClick={() => setCurrentSection('debts')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'debts'
-                  ? 'border-brand-orange text-brand-navy font-bold'
-                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
+                  ? 'border-[#FF6B35] text-[#1E3A5F] font-bold bg-white/60'
+                  : 'border-transparent text-[#1E3A5F]/60 font-medium hover:text-[#1E3A5F] hover:border-[#e8d8c4] transition-colors'
               }`}
             >
               <CreditCard className="w-4 h-4" />
@@ -533,8 +546,8 @@ function App() {
               onClick={() => setCurrentSection('strategies')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'strategies'
-                  ? 'border-brand-orange text-brand-navy font-bold'
-                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
+                  ? 'border-[#FF6B35] text-[#1E3A5F] font-bold bg-white/60'
+                  : 'border-transparent text-[#1E3A5F]/60 font-medium hover:text-[#1E3A5F] hover:border-[#e8d8c4] transition-colors'
               }`}
             >
               <TrendingUp className="w-4 h-4" />
@@ -551,8 +564,8 @@ function App() {
                 }}
                 className={`relative flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                   currentSection === 'tracker'
-                    ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-[#FF6B35] text-[#1E3A5F] font-bold bg-white/60'
+                    : 'border-transparent text-[#1E3A5F]/60 font-medium hover:text-[#1E3A5F] hover:border-[#e8d8c4] transition-colors'
                 }`}
               >
                 <Wallet className="w-4 h-4" />
@@ -568,8 +581,8 @@ function App() {
               onClick={() => setCurrentSection('savings')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'savings'
-                  ? 'border-brand-orange text-brand-navy font-bold'
-                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
+                  ? 'border-[#FF6B35] text-[#1E3A5F] font-bold bg-white/60'
+                  : 'border-transparent text-[#1E3A5F]/60 font-medium hover:text-[#1E3A5F] hover:border-[#e8d8c4] transition-colors'
               }`}
             >
               <PiggyBank className="w-4 h-4" />
@@ -579,8 +592,8 @@ function App() {
               onClick={() => setCurrentSection('what-if')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'what-if'
-                  ? 'border-brand-orange text-brand-navy font-bold'
-                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
+                  ? 'border-[#FF6B35] text-[#1E3A5F] font-bold bg-white/60'
+                  : 'border-transparent text-[#1E3A5F]/60 font-medium hover:text-[#1E3A5F] hover:border-[#e8d8c4] transition-colors'
               }`}
             >
               <Sliders className="w-4 h-4" />
@@ -590,8 +603,8 @@ function App() {
               onClick={() => setCurrentSection('smarter-payments')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'smarter-payments'
-                  ? 'border-brand-orange text-brand-navy font-bold'
-                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
+                  ? 'border-[#FF6B35] text-[#1E3A5F] font-bold bg-white/60'
+                  : 'border-transparent text-[#1E3A5F]/60 font-medium hover:text-[#1E3A5F] hover:border-[#e8d8c4] transition-colors'
               }`}
             >
               <CalendarClock className="w-4 h-4" />
@@ -601,8 +614,8 @@ function App() {
               onClick={() => setCurrentSection('progress')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'progress'
-                  ? 'border-brand-orange text-brand-navy font-bold'
-                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
+                  ? 'border-[#FF6B35] text-[#1E3A5F] font-bold bg-white/60'
+                  : 'border-transparent text-[#1E3A5F]/60 font-medium hover:text-[#1E3A5F] hover:border-[#e8d8c4] transition-colors'
               }`}
             >
               <BarChart3 className="w-4 h-4" />
@@ -612,8 +625,8 @@ function App() {
               onClick={() => setCurrentSection('home-ready')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'home-ready'
-                  ? 'border-brand-orange text-brand-navy font-bold'
-                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
+                  ? 'border-[#FF6B35] text-[#1E3A5F] font-bold bg-white/60'
+                  : 'border-transparent text-[#1E3A5F]/60 font-medium hover:text-[#1E3A5F] hover:border-[#e8d8c4] transition-colors'
               }`}
             >
               <Building2 className="w-4 h-4" />
@@ -624,8 +637,8 @@ function App() {
               data-section="settings"
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'settings'
-                  ? 'border-brand-orange text-brand-navy font-bold'
-                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
+                  ? 'border-[#FF6B35] text-[#1E3A5F] font-bold bg-white/60'
+                  : 'border-transparent text-[#1E3A5F]/60 font-medium hover:text-[#1E3A5F] hover:border-[#e8d8c4] transition-colors'
               }`}
             >
               <SettingsIcon className="w-4 h-4" />
@@ -653,7 +666,7 @@ function App() {
       />
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-brand-cream-border" style={{ backgroundColor: '#FDF6EE', boxShadow: '0 -4px 24px rgba(30,58,95,0.08)' }}>
         <div className="flex items-center justify-around px-2 py-1">
           {[
             { section: 'dashboard' as Section, label: 'Home', icon: Home },

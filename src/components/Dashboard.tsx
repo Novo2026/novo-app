@@ -385,9 +385,20 @@ export default function Dashboard({
       />
 
       {localStorage.getItem('userName') && (
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">{getGreeting()}!</h1>
-          <p className="text-gray-600 mt-1">Here's your debt freedom progress</p>
+        <div className="relative rounded-2xl overflow-hidden mb-6 windmill-watermark" style={{ background: 'linear-gradient(135deg, #1E3A5F 0%, #2D5A8E 60%, #1E3A5F 100%)' }}>
+          <div className="absolute top-0 right-0 w-72 h-72 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(255,107,53,0.2) 0%, transparent 70%)', transform: 'translate(30%, -30%)' }} />
+          <div className="absolute bottom-0 left-1/4 w-48 h-48 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(255,107,53,0.1) 0%, transparent 70%)', transform: 'translate(-20%, 40%)' }} />
+          <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+
+          <div className="relative z-10 px-6 py-6 md:px-8 md:py-8">
+            <p className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-1">
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </p>
+            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-0.5">
+              Good {getTimeOfDay()}, {userName}!
+            </h1>
+            <p className="text-white/60 text-sm">Here&apos;s your debt freedom progress</p>
+          </div>
         </div>
       )}
 
@@ -760,7 +771,7 @@ export default function Dashboard({
       )}
 
       <div>
-        <h3 className="text-xl font-bold text-gray-800 mb-4">Active Debts</h3>
+        <h3 className="text-xl font-bold text-[#1E3A5F] mb-4">Active Debts</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {metrics.activeDebts.filter(debt => debt.category !== 'HELOC').map(debt => {
             const paidOff = debt.startingBalance - debt.currentBalance;
@@ -829,7 +840,7 @@ export default function Dashboard({
 
       {metrics.paidOffDebts.length > 0 && (
         <div>
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Paid Off Debts</h3>
+          <h3 className="text-xl font-bold text-[#1E3A5F] mb-4">Paid Off Debts</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {metrics.paidOffDebts.map(debt => (
               <div
@@ -864,7 +875,7 @@ export default function Dashboard({
       {recentActivity.length > 0 && (
         <div>
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-gray-800">Recent Activity</h3>
+            <h3 className="text-xl font-bold text-[#1E3A5F]">Recent Activity</h3>
             <span className="text-xs text-gray-500 uppercase tracking-wide">Last 15 transactions</span>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6">
