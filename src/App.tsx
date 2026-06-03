@@ -378,7 +378,59 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen novo-background">
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #EEF2F7 0%, #F5EDE8 100%)' }}>
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `
+      radial-gradient(ellipse at 100% 0%, rgba(255,107,53,0.10) 0%, transparent 45%),
+      radial-gradient(ellipse at 0% 100%, rgba(30,58,95,0.10) 0%, transparent 45%),
+      radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.70) 0%, transparent 70%)
+    `,
+          }}
+        />
+        <svg
+          className="absolute bottom-0 left-0 w-full"
+          viewBox="0 0 1440 500"
+          preserveAspectRatio="xMidYMax slice"
+          xmlns="http://www.w3.org/2000/svg"
+          style={{ opacity: 0.06 }}
+        >
+          <path d="M0,380 Q200,320 400,355 Q600,390 800,345 Q1000,300 1200,335 Q1350,358 1440,330 L1440,500 L0,500Z" fill="#1E3A5F" />
+          <path d="M0,420 Q250,370 500,400 Q750,430 1000,390 Q1200,358 1440,380 L1440,500 L0,500Z" fill="#1E3A5F" opacity="0.6" />
+          <rect x="200" y="210" width="6" height="175" fill="#1E3A5F" />
+          <rect x="190" y="378" width="26" height="7" rx="2" fill="#1E3A5F" />
+          <g style={{ transformOrigin: '203px 218px' }}>
+            <rect x="199" y="160" width="8" height="56" rx="4" fill="#FF6B35" />
+            <rect x="199" y="222" width="8" height="56" rx="4" fill="#FF6B35" opacity="0.7" />
+            <rect x="145" y="214" width="56" height="8" rx="4" fill="#FF6B35" opacity="0.6" />
+            <rect x="205" y="214" width="56" height="8" rx="4" fill="#FF6B35" opacity="0.8" />
+          </g>
+          <circle cx="203" cy="218" r="10" fill="#152C47" />
+          <rect x="750" y="250" width="4" height="130" fill="#1E3A5F" />
+          <rect x="742" y="374" width="20" height="6" rx="2" fill="#1E3A5F" />
+          <g style={{ transformOrigin: '752px 257px' }}>
+            <rect x="748" y="215" width="6" height="42" rx="3" fill="#FF6B35" />
+            <rect x="748" y="259" width="6" height="42" rx="3" fill="#FF6B35" opacity="0.7" />
+            <rect x="708" y="253" width="42" height="6" rx="3" fill="#FF6B35" opacity="0.6" />
+            <rect x="754" y="253" width="42" height="6" rx="3" fill="#FF6B35" opacity="0.8" />
+          </g>
+          <circle cx="752" cy="257" r="7" fill="#152C47" />
+          <rect x="1150" y="278" width="3" height="95" fill="#1E3A5F" />
+          <rect x="1143" y="368" width="17" height="5" rx="2" fill="#1E3A5F" />
+          <g style={{ transformOrigin: '1151px 284px' }}>
+            <rect x="1148" y="253" width="5" height="30" rx="2.5" fill="#FF6B35" />
+            <rect x="1148" y="285" width="5" height="30" rx="2.5" fill="#FF6B35" opacity="0.7" />
+            <rect x="1120" y="279" width="30" height="5" rx="2.5" fill="#FF6B35" opacity="0.6" />
+            <rect x="1154" y="279" width="30" height="5" rx="2.5" fill="#FF6B35" opacity="0.8" />
+          </g>
+          <circle cx="1151" cy="284" r="5" fill="#152C47" />
+          <path d="M0,200 Q360,150 720,185 Q1080,220 1440,175" fill="none" stroke="#1E3A5F" strokeWidth="1" opacity="0.4" />
+          <path d="M0,240 Q360,190 720,225 Q1080,260 1440,215" fill="none" stroke="#1E3A5F" strokeWidth="0.8" opacity="0.3" />
+          <path d="M0,160 Q360,110 720,145 Q1080,180 1440,135" fill="none" stroke="#FF6B35" strokeWidth="0.8" opacity="0.3" />
+        </svg>
+      </div>
       {authSession === null && (
         <AuthModal
           onAuthenticated={() => {
