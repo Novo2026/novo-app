@@ -7,6 +7,8 @@ import LearnHELOCModal from './LearnHELOCModal';
 import HelocSuccessModal from './HelocSuccessModal';
 import BenTaskPanel from './BenTaskPanel';
 import { clearMilestoneHistory } from '../utils/milestoneEngine';
+import { UpgradeModal } from './AccessGate';
+import { isPro, getAccessRecord, isProExpired } from '../services/accessControl';
 import type { FinancialProfile, FeaturePreferences, HomeEquity } from '../types';
 
 interface SettingsProps {
@@ -16,6 +18,11 @@ interface SettingsProps {
 }
 
 export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavigate }: SettingsProps) {
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const proStatus = isPro();
+  const accessRecord = getAccessRecord();
+  const expired = isProExpired();
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -1218,6 +1225,34 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
       </div>
 
       <BenTaskPanel />
+
+      <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-gray-900">NOVO Access Level</h3>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {proStatus
+                ? `Pro${accessRecord?.expiresAt ? ` — expires ${new Date(accessRecord.expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ' — Permanent'}`
+                : expired
+                ? 'Pro access expired — re-enter a code to restore'
+                : 'Free tier — enter an access code to unlock Pro'}
+            </p>
+          </div>
+          <span className={`text-xs font-bold px-3 py-1 rounded-full ${proStatus ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
+            {proStatus ? 'PRO' : 'FREE'}
+          </span>
+        </div>
+        {!proStatus && (
+          <button
+            type="button"
+            onClick={() => setShowUpgradeModal(true)}
+            className="w-full bg-[#FF6B35] hover:bg-[#e55a25] text-white font-bold py-2.5 rounded-lg transition-colors text-sm"
+          >
+            Enter Access Code
+          </button>
+        )}
+        {showUpgradeModal && <UpgradeModal onClose={() => setShowUpgradeModal(false)} />}
+      </div>
 
       <div className="bg-[#2D9CDB]/10 border border-[#2D9CDB] rounded-lg p-6">
         <h3 className="font-bold text-gray-800 mb-2">About NOVO</h3>

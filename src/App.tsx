@@ -18,6 +18,7 @@ import NovoChat from './components/NovoChat';
 import SpendingAnalysisPanel from './components/SpendingAnalysisPanel';
 import ProactiveNOVOMessages from './components/ProactiveNOVOMessages';
 import BenTaskPanel from './components/BenTaskPanel';
+import { ProFeatureGate, UpgradeButton } from './components/AccessGate';
 import { supabase } from './lib/supabase';
 import { pushLocalStorageToCloud } from './services/cloudSync';
 import { StorageService } from './services/storage';
@@ -290,25 +291,43 @@ function App() {
       case 'smarter-payments':
         return <SmarterPayments onDataUpdate={handleDataUpdate} />;
       case 'what-if':
-        return <WhatIfSimulator />;
+        return (
+          <ProFeatureGate featureName="What-If Simulator">
+            <WhatIfSimulator />
+          </ProFeatureGate>
+        );
       case 'tracker':
         return (
-          <div className="space-y-6">
-            <Tracker onDataUpdate={handleDataUpdate} />
-            <SpendingAnalysisPanel
-              onOpenChat={(context) => {
-                setNovoChatContext(context);
-                setShowNovoChat(true);
-              }}
-            />
-          </div>
+          <ProFeatureGate featureName="Tracker & Spending Analysis">
+            <div className="space-y-6">
+              <Tracker onDataUpdate={handleDataUpdate} />
+              <SpendingAnalysisPanel
+                onOpenChat={(context) => {
+                  setNovoChatContext(context);
+                  setShowNovoChat(true);
+                }}
+              />
+            </div>
+          </ProFeatureGate>
         );
       case 'savings':
-        return <SavingsTracker />;
+        return (
+          <ProFeatureGate featureName="Savings Tracker">
+            <SavingsTracker />
+          </ProFeatureGate>
+        );
       case 'progress':
-        return <ProgressReports onDataUpdate={handleDataUpdate} />;
+        return (
+          <ProFeatureGate featureName="Progress Reports">
+            <ProgressReports onDataUpdate={handleDataUpdate} />
+          </ProFeatureGate>
+        );
       case 'home-ready':
-        return <HomeReady onNavigateToSettings={() => setCurrentSection('settings')} />;
+        return (
+          <ProFeatureGate featureName="Home Ready">
+            <HomeReady onNavigateToSettings={() => setCurrentSection('settings')} />
+          </ProFeatureGate>
+        );
       case 'guide':
         return <Guide />;
       case 'settings':
@@ -458,6 +477,7 @@ function App() {
                   >
                     {authSession.user.email}
                   </span>
+                  <UpgradeButton />
                   <button
                     type="button"
                     onClick={handleLogout}
