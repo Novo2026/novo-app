@@ -136,6 +136,13 @@ export default function Dashboard({
     ? targetDebt.minimumPayment + extraForDebtPayoff
     : 0;
 
+  const getTimeOfDay = (): string => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'morning';
+    if (hour < 18) return 'afternoon';
+    return 'evening';
+  };
+
   const getGreeting = (): string => {
     const userName = localStorage.getItem('userName');
     const lastVisit = localStorage.getItem('lastVisit');
@@ -424,7 +431,7 @@ export default function Dashboard({
         </div>
       )}
 
-      <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2D5A8A] text-white rounded-xl shadow-lg p-8">
+      <div className="bg-gradient-navy text-white rounded-2xl shadow-card p-8">
         <h2 className="text-2xl font-bold mb-4">Total Debt Progress</h2>
         <div className="mb-4">
           <div className="flex items-center justify-between text-sm mb-2">
@@ -735,18 +742,18 @@ export default function Dashboard({
               </button>
             )}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm opacity-90 mb-1">Total Savings</p>
-              <p className="text-2xl font-bold">{CalculationService.formatCurrency(savingsMetrics.totalSavings)}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
+            <div className="novo-card p-5 flex flex-col gap-2 animate-fade-up bg-white/95">
+              <p className="stat-label">Total Savings</p>
+              <p className="stat-value number-display text-emerald-600">{CalculationService.formatCurrency(savingsMetrics.totalSavings)}</p>
             </div>
-            <div>
-              <p className="text-sm opacity-90 mb-1">Accounts</p>
-              <p className="text-2xl font-bold">{savingsMetrics.numberOfAccounts}</p>
+            <div className="novo-card p-5 flex flex-col gap-2 animate-fade-up bg-white/95">
+              <p className="stat-label">Accounts</p>
+              <p className="stat-value number-display text-brand-navy">{savingsMetrics.numberOfAccounts}</p>
             </div>
-            <div>
-              <p className="text-sm opacity-90 mb-1">Interest Earned (YTD)</p>
-              <p className="text-2xl font-bold">{CalculationService.formatCurrency(savingsMetrics.totalInterestEarnedYTD)}</p>
+            <div className="novo-card p-5 flex flex-col gap-2 animate-fade-up bg-white/95">
+              <p className="stat-label">Interest Earned (YTD)</p>
+              <p className="stat-value number-display text-emerald-600">{CalculationService.formatCurrency(savingsMetrics.totalInterestEarnedYTD)}</p>
             </div>
           </div>
         </div>
@@ -762,7 +769,7 @@ export default function Dashboard({
             return (
               <div
                 key={debt.id}
-                className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow border border-gray-200"
+                className="novo-card-hover p-6"
               >
                 <div className="flex justify-between items-start mb-3">
                   <div>

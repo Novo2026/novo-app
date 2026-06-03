@@ -414,7 +414,7 @@ function App() {
               }}
               className={`w-full flex items-center gap-3 px-5 py-4 text-left transition-colors min-h-[48px] ${
                 currentSection === section
-                  ? 'bg-[#FF6B35]/10 text-[#FF6B35] font-semibold border-l-4 border-[#FF6B35]'
+                  ? 'bg-brand-orange/10 text-brand-orange font-bold border-l-4 border-brand-orange'
                   : 'text-gray-700 hover:bg-gray-50 border-l-4 border-transparent'
               }`}
             >
@@ -432,7 +432,7 @@ function App() {
         <div className="px-4 py-4 border-t border-gray-100">
           <button
             onClick={() => { handleAskNovoClick(); closeMobileMenu(); }}
-            className="w-full flex items-center justify-center gap-2 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold px-4 py-3 rounded-lg transition-colors"
+            className="w-full flex items-center justify-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-bold px-4 py-3 rounded-xl transition-colors shadow-sm"
           >
             <MessageCircle className="w-5 h-5" />
             Ask NOVO
@@ -440,7 +440,7 @@ function App() {
         </div>
       </div>
 
-      <header className="bg-[#1E3A5F] text-white shadow-lg">
+      <header className="bg-gradient-hero text-white shadow-lg sticky top-0 z-20 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Mobile: hamburger + logo | Desktop: logo + subtitle */}
@@ -491,7 +491,7 @@ function App() {
               )}
               <button
                 onClick={handleAskNovoClick}
-                className={`group flex items-center space-x-2 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold px-4 py-2 rounded-lg transition-all transform hover:scale-105 shadow-md hover:shadow-lg ${
+                className={`group flex items-center space-x-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-bold px-4 py-2.5 rounded-xl transition-all transform hover:scale-105 shadow-md hover:shadow-lg ${
                   !askNovoClicked ? 'animate-gentle-pulse' : ''
                 }`}
                 title="Get personalized debt coaching from NOVO's AI assistant"
@@ -504,15 +504,15 @@ function App() {
         </div>
       </header>
 
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm hidden md:block">
+      <nav className="bg-white border-b border-gray-100 sticky top-[64px] z-10 shadow-sm hidden md:block">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex overflow-x-auto">
             <button
               onClick={() => setCurrentSection('dashboard')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'dashboard'
-                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-brand-orange text-brand-navy font-bold'
+                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
               }`}
             >
               <Home className="w-4 h-4" />
@@ -522,8 +522,8 @@ function App() {
               onClick={() => setCurrentSection('debts')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'debts'
-                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-brand-orange text-brand-navy font-bold'
+                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
               }`}
             >
               <CreditCard className="w-4 h-4" />
@@ -533,8 +533,8 @@ function App() {
               onClick={() => setCurrentSection('strategies')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'strategies'
-                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-brand-orange text-brand-navy font-bold'
+                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
               }`}
             >
               <TrendingUp className="w-4 h-4" />
@@ -568,8 +568,8 @@ function App() {
               onClick={() => setCurrentSection('savings')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'savings'
-                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-brand-orange text-brand-navy font-bold'
+                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
               }`}
             >
               <PiggyBank className="w-4 h-4" />
@@ -579,8 +579,8 @@ function App() {
               onClick={() => setCurrentSection('what-if')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'what-if'
-                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-brand-orange text-brand-navy font-bold'
+                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
               }`}
             >
               <Sliders className="w-4 h-4" />
@@ -590,8 +590,8 @@ function App() {
               onClick={() => setCurrentSection('smarter-payments')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'smarter-payments'
-                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-brand-orange text-brand-navy font-bold'
+                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
               }`}
             >
               <CalendarClock className="w-4 h-4" />
@@ -601,8 +601,8 @@ function App() {
               onClick={() => setCurrentSection('progress')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'progress'
-                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-brand-orange text-brand-navy font-bold'
+                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
               }`}
             >
               <BarChart3 className="w-4 h-4" />
@@ -612,8 +612,8 @@ function App() {
               onClick={() => setCurrentSection('home-ready')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'home-ready'
-                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-brand-orange text-brand-navy font-bold'
+                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
               }`}
             >
               <Building2 className="w-4 h-4" />
@@ -624,8 +624,8 @@ function App() {
               data-section="settings"
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                 currentSection === 'settings'
-                  ? 'border-[#FF6B35] text-[#1E3A5F] font-semibold'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-brand-orange text-brand-navy font-bold'
+                  : 'border-transparent text-gray-500 font-medium hover:text-brand-navy hover:border-gray-300 transition-colors'
               }`}
             >
               <SettingsIcon className="w-4 h-4" />
@@ -635,7 +635,7 @@ function App() {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8 pb-20 md:pb-0 animate-fade-in">
         <div key={refreshKey}>{renderSection()}</div>
       </main>
 
@@ -652,8 +652,40 @@ function App() {
         }}
       />
 
+      {/* Mobile bottom nav */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]">
+        <div className="flex items-center justify-around px-2 py-1">
+          {[
+            { section: 'dashboard' as Section, label: 'Home', icon: Home },
+            { section: 'debts' as Section, label: 'Debts', icon: CreditCard },
+            { section: 'strategies' as Section, label: 'Plan', icon: TrendingUp },
+            { section: 'smarter-payments' as Section, label: 'Payments', icon: CalendarClock },
+            { section: 'settings' as Section, label: 'More', icon: SettingsIcon },
+          ].map(({ section, label, icon: Icon }) => (
+            <button
+              key={section}
+              type="button"
+              onClick={() => handleMobileNavClick(section)}
+              className={`relative flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all min-w-[56px] ${
+                currentSection === section
+                  ? 'text-brand-orange'
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <Icon className={`w-5 h-5 transition-transform ${currentSection === section ? 'scale-110' : ''}`} />
+              <span className={`text-[10px] font-semibold ${currentSection === section ? 'text-brand-orange' : 'text-gray-400'}`}>
+                {label}
+              </span>
+              {currentSection === section && (
+                <div className="absolute bottom-0 w-8 h-0.5 bg-brand-orange rounded-full" />
+              )}
+            </button>
+          ))}
+        </div>
+      </nav>
+
       {showHelocWelcome && (
-        <div className="fixed bottom-8 right-8 z-50 animate-slide-up">
+        <div className="fixed bottom-8 right-8 z-50 animate-slide-up md:bottom-8">
           <div className="bg-white rounded-lg shadow-2xl border-2 border-emerald-500 p-4 max-w-md">
             <div className="flex items-start space-x-3">
               <div className="flex-shrink-0">
