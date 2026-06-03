@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react';
 import { Upload, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
+import { StorageService } from '../services/storage';
+import type { Debt } from '../types';
 
 interface ParsedTransaction {
   id: string;
@@ -10,6 +12,27 @@ interface ParsedTransaction {
   type: 'deposit' | 'withdrawal' | 'debt_payment';
   category?: string;
   approved: boolean;
+}
+
+type StatementType = 'checking' | 'credit_card' | 'savings' | 'unknown';
+
+interface StatementDetectionResult {
+  type: StatementType;
+  accountName: string;
+  lastFourDigits?: string;
+  statementBalance?: number;
+  minimumPayment?: number;
+  dueDate?: string;
+  confidence: 'high' | 'low';
+}
+
+export interface CreditCardImportResult {
+  debtId: string;
+  debtName: string;
+  newBalance: number;
+  transactions: ParsedTransaction[];
+  minimumPayment?: number;
+  dueDate?: string;
 }
 
 interface StatementUploadModalProps {
@@ -78,6 +101,152 @@ function parseCSV(text: string): ParsedTransaction[] {
   }
 
   return results;
+}
+
+async function detectStatementType(file: File, base64: string): Promise<StatementDetectionResult> {
+  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+  if (!apiKey) return { type: 'unknown', accountName: '', confidence: 'low' };
+
+  const isPDF = file.name.endsWith('.pdf');
+
+  if (!isPDF) {
+    const text = await file.text();
+    const firstLines = text.split('\n').slice(0, 5).join('\n').toLowerCase();
+    if (
+      firstLines.includes('credit card') ||
+      firstLines.includes('minimum payment') ||
+      firstLines.includes('payment due') ||
+      firstLines.includes('new balance')
+    ) {
+      return { type: 'credit_card', accountName: 'Credit Card', confidence: 'low' };
+    }
+    return { type: 'checking', accountName: 'Checking Account', confidence: 'high' };
+  }
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 500,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'document',
+            source: { type: 'base64', media_type: 'application/pdf', data: base64 },
+          },
+          {
+            type: 'text',
+            text: `Analyze this financial statement and return ONLY a JSON object with these fields:
+{
+  "type": "checking" or "credit_card" or "savings" or "unknown",
+  "accountName": "the bank and account name e.g. Chase Sapphire Preferred or Chase Total Checking",
+  "lastFourDigits": "last 4 digits of account/card number if visible, or null",
+  "statementBalance": the current/new balance as a number if this is a credit card, or null,
+  "minimumPayment": the minimum payment due as a number if visible, or null,
+  "dueDate": "payment due date in YYYY-MM-DD format if visible, or null",
+  "confidence": "high" if you are certain of the type, "low" if uncertain
+}
+Return ONLY the JSON, no other text.`,
+          },
+        ],
+      }],
+    }),
+  });
+
+  if (!response.ok) return { type: 'unknown', accountName: '', confidence: 'low' };
+
+  const data = await response.json();
+  const text = data.content?.[0]?.text || '';
+
+  try {
+    const clean = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(clean);
+  } catch {
+    return { type: 'unknown', accountName: '', confidence: 'low' };
+  }
+}
+
+function findMatchingDebt(detection: StatementDetectionResult, debts: Debt[]): Debt | null {
+  const creditCardDebts = debts.filter(d => d.category === 'Credit Card' && !d.isPaidOff);
+  if (creditCardDebts.length === 0) return null;
+
+  const accountName = detection.accountName.toLowerCase();
+  const lastFour = detection.lastFourDigits;
+
+  if (lastFour) {
+    const match = creditCardDebts.find(d => d.accountName.includes(lastFour));
+    if (match) return match;
+  }
+
+  const keywords = accountName.split(' ').filter(w => w.length > 3);
+  for (const debt of creditCardDebts) {
+    const debtName = debt.accountName.toLowerCase();
+    if (keywords.some(kw => debtName.includes(kw))) return debt;
+  }
+
+  const banks = ['chase', 'bank of america', 'wells fargo', 'citi', 'capital one', 'discover', 'amex', 'american express', 'synchrony', 'barclays'];
+  for (const bank of banks) {
+    if (accountName.includes(bank)) {
+      const match = creditCardDebts.find(d => d.accountName.toLowerCase().includes(bank));
+      if (match) return match;
+    }
+  }
+
+  return null;
+}
+
+async function importCreditCardStatement(
+  transactions: ParsedTransaction[],
+  matchedDebt: Debt,
+  detection: StatementDetectionResult
+): Promise<void> {
+  if (detection.statementBalance != null && detection.statementBalance >= 0) {
+    const allDebts = StorageService.getDebts();
+    const debtIndex = allDebts.findIndex(d => d.id === matchedDebt.id);
+    if (debtIndex !== -1) {
+      allDebts[debtIndex].currentBalance = detection.statementBalance;
+      StorageService.saveDebts(allDebts);
+    }
+  }
+
+  const payments = transactions.filter(t => t.type === 'deposit');
+  if (payments.length > 0) {
+    const existing = JSON.parse(localStorage.getItem('novo_checking_transactions') || '[]');
+    const startingBalance = parseFloat(localStorage.getItem('novo_checking_starting_balance') || '0');
+
+    const newPaymentTxs = payments.map(p => ({
+      id: `cc_payment_${Date.now()}_${Math.random()}`,
+      date: p.date,
+      type: 'debt_payment' as const,
+      amount: p.amount,
+      description: `Payment — ${matchedDebt.accountName}`,
+      balance: 0,
+      debtId: matchedDebt.id,
+    }));
+
+    const combined = [...existing, ...newPaymentTxs]
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    let running = startingBalance;
+    combined.forEach((tx: { type: string; amount: number; balance: number }) => {
+      if (tx.type === 'deposit' || tx.type === 'transfer_from_heloc') {
+        running += tx.amount;
+      } else {
+        running -= tx.amount;
+      }
+      running = Math.max(0, running);
+      tx.balance = Math.round(running * 100) / 100;
+    });
+
+    localStorage.setItem('novo_checking_transactions', JSON.stringify(combined));
+  }
 }
 
 async function parsePDFWithAI(file: File): Promise<ParsedTransaction[]> {
@@ -200,11 +369,16 @@ export default function StatementUploadModal({
   onSuccess,
   startingBalance,
 }: StatementUploadModalProps) {
-  const [step, setStep] = useState<'upload' | 'preview' | 'importing'>('upload');
+  const [step, setStep] = useState<'upload' | 'preview' | 'credit_card_confirm' | 'importing'>('upload');
   const [transactions, setTransactions] = useState<ParsedTransaction[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
   const [fileName, setFileName] = useState('');
+  const [detectionResult, setDetectionResult] = useState<StatementDetectionResult | null>(null);
+  const [matchedDebt, setMatchedDebt] = useState<Debt | null>(null);
+  const [creditCardDebts, setCreditCardDebts] = useState<Debt[]>([]);
+  const [selectedDebtId, setSelectedDebtId] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
@@ -213,27 +387,56 @@ export default function StatementUploadModal({
     setFileName(file.name);
 
     try {
-      let parsed: ParsedTransaction[] = [];
+      if (!file.name.endsWith('.csv') && !file.name.endsWith('.pdf')) {
+        throw new Error('Please upload a CSV or PDF file.');
+      }
 
+      let base64 = '';
+      if (file.name.endsWith('.pdf')) {
+        base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      setLoadingMessage('Identifying statement type...');
+      const detection = await detectStatementType(file, base64);
+
+      setLoadingMessage(detection.type === 'credit_card' ? 'Reading credit card transactions...' : 'Reading transactions...');
+
+      let parsed: ParsedTransaction[] = [];
       if (file.name.endsWith('.csv')) {
         const text = await file.text();
         parsed = parseCSV(text);
-      } else if (file.name.endsWith('.pdf')) {
-        parsed = await parsePDFWithAI(file);
       } else {
-        throw new Error('Please upload a CSV or PDF file.');
+        parsed = await parsePDFWithAI(file);
       }
 
       if (parsed.length === 0) {
         throw new Error('No transactions found. Check that the file contains transaction data.');
       }
 
-      setTransactions(parsed);
-      setStep('preview');
+      if (detection.type === 'credit_card') {
+        const debts = StorageService.getDebts().filter(d => d.category === 'Credit Card' && !d.isPaidOff);
+        const matched = findMatchingDebt(detection, debts);
+        setDetectionResult(detection);
+        setMatchedDebt(matched);
+        setCreditCardDebts(debts);
+        setSelectedDebtId(matched?.id || '');
+        setTransactions(parsed);
+        setStep('credit_card_confirm');
+      } else {
+        setDetectionResult(detection);
+        setTransactions(parsed);
+        setStep('preview');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to parse file');
     } finally {
       setLoading(false);
+      setLoadingMessage('');
     }
   };
 
@@ -293,7 +496,7 @@ export default function StatementUploadModal({
                 {loading ? (
                   <div className="flex flex-col items-center gap-3">
                     <Loader2 className="w-10 h-10 text-[#FF6B35] animate-spin" />
-                    <p className="text-gray-600 font-medium">Reading your statement...</p>
+                    <p className="text-gray-600 font-medium">{loadingMessage || 'Reading your statement...'}</p>
                     <p className="text-xs text-gray-500">PDF files take a few seconds</p>
                   </div>
                 ) : (
@@ -335,11 +538,131 @@ export default function StatementUploadModal({
             </div>
           )}
 
+          {step === 'credit_card_confirm' && (
+            <div className="space-y-4">
+              <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-start gap-3">
+                <div className="text-2xl">💳</div>
+                <div>
+                  <p className="font-bold text-purple-900 text-sm">Credit Card Statement Detected</p>
+                  <p className="text-purple-800 text-sm mt-0.5">
+                    {detectionResult?.accountName || 'Credit card statement'}
+                    {detectionResult?.lastFourDigits ? ` ending in ${detectionResult.lastFourDigits}` : ''}
+                  </p>
+                  {detectionResult?.statementBalance != null && (
+                    <p className="text-purple-700 text-xs mt-1">
+                      Statement balance: <strong>{CalculationService.formatCurrency(detectionResult.statementBalance)}</strong>
+                      {detectionResult.minimumPayment ? ` · Min payment: ${CalculationService.formatCurrency(detectionResult.minimumPayment)}` : ''}
+                      {detectionResult.dueDate ? ` · Due: ${new Date(detectionResult.dueDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                <p className="text-sm font-bold text-blue-900">Here is what NOVO will do with this statement:</p>
+                <ul className="space-y-1.5">
+                  <li className="flex items-start gap-2 text-sm text-blue-800">
+                    <span className="text-blue-500 mt-0.5">✓</span>
+                    {detectionResult?.statementBalance != null
+                      ? `Update your debt balance to ${CalculationService.formatCurrency(detectionResult.statementBalance)}`
+                      : 'Update your debt balance from the statement'}
+                  </li>
+                  <li className="flex items-start gap-2 text-sm text-blue-800">
+                    <span className="text-blue-500 mt-0.5">✓</span>
+                    Log any payments made to this card in your Tracker
+                  </li>
+                  <li className="flex items-start gap-2 text-sm text-blue-800">
+                    <span className="text-blue-500 mt-0.5">✗</span>
+                    Individual purchases will NOT be imported into your Checking Tracker
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Which debt in NOVO is this card?
+                </label>
+                {creditCardDebts.length === 0 ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <p className="text-sm text-amber-800 font-medium">No credit cards found in My Debts.</p>
+                    <p className="text-xs text-amber-700 mt-1">Add this card to My Debts first, then re-import the statement.</p>
+                  </div>
+                ) : (
+                  <select
+                    value={selectedDebtId || matchedDebt?.id || ''}
+                    onChange={e => setSelectedDebtId(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                  >
+                    <option value="">Select the matching debt...</option>
+                    {creditCardDebts.map(d => (
+                      <option key={d.id} value={d.id}>
+                        {d.accountName} — {CalculationService.formatCurrency(d.currentBalance)} current balance
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {matchedDebt && (selectedDebtId === matchedDebt.id) && (
+                  <p className="text-xs text-purple-600 mt-1.5 font-medium">
+                    ✓ NOVO matched this to <strong>{matchedDebt.accountName}</strong> — confirm or change above
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setStep('upload');
+                    setTransactions([]);
+                    setDetectionResult(null);
+                    setMatchedDebt(null);
+                    setSelectedDebtId('');
+                  }}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-3 rounded-lg transition-colors"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={async () => {
+                    const debtId = selectedDebtId || matchedDebt?.id;
+                    if (!debtId) {
+                      alert('Please select which debt this statement belongs to');
+                      return;
+                    }
+                    const debt = creditCardDebts.find(d => d.id === debtId);
+                    if (!debt || !detectionResult) return;
+                    setStep('importing');
+                    await importCreditCardStatement(transactions, debt, detectionResult);
+                    const balanceMsg = detectionResult.statementBalance != null
+                      ? ` Balance updated to ${CalculationService.formatCurrency(detectionResult.statementBalance)}.`
+                      : '';
+                    onSuccess(`✓ ${debt.accountName} statement imported.${balanceMsg} Payment history logged in Tracker.`);
+                  }}
+                  disabled={creditCardDebts.length === 0}
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold py-3 rounded-lg transition-colors"
+                >
+                  Import Credit Card Statement
+                </button>
+              </div>
+            </div>
+          )}
+
           {step === 'preview' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-semibold text-gray-900">{transactions.length} transactions found</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-900">{transactions.length} transactions found</p>
+                    {detectionResult && (
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        detectionResult.type === 'checking' ? 'bg-green-100 text-green-700' :
+                        detectionResult.type === 'savings' ? 'bg-blue-100 text-blue-700' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {detectionResult.type === 'checking' ? '🏦 Checking' :
+                         detectionResult.type === 'savings' ? '💰 Savings' : '📄 Statement'}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-500">Review and uncheck any you don&apos;t want to import</p>
                 </div>
                 <span className="text-sm font-medium text-[#FF6B35]">{approvedCount} selected</span>
