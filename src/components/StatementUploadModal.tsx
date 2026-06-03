@@ -379,6 +379,11 @@ export default function StatementUploadModal({
   const [matchedDebt, setMatchedDebt] = useState<Debt | null>(null);
   const [creditCardDebts, setCreditCardDebts] = useState<Debt[]>([]);
   const [selectedDebtId, setSelectedDebtId] = useState('');
+  const [showCreateDebt, setShowCreateDebt] = useState(false);
+  const [newDebtName, setNewDebtName] = useState('');
+  const [newDebtBalance, setNewDebtBalance] = useState('');
+  const [newDebtMinPayment, setNewDebtMinPayment] = useState('');
+  const [newDebtRate, setNewDebtRate] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
@@ -422,6 +427,9 @@ export default function StatementUploadModal({
         const debts = StorageService.getDebts().filter(d => d.category === 'Credit Card' && !d.isPaidOff);
         const matched = findMatchingDebt(detection, debts);
         setDetectionResult(detection);
+        setNewDebtName(detection.accountName || '');
+        setNewDebtBalance(detection.statementBalance?.toString() || '');
+        setNewDebtMinPayment(detection.minimumPayment?.toString() || '');
         setMatchedDebt(matched);
         setCreditCardDebts(debts);
         setSelectedDebtId(matched?.id || '');
@@ -584,8 +592,8 @@ export default function StatementUploadModal({
                 </label>
                 {creditCardDebts.length === 0 ? (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <p className="text-sm text-amber-800 font-medium">No credit cards found in My Debts.</p>
-                    <p className="text-xs text-amber-700 mt-1">Add this card to My Debts first, then re-import the statement.</p>
+                    <p className="text-sm text-amber-800 font-medium">No credit cards found in My Debts yet.</p>
+                    <p className="text-xs text-amber-700 mt-1">You can create this debt directly from the statement below.</p>
                   </div>
                 ) : (
                   <select
@@ -600,6 +608,127 @@ export default function StatementUploadModal({
                       </option>
                     ))}
                   </select>
+                )}
+
+                {!showCreateDebt ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateDebt(true)}
+                    className="mt-2 text-sm text-purple-600 hover:text-purple-800 font-medium underline"
+                  >
+                    + This debt isn&apos;t in NOVO yet — create it from this statement
+                  </button>
+                ) : (
+                  <div className="mt-3 bg-white border border-purple-200 rounded-lg p-4 space-y-3">
+                    <p className="text-sm font-bold text-gray-800">Create new debt from statement</p>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Account Name</label>
+                      <input
+                        type="text"
+                        value={newDebtName}
+                        onChange={e => setNewDebtName(e.target.value)}
+                        placeholder={detectionResult?.accountName || 'e.g. Chase Sapphire Visa'}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Current Balance</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                          <input
+                            type="number"
+                            value={newDebtBalance}
+                            onChange={e => setNewDebtBalance(e.target.value)}
+                            placeholder={detectionResult?.statementBalance?.toString() || '0'}
+                            className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Min Payment</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                          <input
+                            type="number"
+                            value={newDebtMinPayment}
+                            onChange={e => setNewDebtMinPayment(e.target.value)}
+                            placeholder={detectionResult?.minimumPayment?.toString() || '0'}
+                            className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">Interest Rate %</label>
+                      <input
+                        type="number"
+                        value={newDebtRate}
+                        onChange={e => setNewDebtRate(e.target.value)}
+                        placeholder="e.g. 22.99"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        step="0.01"
+                      />
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-xs text-blue-800">
+                        💡 NOVO will pre-fill balance and minimum payment from your statement where available. Add the interest rate to unlock accurate payoff projections.
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateDebt(false)}
+                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2 rounded-lg text-sm transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!newDebtName.trim()) {
+                            alert('Please enter an account name');
+                            return;
+                          }
+                          const balance = parseFloat(newDebtBalance) || detectionResult?.statementBalance || 0;
+                          const minPayment = parseFloat(newDebtMinPayment) || detectionResult?.minimumPayment || 0;
+                          const rate = parseFloat(newDebtRate) || 0;
+
+                          const newDebt: Debt = {
+                            id: `debt_${Date.now()}`,
+                            accountName: newDebtName.trim(),
+                            category: 'Credit Card',
+                            currentBalance: balance,
+                            startingBalance: balance,
+                            interestRate: rate,
+                            minimumPayment: minPayment,
+                            isPaidOff: false,
+                            createdAt: new Date().toISOString(),
+                          };
+
+                          const allDebts = StorageService.getDebts();
+                          allDebts.push(newDebt);
+                          StorageService.saveDebts(allDebts);
+
+                          setSelectedDebtId(newDebt.id);
+                          setCreditCardDebts(prev => [...prev, newDebt]);
+                          setShowCreateDebt(false);
+                          setNewDebtName('');
+                          setNewDebtBalance('');
+                          setNewDebtMinPayment('');
+                          setNewDebtRate('');
+                        }}
+                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 rounded-lg text-sm transition-colors"
+                      >
+                        Create Debt
+                      </button>
+                    </div>
+                  </div>
                 )}
                 {matchedDebt && (selectedDebtId === matchedDebt.id) && (
                   <p className="text-xs text-purple-600 mt-1.5 font-medium">
@@ -616,6 +745,7 @@ export default function StatementUploadModal({
                     setDetectionResult(null);
                     setMatchedDebt(null);
                     setSelectedDebtId('');
+                    setShowCreateDebt(false);
                   }}
                   className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-3 rounded-lg transition-colors"
                 >
@@ -637,7 +767,7 @@ export default function StatementUploadModal({
                       : '';
                     onSuccess(`✓ ${debt.accountName} statement imported.${balanceMsg} Payment history logged in Tracker.`);
                   }}
-                  disabled={creditCardDebts.length === 0}
+                  disabled={!selectedDebtId && !matchedDebt?.id}
                   className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-semibold py-3 rounded-lg transition-colors"
                 >
                   Import Credit Card Statement
