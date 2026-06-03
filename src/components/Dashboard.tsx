@@ -442,27 +442,27 @@ export default function Dashboard({
         </div>
       )}
 
-      <div className="bg-gradient-navy text-white rounded-2xl shadow-card p-8">
-        <h2 className="text-2xl font-bold mb-4">Total Debt Progress</h2>
+      <div className="novo-card p-6 md:p-8">
+        <h2 className="text-xl font-bold text-[#1E3A5F] mb-4">Total Debt Progress</h2>
         <div className="mb-4">
-          <div className="flex items-center justify-between text-sm mb-2">
+          <div className="flex items-center justify-between text-sm mb-2 text-[#1E3A5F]/70">
             <span>{metrics.progressPercentage.toFixed(1)}% paid off</span>
             <span>{CalculationService.formatCurrency(metrics.totalCurrentBalance)} remaining</span>
           </div>
-          <div className="w-full bg-white/20 rounded-full h-4 overflow-hidden">
+          <div className="w-full bg-[#e8d8c4]/60 rounded-full h-4 overflow-hidden">
             <div
-              className="bg-[#2D9CDB] h-full rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(metrics.progressPercentage, 100)}%` }}
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${Math.min(metrics.progressPercentage, 100)}%`, background: 'linear-gradient(90deg, #FF6B35, #E55A25)' }}
             />
           </div>
         </div>
-        <p className="text-lg mb-2">
+        <p className="text-lg mb-2 text-[#1E3A5F]">
           <span className="font-bold">{CalculationService.formatCurrency(metrics.totalCurrentBalance)}</span> remaining of{' '}
           <span className="font-bold">{CalculationService.formatCurrency(metrics.totalStartingBalance)}</span> starting
         </p>
         <div className="group relative">
-          <p className="text-xl font-bold text-[#27AE60]">
-            You've paid off {CalculationService.formatCurrency(metrics.actualDebtEliminated)} from cash flow!
+          <p className="text-xl font-bold text-emerald-600">
+            You&apos;ve paid off {CalculationService.formatCurrency(metrics.actualDebtEliminated)} from cash flow!
           </p>
           {(metrics.traditionalDebtPrincipal > 0 || metrics.helocNetPaydown > 0) && (
             <div className="absolute hidden group-hover:block bg-white text-gray-800 rounded-lg shadow-xl p-4 mt-2 z-10 min-w-[300px]">
@@ -486,7 +486,7 @@ export default function Dashboard({
         </div>
         {optimizedProjection && (
           <div className="mt-4 space-y-2">
-            <p className="text-sm opacity-90">
+            <p className="text-sm text-[#1E3A5F]/70">
               Projected debt-free date:{' '}
               <span className="font-semibold">
                 {CalculationService.formatMonthYear(optimizedProjection.debtFreeDate)}
@@ -549,12 +549,12 @@ export default function Dashboard({
       </div>
 
       {financialProfile && cashFlowMetrics && (
-        <div className="bg-gradient-to-br from-[#2D9CDB] to-[#1E8BBD] text-white rounded-xl shadow-lg p-6">
+        <div className="novo-card p-6 text-white" style={{ background: 'linear-gradient(135deg, #1E3A5F 0%, #2D5A8E 100%)' }}>
           <div className="flex items-center space-x-3 mb-4">
-            <TrendingUp className="w-8 h-8" />
-            <h3 className="text-xl font-bold">Total Monthly Cash Flow</h3>
+            <TrendingUp className="w-8 h-8 text-white" />
+            <h3 className="text-xl font-bold text-white">Total Monthly Cash Flow</h3>
           </div>
-          <p className="text-4xl font-bold mb-4">
+          <p className="text-4xl font-bold mb-4 text-white">
             {CalculationService.formatCurrency(
               financialProfile.monthlyNetIncome -
               financialProfile.monthlyEssentialExpenses -
@@ -562,39 +562,39 @@ export default function Dashboard({
             )}
           </p>
           <div className="space-y-2 text-sm bg-white/10 rounded-lg p-4 mb-4">
-            <p className="font-semibold mb-2">Income Allocation:</p>
+            <p className="font-semibold mb-2 text-white">Income Allocation:</p>
             <div className="flex justify-between">
-              <span className="opacity-90">Net income:</span>
+              <span className="text-white/85">Net income:</span>
               <span className="font-semibold">
                 {CalculationService.formatCurrency(financialProfile.monthlyNetIncome)}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="opacity-90">Essential expenses:</span>
+              <span className="text-white/85">Essential expenses:</span>
               <span className="font-semibold">
                 - {CalculationService.formatCurrency(financialProfile.monthlyEssentialExpenses)}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="opacity-90">Discretionary expenses:</span>
+              <span className="text-white/85">Discretionary expenses:</span>
               <span className="font-semibold">
                 - {CalculationService.formatCurrency(financialProfile.monthlyDiscretionaryExpenses)}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="opacity-90">Minimum debt payments:</span>
+              <span className="text-white/85">Minimum debt payments:</span>
               <span className="font-semibold">
                 - {CalculationService.formatCurrency(totalMinimumPayments)}
               </span>
             </div>
             <div className="flex justify-between pt-2 border-t border-white/20">
-              <span className="opacity-90">Gross monthly surplus:</span>
+              <span className="text-white/85">Gross monthly surplus:</span>
               <span className="font-semibold">
                 {CalculationService.formatCurrency(cashFlowMetrics.grossSurplus)}
               </span>
             </div>
             <div className="flex justify-between bg-emerald-500/30 -mx-2 px-2 py-1 rounded">
-              <span className="opacity-95 font-medium">Savings carve-out:</span>
+              <span className="text-white/90 font-medium">Savings carve-out:</span>
               <span className="font-bold">
                 - {CalculationService.formatCurrency(cashFlowMetrics.savingsCarveOut)}
               </span>
@@ -628,25 +628,25 @@ export default function Dashboard({
               className="w-full accent-[#27AE60] cursor-pointer"
               aria-label="Percent of surplus committed to debt payoff"
             />
-            <div className="flex justify-between text-xs opacity-75 mt-1">
+            <div className="flex justify-between text-xs text-white/60 mt-1">
               <span>0%</span>
               <span>50%</span>
               <span>100%</span>
             </div>
-            <p className="text-xs opacity-90 mt-2">
+            <p className="text-xs text-white/80 mt-2">
               How much of your remaining surplus you'll realistically put toward debt this month.
             </p>
           </div>
 
           <div className="space-y-2 text-sm bg-white/10 rounded-lg p-4 mb-4">
             <div className="flex justify-between">
-              <span className="opacity-90">Surplus available:</span>
+              <span className="text-white/85">Surplus available:</span>
               <span className="font-semibold">
                 {CalculationService.formatCurrency(cashFlowMetrics.surplusAfterSavings)}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="opacity-90">Committed:</span>
+              <span className="text-white/85">Committed:</span>
               <span className="font-semibold">{commitmentPercent}%</span>
             </div>
             <div className="flex justify-between pt-2 border-t border-white/20 font-bold text-base">
@@ -657,7 +657,7 @@ export default function Dashboard({
             </div>
             {optimizedProjection && (
               <div className="flex justify-between pt-2 border-t border-white/20">
-                <span className="opacity-90">Revised debt-free date:</span>
+                <span className="text-white/85">Revised debt-free date:</span>
                 <span className="font-semibold">
                   {CalculationService.formatMonthYear(optimizedProjection.debtFreeDate)}
                 </span>
@@ -693,7 +693,7 @@ export default function Dashboard({
                   {targetDebt.interestRate}% APR
                 </span>
               </p>
-              <div className="bg-gray-50 rounded-lg p-3 mb-3 border border-gray-200">
+              <div className="bg-white border border-[#e8d8c4]/60 rounded-2xl p-3 mb-3">
                 <div className="flex justify-between text-xs text-gray-600 mb-1">
                   <span>Minimum payment</span>
                   <span className="font-semibold text-gray-800">{CalculationService.formatCurrency(targetDebt.minimumPayment)}</span>
@@ -723,7 +723,7 @@ export default function Dashboard({
                 <Target className="w-5 h-5 text-white/80" />
                 <span className="font-bold text-sm uppercase tracking-wide">Focus This Month</span>
               </div>
-              <p className="text-sm opacity-90">
+              <p className="text-sm text-white/80">
                 Pay minimum on{' '}
                 <span className="font-bold">{targetDebt.accountName}</span>
                 <span className="ml-1.5 text-xs bg-white/20 px-1.5 py-0.5 rounded">
@@ -737,18 +737,18 @@ export default function Dashboard({
       )}
 
       {savingsAccounts.length > 0 && (
-        <div className="bg-gradient-to-br from-[#27AE60] to-[#229954] text-white rounded-xl shadow-lg p-6">
+        <div className="bg-gradient-to-br from-[#27AE60] to-[#229954] text-white rounded-2xl shadow-card p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
-              <PiggyBank className="w-8 h-8" />
-              <h3 className="text-xl font-bold">Savings Summary</h3>
+              <PiggyBank className="w-8 h-8 text-white" />
+              <h3 className="text-xl font-bold text-white">Savings Summary</h3>
             </div>
             {onNavigateToSavings && (
               <button
                 onClick={onNavigateToSavings}
                 className="flex items-center space-x-2 text-sm bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
               >
-                <span>View Details</span>
+                <span className="text-white">View Details</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             )}
@@ -858,11 +858,11 @@ export default function Dashboard({
                 <p className="text-2xl font-bold mb-1">
                   {debt.transferredToHELOC ? 'Transferred to HELOC' : 'PAID OFF!'}
                 </p>
-                <p className="text-sm opacity-90">
+                <p className="text-sm text-white/80">
                   {debt.paidOffDate && CalculationService.formatMonthYear(debt.paidOffDate)}
                 </p>
                 {debt.transferredToHELOC && (
-                  <p className="text-xs opacity-80 mt-2">
+                  <p className="text-xs text-white/80 mt-2">
                     This debt was moved to your HELOC for lower interest
                   </p>
                 )}
@@ -890,8 +890,8 @@ export default function Dashboard({
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <p className="text-sm text-gray-500">{CalculationService.formatDate(activity.date)}</p>
-                        <span className="text-gray-300">•</span>
-                        <span className="text-xs text-gray-400 capitalize">{activity.source}</span>
+                        <span className="text-[#1E3A5F]/30">•</span>
+                        <span className="text-xs text-[#1E3A5F]/50 capitalize">{activity.source}</span>
                       </div>
                     </div>
                   </div>

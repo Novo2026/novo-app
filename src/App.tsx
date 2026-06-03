@@ -18,6 +18,7 @@ import NovoChat from './components/NovoChat';
 import SpendingAnalysisPanel from './components/SpendingAnalysisPanel';
 import ProactiveNOVOMessages from './components/ProactiveNOVOMessages';
 import BenTaskPanel from './components/BenTaskPanel';
+import PageHero from './components/PageHero';
 import { ProFeatureGate, UpgradeButton } from './components/AccessGate';
 import { supabase } from './lib/supabase';
 import { pushLocalStorageToCloud } from './services/cloudSync';
@@ -280,26 +281,43 @@ function App() {
           />
         );
       case 'debts':
-        return <MyDebts onDataUpdate={handleDataUpdate} />;
+        return (
+          <div>
+            <PageHero page="debts" title="My Debts" subtitle="Track and manage every debt in one place" />
+            <MyDebts onDataUpdate={handleDataUpdate} />
+          </div>
+        );
       case 'strategies':
         return (
-          <PaymentStrategies
-            onDataUpdate={handleDataUpdate}
-            onNavigateToSmarterPayments={() => setCurrentSection('smarter-payments')}
-          />
+          <div>
+            <PageHero page="plan" title="My Plan" subtitle="Your fastest path to debt freedom" />
+            <PaymentStrategies
+              onDataUpdate={handleDataUpdate}
+              onNavigateToSmarterPayments={() => setCurrentSection('smarter-payments')}
+            />
+          </div>
         );
       case 'smarter-payments':
-        return <SmarterPayments onDataUpdate={handleDataUpdate} />;
+        return (
+          <div>
+            <PageHero page="smarter-payments" title="Smarter Payments" subtitle="Pay less interest without spending more" />
+            <SmarterPayments onDataUpdate={handleDataUpdate} />
+          </div>
+        );
       case 'what-if':
         return (
           <ProFeatureGate featureName="What-If Simulator">
-            <WhatIfSimulator />
+            <div>
+              <PageHero page="what-if" title="What-If Simulator" subtitle="Explore scenarios before you commit" />
+              <WhatIfSimulator />
+            </div>
           </ProFeatureGate>
         );
       case 'tracker':
         return (
           <ProFeatureGate featureName="Tracker & Spending Analysis">
             <div className="space-y-6">
+              <PageHero page="tracker" title="Trackers" subtitle="Your cash flow command center" />
               <Tracker onDataUpdate={handleDataUpdate} />
               <SpendingAnalysisPanel
                 onOpenChat={(context) => {
@@ -313,25 +331,39 @@ function App() {
       case 'savings':
         return (
           <ProFeatureGate featureName="Savings Tracker">
-            <SavingsTracker />
+            <div>
+              <PageHero page="savings" title="Savings" subtitle="Build your financial cushion" />
+              <SavingsTracker />
+            </div>
           </ProFeatureGate>
         );
       case 'progress':
         return (
           <ProFeatureGate featureName="Progress Reports">
-            <ProgressReports onDataUpdate={handleDataUpdate} />
+            <div>
+              <PageHero page="progress" title="Progress" subtitle="See how far you've come" />
+              <ProgressReports onDataUpdate={handleDataUpdate} />
+            </div>
           </ProFeatureGate>
         );
       case 'home-ready':
         return (
           <ProFeatureGate featureName="Home Ready">
-            <HomeReady onNavigateToSettings={() => setCurrentSection('settings')} />
+            <div>
+              <PageHero page="home-ready" title="Home Ready" subtitle="Your path from debt freedom to homeownership" />
+              <HomeReady onNavigateToSettings={() => setCurrentSection('settings')} />
+            </div>
           </ProFeatureGate>
         );
       case 'guide':
         return <Guide />;
       case 'settings':
-        return <Settings onDataUpdate={handleDataUpdate} onHelocEnabledFirstTime={handleHelocEnabledFirstTime} onNavigate={handleNavigateFromSettings} />;
+        return (
+          <div>
+            <PageHero page="settings" title="Settings" subtitle="Manage your NOVO account and preferences" />
+            <Settings onDataUpdate={handleDataUpdate} onHelocEnabledFirstTime={handleHelocEnabledFirstTime} onNavigate={handleNavigateFromSettings} />
+          </div>
+        );
       default:
         return <Dashboard onDataUpdate={handleDataUpdate} onNavigateToSavings={() => setCurrentSection('savings')} />;
     }
@@ -375,7 +407,7 @@ function App() {
         className={`fixed top-0 left-0 h-full w-[280px] z-50 shadow-2xl flex flex-col md:hidden transition-transform duration-300 ease-in-out ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
-        style={{ backgroundColor: '#FDF6EE', borderRight: '1px solid #e8d8c4' }}
+        style={{ backgroundColor: '#FDF6EE', borderRight: '1px solid #e8d8c4', backgroundImage: 'radial-gradient(circle, rgba(30,58,95,0.06) 1px, transparent 1px)', backgroundSize: '24px 24px' }}
         onKeyDown={(e) => { if (e.key === 'Escape') closeMobileMenu(); }}
       >
         <div className="flex items-center justify-between px-4 py-4 bg-[#1E3A5F]">
@@ -463,13 +495,15 @@ function App() {
                 onClick={() => setCurrentSection('dashboard')}
                 className="flex items-center group cursor-pointer"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 windmill-logo">
                   <div className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#FF6B35' }}>
                     <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden>
-                      <rect x="9.5" y="1" width="3" height="9" rx="1.5" fill="white"/>
-                      <rect x="9.5" y="12" width="3" height="9" rx="1.5" fill="white" opacity="0.7"/>
-                      <rect x="1" y="9.5" width="9" height="3" rx="1.5" fill="white" opacity="0.6"/>
-                      <rect x="12" y="9.5" width="9" height="3" rx="1.5" fill="white" opacity="0.9"/>
+                      <g className="windmill-blades">
+                        <rect x="9.5" y="1" width="3" height="9" rx="1.5" fill="white"/>
+                        <rect x="9.5" y="12" width="3" height="9" rx="1.5" fill="white" opacity="0.7"/>
+                        <rect x="1" y="9.5" width="9" height="3" rx="1.5" fill="white" opacity="0.6"/>
+                        <rect x="12" y="9.5" width="9" height="3" rx="1.5" fill="white" opacity="0.9"/>
+                      </g>
                       <circle cx="11" cy="11" r="2.5" fill="#FF6B35" stroke="white" strokeWidth="1.5"/>
                     </svg>
                   </div>
@@ -517,7 +551,7 @@ function App() {
         </div>
       </header>
 
-      <nav className="bg-brand-cream border-b border-brand-cream-border sticky top-[64px] z-10 hidden md:block" style={{ boxShadow: '0 1px 0 rgba(232,216,196,0.8)' }}>
+      <nav className="bg-brand-cream border-b border-brand-cream-border sticky top-[64px] z-10 hidden md:block dot-grid" style={{ boxShadow: '0 1px 0 rgba(232,216,196,0.8)' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex overflow-x-auto">
             <button
