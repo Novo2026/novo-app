@@ -1,3 +1,5 @@
+import { supabase } from '../lib/supabase';
+
 export type NOVOTier = 'free' | 'pro';
 
 export interface AccessRecord {
@@ -16,6 +18,60 @@ const PERMANENT_CODES: Record<string, NOVOTier> = {
 
 const WEBINAR_PREFIX = 'WEB-';
 
+// Save tier to Supabase for the current logged-in user
+async function saveTierToSupabase(record: AccessRecord): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase
+      .from('users')
+      .update({
+        tier: record.tier,
+        access_code: record.code,
+        tier_activated_at: record.activatedAt,
+        tier_expires_at: record.expiresAt,
+      })
+      .eq('id', user.id);
+  } catch (err) {
+    console.error('Failed to save tier to Supabase:', err);
+  }
+}
+
+// Load tier from Supabase and sync to localStorage
+export async function syncTierFromSupabase(): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('tier, access_code, tier_activated_at, tier_expires_at')
+      .eq('id', user.id)
+      .single();
+
+    if (error || !data) return;
+    if (data.tier !== 'pro') return;
+
+    // Check if pro has expired
+    if (data.tier_expires_at) {
+      const expires = new Date(data.tier_expires_at);
+      if (expires < new Date()) return; // expired — leave as free
+    }
+
+    // Sync to localStorage so isPro() works synchronously
+    const record: AccessRecord = {
+      tier: data.tier as NOVOTier,
+      code: data.access_code || '',
+      activatedAt: data.tier_activated_at || new Date().toISOString(),
+      expiresAt: data.tier_expires_at || null,
+    };
+    localStorage.setItem(ACCESS_KEY, JSON.stringify(record));
+  } catch (err) {
+    console.error('Failed to sync tier from Supabase:', err);
+  }
+}
+
 export function activateCode(code: string): { success: boolean; tier: NOVOTier; message: string } {
   const upper = code.trim().toUpperCase();
 
@@ -27,6 +83,8 @@ export function activateCode(code: string): { success: boolean; tier: NOVOTier; 
       expiresAt: null,
     };
     localStorage.setItem(ACCESS_KEY, JSON.stringify(record));
+    // Save to Supabase in background
+    saveTierToSupabase(record);
     return { success: true, tier: 'pro', message: 'Full Pro access activated. Welcome to NOVO Pro.' };
   }
 
@@ -40,6 +98,8 @@ export function activateCode(code: string): { success: boolean; tier: NOVOTier; 
       expiresAt: expires.toISOString(),
     };
     localStorage.setItem(ACCESS_KEY, JSON.stringify(record));
+    // Save to Supabase in background
+    saveTierToSupabase(record);
     const expireLabel = expires.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     return { success: true, tier: 'pro', message: `Pro access activated through ${expireLabel}. Enjoy NOVO Pro.` };
   }
@@ -51,16 +111,11 @@ export function getCurrentTier(): NOVOTier {
   try {
     const stored = localStorage.getItem(ACCESS_KEY);
     if (!stored) return 'free';
-
     const record: AccessRecord = JSON.parse(stored);
-
     if (record.expiresAt) {
       const expires = new Date(record.expiresAt);
-      if (expires < new Date()) {
-        return 'free';
-      }
+      if (expires < new Date()) return 'free';
     }
-
     return record.tier;
   } catch {
     return 'free';

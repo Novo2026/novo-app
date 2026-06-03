@@ -22,6 +22,7 @@ import PageHero from './components/PageHero';
 import { ProFeatureGate, UpgradeButton } from './components/AccessGate';
 import { supabase } from './lib/supabase';
 import { pushLocalStorageToCloud } from './services/cloudSync';
+import { syncTierFromSupabase } from './services/accessControl';
 import { StorageService } from './services/storage';
 import type { Debt, Transaction, FeaturePreferences } from './types';
 
@@ -77,6 +78,8 @@ function App() {
 
   useEffect(() => {
     if (authSession === undefined || authSession === null) return;
+    // Sync Pro tier from Supabase so it works across all devices
+    syncTierFromSupabase();
     bootstrapFromStorage();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot bootstrap when session becomes available
   }, [authSession]);
