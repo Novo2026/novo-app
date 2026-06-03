@@ -394,7 +394,7 @@ function App() {
             { section: 'debts' as Section, label: 'My Debts', icon: CreditCard },
             { section: 'strategies' as Section, label: 'My Plan', icon: TrendingUp },
             ...((featurePreferences.helocEnabled || featurePreferences.checkingEnabled)
-              ? [{ section: 'tracker' as Section, label: featurePreferences.helocEnabled ? 'HELOC Tracker' : 'Cash Flow', icon: Wallet, isNew: showTrackerNewBadge && featurePreferences.helocEnabled }]
+              ? [{ section: 'tracker' as Section, label: 'Trackers', icon: Wallet, isNew: showTrackerNewBadge && featurePreferences.helocEnabled }]
               : []),
             { section: 'savings' as Section, label: 'Savings', icon: PiggyBank },
             { section: 'what-if' as Section, label: 'What-If Simulator', icon: Sliders },
