@@ -40,9 +40,13 @@ export const CalculationService = {
 
     const extraPayment = Math.floor(cashFlow.recommendedExtraPayment);
 
-    // Use new unified calculation engine
-    const baseline = DebtCalculations.calculateBaselineTimeline(activeDebts);
-    const optimized = DebtCalculations.calculateOptimizedTimeline(activeDebts, extraPayment);
+    const strategyDebts = this.resolveDebtsForPayoffProjection(debts);
+    if (strategyDebts.length === 0) {
+      return null;
+    }
+
+    const baseline = DebtCalculations.calculateBaselineTimeline(strategyDebts);
+    const optimized = DebtCalculations.calculateOptimizedTimeline(strategyDebts, extraPayment);
 
     // Validate results
     const validation = DebtCalculations.validateResults(baseline, optimized);
@@ -322,6 +326,33 @@ export const CalculationService = {
     return nonMortgageDebts;
   },
 
+  /** Active debts for strategy/baseline simulation (mortgage filter + optional HELOC virtual). */
+  resolveDebtsForPayoffProjection(debts: Debt[]): Debt[] {
+    const helocTransactions = JSON.parse(localStorage.getItem('novo_heloc_transactions') || '[]');
+    const homeEquity = JSON.parse(localStorage.getItem('novo_home_equity') || '{}');
+    const helocBalance = helocTransactions.length > 0
+      ? helocTransactions[helocTransactions.length - 1].balance
+      : (homeEquity.hasHELOC && homeEquity.helocBalance !== undefined ? homeEquity.helocBalance : 0);
+    const helocRate = homeEquity.hasHELOC && homeEquity.helocRate ? homeEquity.helocRate : 0;
+
+    const helocDebt: Debt | null = helocBalance > 0 && helocRate > 0 ? {
+      id: 'HELOC_VIRTUAL',
+      accountName: 'HELOC',
+      category: 'HELOC',
+      startingBalance: helocBalance,
+      currentBalance: helocBalance,
+      interestRate: helocRate,
+      minimumPayment: 0,
+      isPaidOff: false,
+      createdAt: new Date().toISOString(),
+      isAmortized: false,
+    } : null;
+
+    const tradDebts = this.filterDebtsForPayoffProjection(debts);
+    const allDebts = helocDebt ? [...tradDebts, helocDebt] : tradDebts;
+    return allDebts.filter((d) => !d.isPaidOff && d.currentBalance > 0);
+  },
+
   /**
    * Same pipeline as Dashboard optimized payoff: sum minimums on active debts → calculateCashFlow →
    * extra to debt (recommended + optional add-on) → projectDebtPayoff (HELOC virtual merged inside).
@@ -381,32 +412,7 @@ export const CalculationService = {
     console.log('🔥 OPTIMIZED CALCULATION START');
     console.log('Extra monthly payment:', extraMonthlyPayment);
 
-    // Get HELOC balance from localStorage
-    const helocTransactions = JSON.parse(localStorage.getItem('novo_heloc_transactions') || '[]');
-    const homeEquity = JSON.parse(localStorage.getItem('novo_home_equity') || '{}');
-    const helocBalance = helocTransactions.length > 0
-      ? helocTransactions[helocTransactions.length - 1].balance
-      : (homeEquity.hasHELOC && homeEquity.helocBalance !== undefined ? homeEquity.helocBalance : 0);
-    const helocRate = homeEquity.hasHELOC && homeEquity.helocRate ? homeEquity.helocRate : 0;
-
-    // Create virtual HELOC debt if balance exists
-    const helocDebt: Debt | null = helocBalance > 0 && helocRate > 0 ? {
-      id: 'HELOC_VIRTUAL',
-      accountName: 'HELOC',
-      category: 'HELOC',
-      startingBalance: helocBalance,
-      currentBalance: helocBalance,
-      interestRate: helocRate,
-      minimumPayment: 0,
-      isPaidOff: false,
-      createdAt: new Date().toISOString(),
-      isAmortized: false,
-    } : null;
-
-    // Include HELOC in debts if it has a balance (avoid duplicating a HELOC already in the list)
-    const tradDebts = this.filterDebtsForPayoffProjection(debts);
-    const allDebts = helocDebt ? [...tradDebts, helocDebt] : tradDebts;
-    const activeDebts = allDebts.filter((d) => !d.isPaidOff && d.currentBalance > 0);
+    const activeDebts = this.resolveDebtsForPayoffProjection(debts);
 
     if (activeDebts.length === 0) {
       return {
@@ -519,7 +525,7 @@ export const CalculationService = {
   projectMinimumPaymentsOnly(debts: Debt[]): StrategyResult {
     console.log('📊 BASELINE CALCULATION START (minimum payments only)');
 
-    const activeDebts = debts.filter(d => !d.isPaidOff);
+    const activeDebts = this.resolveDebtsForPayoffProjection(debts);
 
     if (activeDebts.length === 0) {
       return {

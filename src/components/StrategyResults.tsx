@@ -280,6 +280,11 @@ export default function StrategyResults({
                   <p className="text-xl font-bold text-gray-800">
                     {CalculationService.formatCurrency(minimumOnly.totalPaid)}
                   </p>
+                  {hasMortgages && (
+                    <p className="text-xs text-gray-400 mt-2 italic">
+                      Excludes mortgages — shown on fixed payment schedule
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
