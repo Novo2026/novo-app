@@ -6,23 +6,9 @@ import { CalculationService } from '../services/calculations';
 import { StorageService } from '../services/storage';
 import DatePicker from './DatePicker';
 import PaymentLoggingGuidance from './PaymentLoggingGuidance';
-import type { UnifiedPayment } from '../types';
-
-interface CheckingTransaction {
-  id: string;
-  date: string;
-  type: 'deposit' | 'withdrawal' | 'debt_payment' | 'transfer_to_heloc' | 'transfer_from_heloc' | 'transfer_to_savings';
-  amount: number;
-  description: string;
-  balance: number;
-  category?: string;
-  subcategory?: string;
-  debtId?: string;
-  debtName?: string;
-  linkedHelocTransactionId?: string;
-  isTransferToHeloc?: boolean;
-  isTransferFromHeloc?: boolean;
-}
+import type { CheckingAccount, CheckingTransaction, UnifiedPayment } from '../types';
+import AddCheckingAccountModal from './AddCheckingAccountModal';
+import AccountReconcileButton from './AccountReconcileButton';
 
 const ESSENTIAL_CATEGORIES = [
   'Rent/Housing',
@@ -54,13 +40,29 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
   const [modalType, setModalType] = useState<'deposit' | 'withdrawal' | 'debt_payment'>('deposit');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [accounts, setAccounts] = useState<CheckingAccount[]>(() => StorageService.getCheckingAccounts());
+  const [selectedAccountId, setSelectedAccountId] = useState<string>(() => {
+    const accts = StorageService.getCheckingAccounts();
+    return accts.find(a => a.isDefault)?.id || accts[0]?.id || '';
+  });
+  const [showAddAccount, setShowAddAccount] = useState(false);
+
+  const handleAddAccount = (account: CheckingAccount) => {
+    const updated = [...accounts, account];
+    StorageService.saveCheckingAccounts(updated);
+    setAccounts(updated);
+    setSelectedAccountId(account.id);
+    setShowAddAccount(false);
+  };
+
+  const selectedAccount = accounts.find(a => a.id === selectedAccountId) || accounts[0];
 
   const transactions = useMemo(() => {
-    const stored = localStorage.getItem('novo_checking_transactions');
-    return stored ? JSON.parse(stored) as CheckingTransaction[] : [];
-  }, [refreshTrigger]);
+    if (!selectedAccountId) return [];
+    return StorageService.getCheckingTransactionsForAccount(selectedAccountId);
+  }, [refreshTrigger, selectedAccountId]);
 
-  const startingBalance = parseFloat(localStorage.getItem('novo_checking_starting_balance') || '0');
+  const startingBalance = selectedAccount?.startingBalance ?? 0;
   const currentBalance = transactions.length > 0
     ? transactions[transactions.length - 1].balance
     : startingBalance;
@@ -141,6 +143,29 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
+        {accounts.map(account => (
+          <button
+            key={account.id}
+            onClick={() => setSelectedAccountId(account.id)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
+              selectedAccountId === account.id
+                ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
+                : 'bg-white text-[#1E3A5F] border-[#e8d8c4] hover:border-[#1E3A5F]/40'
+            }`}
+          >
+            {account.accountType === 'checking' ? '🏦' : '💰'} {account.name}
+            {account.bankName && <span className="opacity-60 text-xs">· {account.bankName}</span>}
+          </button>
+        ))}
+        <button
+          onClick={() => setShowAddAccount(true)}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-gray-500 border border-dashed border-gray-300 hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all"
+        >
+          + Add Account
+        </button>
+      </div>
+
       {successMessage && (
         <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg shadow-md animate-fade-in">
           <div className="flex items-center justify-between">
@@ -172,6 +197,20 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
             <div className="text-2xl font-bold">{CalculationService.formatCurrency(averageDeposit)}</div>
           </div>
         </div>
+
+        {selectedAccount && (
+          <div className="mb-4">
+            <AccountReconcileButton
+              account={selectedAccount}
+              currentBalance={currentBalance}
+              onReconciled={() => {
+                const updated = StorageService.getCheckingAccounts();
+                setAccounts(updated);
+                setRefreshTrigger(prev => prev + 1);
+              }}
+            />
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-3">
           <button
@@ -219,8 +258,14 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
           <button
             onClick={() => {
               const balance = prompt('Enter your starting balance:', startingBalance.toString());
-              if (balance !== null) {
-                localStorage.setItem('novo_checking_starting_balance', balance);
+              if (balance !== null && selectedAccountId) {
+                const updatedAccounts = StorageService.getCheckingAccounts().map(a =>
+                  a.id === selectedAccountId
+                    ? { ...a, startingBalance: parseFloat(balance) || 0 }
+                    : a
+                );
+                StorageService.saveCheckingAccounts(updatedAccounts);
+                setAccounts(updatedAccounts);
                 setSuccessMessage(`✓ Starting balance updated to ${CalculationService.formatCurrency(parseFloat(balance))}`);
                 setRefreshTrigger(prev => prev + 1);
                 setTimeout(() => setSuccessMessage(null), 5000);
@@ -251,7 +296,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
 
             const filtered = transactions.filter(t => t.id !== id);
             recalculateBalances(filtered, startingBalance);
-            localStorage.setItem('novo_checking_transactions', JSON.stringify(filtered));
+            StorageService.saveCheckingTransactionsForAccount(selectedAccountId, filtered);
 
             if (choice) {
               const helocTransactions = JSON.parse(localStorage.getItem('novo_heloc_transactions') || '[]');
@@ -279,7 +324,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
             if (confirm('Delete this transaction? All balances will be recalculated from this point forward.')) {
               const filtered = transactions.filter(t => t.id !== id);
               recalculateBalances(filtered, startingBalance);
-              localStorage.setItem('novo_checking_transactions', JSON.stringify(filtered));
+              StorageService.saveCheckingTransactionsForAccount(selectedAccountId, filtered);
               setSuccessMessage('✓ Transaction deleted. Balances updated.');
             }
           }
@@ -321,6 +366,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
           }}
           currentBalance={currentBalance}
           startingBalance={startingBalance}
+          accountId={selectedAccountId}
           editTransaction={editingTransaction}
           type={modalType}
         />
@@ -337,6 +383,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
           }}
           currentBalance={currentBalance}
           startingBalance={startingBalance}
+          accountId={selectedAccountId}
         />
       )}
 
@@ -352,6 +399,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
           }}
           currentBalance={currentBalance}
           startingBalance={startingBalance}
+          accountId={selectedAccountId}
         />
       )}
 
@@ -367,6 +415,14 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
           }}
           startingBalance={startingBalance}
           currentBalance={currentBalance}
+          defaultCheckingAccountId={selectedAccountId}
+        />
+      )}
+
+      {showAddAccount && (
+        <AddCheckingAccountModal
+          onClose={() => setShowAddAccount(false)}
+          onSave={handleAddAccount}
         />
       )}
     </div>
@@ -609,6 +665,7 @@ function TransactionModal({
   onSuccess,
   currentBalance,
   startingBalance,
+  accountId,
   editTransaction,
   type
 }: {
@@ -616,6 +673,7 @@ function TransactionModal({
   onSuccess: (message: string) => void;
   currentBalance: number;
   startingBalance: number;
+  accountId: string;
   editTransaction: CheckingTransaction | null;
   type: 'deposit' | 'withdrawal' | 'debt_payment';
 }) {
@@ -649,9 +707,7 @@ function TransactionModal({
       return;
     }
 
-    const transactions: CheckingTransaction[] = JSON.parse(
-      localStorage.getItem('novo_checking_transactions') || '[]'
-    );
+    const transactions: CheckingTransaction[] = StorageService.getCheckingTransactionsForAccount(accountId);
 
     let category = undefined;
     let finalSubcategory = undefined;
@@ -676,6 +732,7 @@ function TransactionModal({
 
     const newTransaction: CheckingTransaction = {
       id: editTransaction?.id || `checking_${Date.now()}`,
+      accountId,
       date,
       type: editTransaction?.type || type,
       amount: transactionAmount,
@@ -683,6 +740,8 @@ function TransactionModal({
       balance: 0,
       category,
       subcategory: finalSubcategory,
+      isReconciled: editTransaction?.isReconciled ?? false,
+      reconciledAt: editTransaction?.reconciledAt,
       debtId: type === 'debt_payment' ? selectedDebt : undefined,
       debtName: type === 'debt_payment' ? selectedDebtObj?.accountName : undefined
     };
@@ -697,7 +756,7 @@ function TransactionModal({
     transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     recalculateBalances(transactions, startingBalance);
 
-    localStorage.setItem('novo_checking_transactions', JSON.stringify(transactions));
+    StorageService.saveCheckingTransactionsForAccount(accountId, transactions);
 
     if (type === 'debt_payment' && selectedDebtObj) {
       const allDebts = StorageService.getDebts();
@@ -949,12 +1008,14 @@ function TransferToHelocModal({
   onClose,
   onSuccess,
   currentBalance,
-  startingBalance
+  startingBalance,
+  accountId
 }: {
   onClose: () => void;
   onSuccess: (message: string) => void;
   currentBalance: number;
   startingBalance: number;
+  accountId: string;
 }) {
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(CalculationService.getTodayDateString());
@@ -987,9 +1048,7 @@ function TransferToHelocModal({
       return;
     }
 
-    const checkingTransactions = JSON.parse(
-      localStorage.getItem('novo_checking_transactions') || '[]'
-    );
+    const checkingTransactions = StorageService.getCheckingTransactionsForAccount(accountId);
 
     const helocTransactionId = autoRecordInHeloc
       ? `heloc_${Date.now()}_linked`
@@ -997,11 +1056,13 @@ function TransferToHelocModal({
 
     const newCheckingTransaction: CheckingTransaction = {
       id: `checking_${Date.now()}`,
+      accountId,
       date,
       type: 'transfer_to_heloc',
       amount: transferAmount,
       description: description || 'Transfer to HELOC',
       balance: 0,
+      isReconciled: false,
       linkedHelocTransactionId: helocTransactionId,
       isTransferToHeloc: true
     };
@@ -1010,7 +1071,7 @@ function TransferToHelocModal({
     checkingTransactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     recalculateBalances(checkingTransactions, startingBalance);
 
-    localStorage.setItem('novo_checking_transactions', JSON.stringify(checkingTransactions));
+    StorageService.saveCheckingTransactionsForAccount(accountId, checkingTransactions);
 
     if (autoRecordInHeloc && helocTransactionId) {
       const helocTransactions = JSON.parse(
@@ -1227,19 +1288,21 @@ function TransferToSavingsModal({
     }
 
     // Record outflow in checking
-    const checkingTransactions = JSON.parse(localStorage.getItem('novo_checking_transactions') || '[]');
-    const newCheckingTx = {
+    const checkingTransactions = StorageService.getCheckingTransactionsForAccount(accountId);
+    const newCheckingTx: CheckingTransaction = {
       id: `checking_${Date.now()}`,
+      accountId,
       date,
-      type: 'transfer_to_savings' as const,
+      type: 'transfer_to_savings',
       amount: transferAmount,
       description: description || `Transfer to ${selectedAccount?.name || 'Savings'}`,
       balance: 0,
+      isReconciled: false,
     };
     checkingTransactions.push(newCheckingTx);
-    checkingTransactions.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    checkingTransactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     recalculateBalances(checkingTransactions, startingBalance);
-    localStorage.setItem('novo_checking_transactions', JSON.stringify(checkingTransactions));
+    StorageService.saveCheckingTransactionsForAccount(accountId, checkingTransactions);
 
     // Auto-deposit into the selected savings account
     const allAccounts = StorageService.getSavingsAccounts();

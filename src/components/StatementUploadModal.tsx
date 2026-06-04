@@ -40,6 +40,7 @@ interface StatementUploadModalProps {
   onSuccess: (message: string) => void;
   startingBalance: number;
   currentBalance: number;
+  defaultCheckingAccountId?: string;
 }
 
 const CATEGORY_OPTIONS = [
@@ -210,19 +211,27 @@ async function importCreditCardStatement(
     }
   }
 
+  // Credit card PURCHASES do not go to checking tracker — spending analysis only
   const payments = transactions.filter(t => t.type === 'deposit');
   if (payments.length > 0) {
-    const existing = JSON.parse(localStorage.getItem('novo_checking_transactions') || '[]');
-    const startingBalance = parseFloat(localStorage.getItem('novo_checking_starting_balance') || '0');
+    // Credit card payments cross-post to checking as debt_payment
+    const accounts = StorageService.getCheckingAccounts();
+    const defaultAccountId = accounts.find(a => a.isDefault)?.id || accounts[0]?.id || 'default_checking';
+    const defaultAccount = accounts.find(a => a.id === defaultAccountId);
+    const startingBalance = defaultAccount?.startingBalance ?? 0;
+
+    const existing = StorageService.getCheckingTransactionsForAccount(defaultAccountId);
 
     const newPaymentTxs = payments.map(p => ({
       id: `cc_payment_${Date.now()}_${Math.random()}`,
+      accountId: defaultAccountId,
       date: p.date,
       type: 'debt_payment' as const,
       amount: p.amount,
       description: `Payment — ${matchedDebt.accountName}`,
       balance: 0,
       debtId: matchedDebt.id,
+      isReconciled: false,
     }));
 
     const combined = [...existing, ...newPaymentTxs]
@@ -239,7 +248,7 @@ async function importCreditCardStatement(
       tx.balance = Math.round(running * 100) / 100;
     });
 
-    localStorage.setItem('novo_checking_transactions', JSON.stringify(combined));
+    StorageService.saveCheckingTransactionsForAccount(defaultAccountId, combined);
   }
 }
 
@@ -356,8 +365,14 @@ export default function StatementUploadModal({
   onClose,
   onSuccess,
   startingBalance,
+  defaultCheckingAccountId,
 }: StatementUploadModalProps) {
   const [step, setStep] = useState<'upload' | 'preview' | 'credit_card_confirm' | 'importing'>('upload');
+  const [checkingAccounts, setCheckingAccounts] = useState(() => StorageService.getCheckingAccounts());
+  const [selectedCheckingAccountId, setSelectedCheckingAccountId] = useState(() => {
+    const accounts = StorageService.getCheckingAccounts();
+    return defaultCheckingAccountId || accounts.find(a => a.isDefault)?.id || accounts[0]?.id || '';
+  });
   const [transactions, setTransactions] = useState<ParsedTransaction[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -443,11 +458,22 @@ export default function StatementUploadModal({
   };
 
   const handleImport = () => {
+    if (!selectedCheckingAccountId) {
+      alert('Please select a checking account to import into');
+      return;
+    }
     setStep('importing');
     const approved = transactions.filter(t => t.approved);
-    const existing = JSON.parse(localStorage.getItem('novo_checking_transactions') || '[]');
-    const combined = recalculateImportedBalances(existing, approved, startingBalance);
-    localStorage.setItem('novo_checking_transactions', JSON.stringify(combined));
+    const account = checkingAccounts.find(a => a.id === selectedCheckingAccountId);
+    const accountStartingBalance = account?.startingBalance ?? startingBalance;
+    const existing = StorageService.getCheckingTransactionsForAccount(selectedCheckingAccountId);
+    const combined = recalculateImportedBalances(existing, approved, accountStartingBalance);
+    const withAccountId = combined.map((t: { accountId?: string; isReconciled?: boolean }) => ({
+      ...t,
+      accountId: selectedCheckingAccountId,
+      isReconciled: t.isReconciled ?? false,
+    }));
+    StorageService.saveCheckingTransactionsForAccount(selectedCheckingAccountId, withAccountId);
     onSuccess(`✓ Imported ${approved.length} transactions from ${fileName}`);
   };
 
@@ -785,6 +811,28 @@ export default function StatementUploadModal({
                 </div>
                 <span className="text-sm font-medium text-[#FF6B35]">{approvedCount} selected</span>
               </div>
+
+              {detectionResult?.type !== 'credit_card' && (
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Import into which account?</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {checkingAccounts.map(account => (
+                      <button
+                        key={account.id}
+                        type="button"
+                        onClick={() => setSelectedCheckingAccountId(account.id)}
+                        className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                          selectedCheckingAccountId === account.id
+                            ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
+                            : 'bg-white text-[#1E3A5F] border-[#e8d8c4] hover:border-[#1E3A5F]'
+                        }`}
+                      >
+                        {account.accountType === 'checking' ? '🏦' : '💰'} {account.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <table className="w-full text-sm">

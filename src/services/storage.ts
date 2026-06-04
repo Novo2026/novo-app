@@ -10,6 +10,7 @@ import type {
   AppData,
   FeaturePreferences,
   HELOCTransaction,
+  CheckingAccount,
   CheckingTransaction,
   UnifiedPayment,
 } from '../types';
@@ -25,6 +26,8 @@ const STORAGE_KEYS = {
   STRATEGY_RESULT: 'novo_strategy_result',
   HELOC_TRANSACTIONS: 'novo_heloc_transactions',
   CHECKING_TRANSACTIONS: 'novo_checking_transactions',
+  CHECKING_ACCOUNTS: 'novo_checking_accounts',
+  CHECKING_TRANSACTIONS_V2: 'novo_checking_transactions_v2',
   DATA_HASH: 'novo_data_hash',
   STRATEGY_CALC_HASH: 'novo_strategy_calc_hash',
   FEATURE_PREFERENCES: 'novo_feature_preferences',
@@ -257,13 +260,112 @@ export const StorageService = {
     localStorage.setItem(STORAGE_KEYS.HELOC_TRANSACTIONS, JSON.stringify(transactions));
   },
 
+  getCheckingAccounts(): CheckingAccount[] {
+    try {
+      const stored = localStorage.getItem('novo_checking_accounts');
+      if (stored) return JSON.parse(stored);
+
+      const oldBalance = localStorage.getItem('novo_checking_starting_balance');
+      const oldTransactions = localStorage.getItem('novo_checking_transactions');
+
+      if (oldTransactions || oldBalance) {
+        const defaultAccount: CheckingAccount = {
+          id: 'default_checking',
+          name: 'Primary Checking',
+          bankName: '',
+          accountType: 'checking',
+          startingBalance: parseFloat(oldBalance || '0'),
+          currentBalance: parseFloat(oldBalance || '0'),
+          lastReconciledAt: null,
+          lastReconciledBalance: null,
+          createdAt: new Date().toISOString(),
+          isDefault: true,
+        };
+        this.saveCheckingAccounts([defaultAccount]);
+        return [defaultAccount];
+      }
+
+      return [];
+    } catch { return []; }
+  },
+
+  saveCheckingAccounts(accounts: CheckingAccount[]): void {
+    localStorage.setItem('novo_checking_accounts', JSON.stringify(accounts));
+  },
+
+  getCheckingTransactionsForAccount(accountId: string): CheckingTransaction[] {
+    try {
+      const stored = localStorage.getItem(`novo_checking_transactions_${accountId}`);
+      if (stored) return JSON.parse(stored);
+
+      if (accountId === 'default_checking') {
+        const old = localStorage.getItem('novo_checking_transactions');
+        if (old) {
+          const transactions = JSON.parse(old).map((t: CheckingTransaction & { accountId?: string; isReconciled?: boolean }) => ({
+            ...t,
+            accountId: 'default_checking',
+            isReconciled: t.isReconciled ?? false,
+          }));
+          this.saveCheckingTransactionsForAccount(accountId, transactions);
+          return transactions;
+        }
+      }
+      return [];
+    } catch { return []; }
+  },
+
+  saveCheckingTransactionsForAccount(accountId: string, transactions: CheckingTransaction[]): void {
+    localStorage.setItem(`novo_checking_transactions_${accountId}`, JSON.stringify(transactions));
+  },
+
+  reconcileAccount(accountId: string, balance: number): void {
+    const accounts = this.getCheckingAccounts();
+    const idx = accounts.findIndex(a => a.id === accountId);
+    if (idx !== -1) {
+      accounts[idx].lastReconciledAt = new Date().toISOString();
+      accounts[idx].lastReconciledBalance = balance;
+      accounts[idx].currentBalance = balance;
+      this.saveCheckingAccounts(accounts);
+    }
+    const transactions = this.getCheckingTransactionsForAccount(accountId);
+    const updated = transactions.map(t => ({
+      ...t,
+      isReconciled: true,
+      reconciledAt: new Date().toISOString(),
+    }));
+    this.saveCheckingTransactionsForAccount(accountId, updated);
+  },
+
+  unreconcileAccount(accountId: string): void {
+    const accounts = this.getCheckingAccounts();
+    const idx = accounts.findIndex(a => a.id === accountId);
+    if (idx !== -1) {
+      accounts[idx].lastReconciledAt = null;
+      accounts[idx].lastReconciledBalance = null;
+      this.saveCheckingAccounts(accounts);
+    }
+    const transactions = this.getCheckingTransactionsForAccount(accountId);
+    const updated = transactions.map(t => ({
+      ...t,
+      isReconciled: false,
+      reconciledAt: undefined,
+    }));
+    this.saveCheckingTransactionsForAccount(accountId, updated);
+  },
+
   getCheckingTransactions(): CheckingTransaction[] {
+    const accounts = this.getCheckingAccounts();
+    if (accounts.length > 0) {
+      return accounts.flatMap(a => this.getCheckingTransactionsForAccount(a.id));
+    }
     const data = localStorage.getItem(STORAGE_KEYS.CHECKING_TRANSACTIONS);
     return data ? JSON.parse(data) : [];
   },
 
   saveCheckingTransactions(transactions: CheckingTransaction[]): void {
-    localStorage.setItem(STORAGE_KEYS.CHECKING_TRANSACTIONS, JSON.stringify(transactions));
+    const accounts = this.getCheckingAccounts();
+    const accountId = accounts.find(a => a.isDefault)?.id || accounts[0]?.id || 'default_checking';
+    this.saveCheckingTransactionsForAccount(accountId, transactions);
   },
 
   getUnifiedPayments(): UnifiedPayment[] {

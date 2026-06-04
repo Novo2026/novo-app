@@ -199,16 +199,47 @@ export interface HELOCTransaction {
   isTransferFromChecking?: boolean;
 }
 
-export type CheckingTransactionType = 'deposit' | 'withdrawal' | 'transfer_from_heloc' | 'bill_payment' | 'other';
+export interface CheckingAccount {
+  id: string;
+  name: string;
+  bankName: string;
+  accountType: 'checking' | 'savings';
+  startingBalance: number;
+  currentBalance: number;
+  lastReconciledAt: string | null;
+  lastReconciledBalance: number | null;
+  createdAt: string;
+  isDefault: boolean;
+}
+
+export type CheckingTransactionType =
+  | 'deposit'
+  | 'withdrawal'
+  | 'debt_payment'
+  | 'transfer_to_savings'
+  | 'transfer_to_heloc'
+  | 'transfer_from_heloc'
+  | 'internal_transfer'
+  | 'bill_payment'
+  | 'other';
 
 export interface CheckingTransaction {
   id: string;
+  accountId: string;
   date: string;
   type: CheckingTransactionType;
   amount: number;
   description: string;
-  category?: string;
   balance: number;
+  category?: string;
+  subcategory?: string;
+  isReconciled: boolean;
+  reconciledAt?: string;
+  debtId?: string;
+  debtName?: string;
+  linkedHelocTransactionId?: string;
+  isTransferToHeloc?: boolean;
+  isTransferFromHeloc?: boolean;
 }
 
 export type UnifiedActivityType =
