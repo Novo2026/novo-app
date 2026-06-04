@@ -1153,73 +1153,75 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md border-2 border-red-200 p-6">
-        <div className="flex items-start space-x-3 mb-4">
-          <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
-          <div>
-            <h3 className="text-xl font-bold text-red-600 mb-2">Danger Zone</h3>
-            <p className="text-gray-700">
-              This action will permanently delete all your data from NOVO. This cannot be undone.
-            </p>
+      {localStorage.getItem('novo_admin_mode') === 'true' && (
+        <div className="bg-white rounded-lg shadow-md border-2 border-red-200 p-6">
+          <div className="flex items-start space-x-3 mb-4">
+            <AlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
+            <div>
+              <h3 className="text-xl font-bold text-red-600 mb-2">Danger Zone</h3>
+              <p className="text-gray-700">
+                This action will permanently delete all your data from NOVO. This cannot be undone.
+              </p>
+            </div>
           </div>
+
+          {!showDeleteConfirm ? (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="w-full flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            >
+              <Trash2 className="w-5 h-5" />
+              <span>Clear All Data</span>
+            </button>
+          ) : (
+            <div className="space-y-4">
+              <div className="bg-red-50 border border-red-300 rounded-lg p-4">
+                <p className="font-bold text-red-800 mb-3">
+                  This will permanently delete:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-red-700 text-sm mb-4">
+                  <li>All debts</li>
+                  <li>Payment history</li>
+                  <li>Financial profile</li>
+                  <li>Strategy results</li>
+                </ul>
+                <p className="font-bold text-red-800 mb-2">
+                  This action cannot be undone!
+                </p>
+                <p className="text-sm text-red-700">
+                  Type <span className="font-bold">DELETE</span> to confirm:
+                </p>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  className="w-full mt-2 px-4 py-2 border-2 border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  placeholder="Type DELETE"
+                />
+              </div>
+
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteConfirmText('');
+                  }}
+                  className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-4 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleClearAllData}
+                  disabled={deleteConfirmText !== 'DELETE'}
+                  className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+                >
+                  Yes, Delete Everything
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-
-        {!showDeleteConfirm ? (
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="w-full flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-          >
-            <Trash2 className="w-5 h-5" />
-            <span>Clear All Data</span>
-          </button>
-        ) : (
-          <div className="space-y-4">
-            <div className="bg-red-50 border border-red-300 rounded-lg p-4">
-              <p className="font-bold text-red-800 mb-3">
-                This will permanently delete:
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-red-700 text-sm mb-4">
-                <li>All debts</li>
-                <li>Payment history</li>
-                <li>Financial profile</li>
-                <li>Strategy results</li>
-              </ul>
-              <p className="font-bold text-red-800 mb-2">
-                This action cannot be undone!
-              </p>
-              <p className="text-sm text-red-700">
-                Type <span className="font-bold">DELETE</span> to confirm:
-              </p>
-              <input
-                type="text"
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                className="w-full mt-2 px-4 py-2 border-2 border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                placeholder="Type DELETE"
-              />
-            </div>
-
-            <div className="flex space-x-3">
-              <button
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                  setDeleteConfirmText('');
-                }}
-                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-4 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleClearAllData}
-                disabled={deleteConfirmText !== 'DELETE'}
-                className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors"
-              >
-                Yes, Delete Everything
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
 
       <BenTaskPanel />
 
