@@ -74,6 +74,13 @@ function App() {
     loadFeaturePreferences();
     const clicked = localStorage.getItem('askNovoClicked') === 'true';
     setAskNovoClicked(clicked);
+
+    // Set onboarding complete for existing users who have debts and a profile
+    const profile = StorageService.getFinancialProfile();
+    const debts = StorageService.getDebts();
+    if (profile && debts.length > 0) {
+      localStorage.setItem('novo_onboarding_complete', 'true');
+    }
   };
 
   useEffect(() => {
