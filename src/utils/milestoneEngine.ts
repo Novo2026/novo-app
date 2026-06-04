@@ -3,6 +3,8 @@ import type { Debt } from '../types';
 
 export type MilestoneType =
   | 'first_debt_paid'
+  | 'debt_almost_gone'
+  | 'debt_5k'
   | 'debt_10k'
   | 'debt_25k'
   | 'debt_50k'
@@ -12,7 +14,9 @@ export type MilestoneType =
   | 'surplus_increased'
   | 'expenses_exceed_income'
   | 'home_ready'
+  | 'ninety_days_active'
   | 'six_months_active'
+  | 'first_reconciliation'
   | 'first_import';
 
 export interface DetectedMilestone {
@@ -172,11 +176,12 @@ export function runMilestoneDetection(): void {
 
   if (!profile || debts.length === 0) return;
 
-  const totalStarting = debts.reduce((s, d) => s + (d.startingBalance || 0), 0);
+  const totalStarting = debts.reduce((s, d) => s + (d.startingBalance || d.currentBalance), 0);
   const totalCurrent = debts.reduce((s, d) => s + d.currentBalance, 0);
   const totalPaid = totalStarting - totalCurrent;
   const paidOffDebts = debts.filter(d => d.isPaidOff);
-  const monthlyDebtPayments = debts.filter(d => !d.isPaidOff).reduce((s, d) => s + d.minimumPayment, 0);
+  const activeDebts = debts.filter(d => !d.isPaidOff && d.currentBalance > 0);
+  const monthlyDebtPayments = activeDebts.reduce((s, d) => s + d.minimumPayment, 0);
   const dti = profile.monthlyGrossIncome > 0
     ? Math.round((monthlyDebtPayments / profile.monthlyGrossIncome) * 100)
     : 0;
@@ -186,10 +191,33 @@ export function runMilestoneDetection(): void {
     triggerMilestone(
       'first_debt_paid',
       { debtName: debt.accountName },
-      `🎉 You paid off your ${debt.accountName}! That's your first one down. The momentum from here is real — every extra dollar now rolls into your next debt.`,
-      `Hey ${name} — NOVO just flagged that you paid off your ${debt.accountName}. That's a big deal and I wanted you to know I noticed. Keep going — the snowball is starting to roll.`,
-      'Schedule a quick call',
-      'https://api.leadconnectorhq.com/widget/booking/Ms28gTzPwpR5BbzeU0Dc'
+      `🎉 You just paid off your ${debt.accountName}. One down. That's the hardest one — breaking the pattern. Every dollar you were putting toward that now accelerates everything else.`,
+      `Hey ${name} — NOVO flagged that you paid off your ${debt.accountName}. I just wanted to say — that's real. A lot of people talk about it. You actually did it. Keep the momentum going.`,
+      null,
+      null
+    );
+  }
+
+  const almostGoneDebt = activeDebts.find(d => d.currentBalance < 500 && d.currentBalance > 0 && (d.startingBalance || 0) > 500);
+  if (almostGoneDebt && !hasTriggered('debt_almost_gone')) {
+    triggerMilestone(
+      'debt_almost_gone',
+      { debtName: almostGoneDebt.accountName, balance: almostGoneDebt.currentBalance },
+      `🏁 Your ${almostGoneDebt.accountName} is down to ${formatCurrency(almostGoneDebt.currentBalance)}. You're basically there. One more push and that one is gone for good.`,
+      `${name} — your ${almostGoneDebt.accountName} is almost gone. ${formatCurrency(almostGoneDebt.currentBalance)} left. NOVO caught this and I had to send a quick note — finish it off. You're right there.`,
+      null,
+      null
+    );
+  }
+
+  if (totalPaid >= 5000 && !hasTriggered('debt_5k')) {
+    triggerMilestone(
+      'debt_5k',
+      { totalPaid },
+      `💪 ${formatCurrency(totalPaid)} paid down. Most people never get this far. You did — and the math only gets better from here as each payoff frees up more cash.`,
+      `Hey ${name} — NOVO just flagged ${formatCurrency(totalPaid)} paid down. Early progress matters more than people realize — it means the system is working. Nice work.`,
+      null,
+      null
     );
   }
 
@@ -197,12 +225,12 @@ export function runMilestoneDetection(): void {
     triggerMilestone(
       'debt_10k',
       { totalPaid },
-      `💪 You've paid down ${formatCurrency(totalPaid)} in total debt. That's not a small number — that's discipline showing up consistently.`,
+      `💪 ${formatCurrency(totalPaid)} eliminated. That's not a rounding error — that's real money back in your life. The discipline you've shown here compounds.`,
       isHomeowner
-        ? `Hey ${name} — NOVO flagged that you've knocked out ${formatCurrency(totalPaid)} in debt. As a homeowner that kind of progress has a real impact on your financial picture. I'd love to do a quick 15-minute check-in when you're ready.`
-        : `Hey ${name} — NOVO flagged that you've eliminated ${formatCurrency(totalPaid)} in debt. At this pace, homeownership is becoming a real conversation. I'd love to chat about what your timeline could look like.`,
-      'Book a 15-min call with Ben',
-      'https://api.leadconnectorhq.com/widget/booking/Ms28gTzPwpR5BbzeU0Dc'
+        ? `${name} — ${formatCurrency(totalPaid)} knocked out. NOVO flagged this and I wanted you to hear it from me — that kind of progress has a real impact on your financial picture. You should feel good about this.`
+        : `${name} — ${formatCurrency(totalPaid)} eliminated. NOVO flagged this. That's the kind of progress that changes trajectories. Keep going.`,
+      null,
+      null
     );
   }
 
@@ -211,9 +239,9 @@ export function runMilestoneDetection(): void {
       'debt_25k',
       { totalPaid },
       `🚀 ${formatCurrency(totalPaid)} paid down. You're not the same person who started this. That's a quarter of the way to a serious financial transformation.`,
-      `${name} — I have to be straight with you. ${formatCurrency(totalPaid)} eliminated is genuinely impressive. NOVO flagged this and I wanted to reach out personally. This is the kind of progress that opens doors. Let's talk.`,
-      'Book a call with Ben',
-      'https://api.leadconnectorhq.com/widget/booking/Ms28gTzPwpR5BbzeU0Dc'
+      `${name} — ${formatCurrency(totalPaid)} eliminated. I have to be straight with you — NOVO flagged this and it caught my attention. That's genuinely impressive discipline. Whatever you're doing, keep doing it.`,
+      null,
+      null
     );
   }
 
@@ -222,9 +250,9 @@ export function runMilestoneDetection(): void {
       'debt_50k',
       { totalPaid },
       `🏆 ${formatCurrency(totalPaid)} paid off. That is extraordinary. Most people never get here. You did.`,
-      `${name} — ${formatCurrency(totalPaid)} eliminated. I don't say this lightly — that is life-changing. NOVO caught this and I had to reach out myself. Whatever is next for you financially, I want to be part of that conversation.`,
-      'Book a call with Ben',
-      'https://api.leadconnectorhq.com/widget/booking/Ms28gTzPwpR5BbzeU0Dc'
+      `${name} — ${formatCurrency(totalPaid)} eliminated. NOVO flagged this and I had to reach out personally. That is life-changing work. I don't say that lightly.`,
+      null,
+      null
     );
   }
 
@@ -232,10 +260,10 @@ export function runMilestoneDetection(): void {
     triggerMilestone(
       'dti_under_43',
       { dti },
-      `📊 Your debt-to-income ratio just dropped to ${dti}%. That's inside conventional mortgage qualifying range. You're closer to a home than you might think.`,
-      `${name} — NOVO just flagged something I get excited about. Your DTI hit ${dti}% — that's inside qualifying range for a conventional mortgage. When you're ready to have that conversation, I'm here.`,
-      'Book a mortgage check-in',
-      'https://api.leadconnectorhq.com/widget/booking/Ms28gTzPwpR5BbzeU0Dc'
+      `📊 Your debt-to-income ratio just dropped to ${dti}%. That's meaningful progress — your monthly obligations are becoming a smaller piece of your income picture.`,
+      `${name} — NOVO flagged your DTI hit ${dti}%. That's a real milestone for your financial health. Things are moving in the right direction.`,
+      null,
+      null
     );
   }
 
@@ -243,14 +271,32 @@ export function runMilestoneDetection(): void {
     triggerMilestone(
       'dti_under_36',
       { dti },
-      `🏠 DTI at ${dti}% — that's prime qualifying territory. Most lenders love to see this number. Your hard work is translating directly into buying power.`,
-      `${name} — your DTI is at ${dti}%. That's exceptional. NOVO flagged this and honestly I want to make sure you know what this means for your options. Let's talk soon.`,
-      'Book a mortgage check-in',
-      'https://api.leadconnectorhq.com/widget/booking/Ms28gTzPwpR5BbzeU0Dc'
+      `🏠 DTI at ${dti}% — that's strong. Your income to debt ratio is in excellent shape. That hard work is showing up in your numbers.`,
+      `${name} — your DTI is at ${dti}%. NOVO flagged this. That's an exceptional number and it reflects real consistent effort on your part.`,
+      null,
+      null
     );
   }
 
-  if (isHomeowner && !hasTriggered('six_months_active')) {
+  if (!hasTriggered('ninety_days_active')) {
+    const createdDates = debts.map(d => new Date(d.createdAt).getTime()).filter(Boolean);
+    if (createdDates.length > 0) {
+      const earliestDebt = Math.min(...createdDates);
+      const daysActive = Math.round((Date.now() - earliestDebt) / (1000 * 60 * 60 * 24));
+      if (daysActive >= 90) {
+        triggerMilestone(
+          'ninety_days_active',
+          { daysActive },
+          `📅 90 days in. Most people quit before now. You haven't. That consistency is the whole game — everything else is just math.`,
+          `${name} — 90 days. NOVO flagged it. I know that might not sound like a big deal but staying consistent for 3 months is where most people fall off. You didn't. That matters.`,
+          null,
+          null
+        );
+      }
+    }
+  }
+
+  if (!hasTriggered('six_months_active')) {
     const createdDates = debts.map(d => new Date(d.createdAt).getTime()).filter(Boolean);
     if (createdDates.length > 0) {
       const earliestDebt = Math.min(...createdDates);
@@ -259,13 +305,26 @@ export function runMilestoneDetection(): void {
         triggerMilestone(
           'six_months_active',
           { monthsActive },
-          `📅 You've been working your plan for ${monthsActive} months. That kind of consistency is rare — and it's exactly what builds lasting financial health.`,
-          `Hey ${name} — you've been at this for ${monthsActive} months now and NOVO shows real progress. I like to do a quick financial health check-in around this point — no agenda, just making sure you're on the best path. Grab a time if you're up for it.`,
-          'Schedule a check-in with Ben',
-          'https://api.leadconnectorhq.com/widget/booking/Ms28gTzPwpR5BbzeU0Dc'
+          `🎯 Six months working your plan. That's not luck — that's a habit. The people who make it to 6 months almost always make it to debt free.`,
+          `${name} — six months. NOVO flagged it. I like to check in around this point — not to sell you anything, just to make sure you're on the best path. How's it going?`,
+          null,
+          null
         );
       }
     }
+  }
+
+  const checkingAccounts = StorageService.getCheckingAccounts();
+  const hasReconciled = checkingAccounts.some(a => a.lastReconciledAt);
+  if (hasReconciled && !hasTriggered('first_reconciliation')) {
+    triggerMilestone(
+      'first_reconciliation',
+      {},
+      `✅ You just reconciled your account — that's a habit most people skip. Knowing your exact numbers is what separates people who make progress from people who wonder where their money went.`,
+      null,
+      null,
+      null
+    );
   }
 
   const totalExpenses = profile.monthlyEssentialExpenses + profile.monthlyDiscretionaryExpenses;
@@ -273,10 +332,10 @@ export function runMilestoneDetection(): void {
     triggerMilestone(
       'expenses_exceed_income',
       { totalExpenses, income: profile.monthlyNetIncome },
-      `⚠️ Your expenses are running above your income right now. That's worth addressing before it works against your progress. Check the Spending Analysis in your Tracker for specifics.`,
-      `${name} — NOVO flagged something I want to make sure you're aware of. Your expenses are above your income right now. That's not a crisis but it does need attention. I'm here if you want to talk through it.`,
-      'Book a call with Ben',
-      'https://api.leadconnectorhq.com/widget/booking/Ms28gTzPwpR5BbzeU0Dc',
+      `⚠️ Your expenses are running above your income right now. That needs attention — check the Spending Analysis in your Tracker and look at Smarter Payments for quick wins.`,
+      `${name} — NOVO flagged something I want to make sure you're aware of. Your expenses are above your income right now. That's not a crisis but it needs attention soon. I'm here if you want to think through it.`,
+      null,
+      null,
       true
     );
   }
