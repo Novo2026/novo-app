@@ -81,6 +81,15 @@ function App() {
     if (profile && debts.length > 0) {
       localStorage.setItem('novo_onboarding_complete', 'true');
     }
+
+    const homeEquity = StorageService.getHomeEquity();
+    if (!homeEquity?.ownsHome && debts.some((d: any) => d.category === 'Mortgage' && !d.isPaidOff)) {
+      StorageService.saveHomeEquity({
+        ...homeEquity,
+        ownsHome: true,
+        hasHELOC: homeEquity?.hasHELOC || false,
+      });
+    }
   };
 
   useEffect(() => {

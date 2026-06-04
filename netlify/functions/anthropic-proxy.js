@@ -1,15 +1,22 @@
 const Anthropic = require('@anthropic-ai/sdk');
 
 exports.handler = async function(event, context) {
-  // Only allow POST requests
-  if (event.httpMethod !== 'POST') {
+  if (event.httpMethod === 'OPTIONS') {
     return {
-      statusCode: 405,
-      body: JSON.stringify({ error: 'Method not allowed' }),
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      },
+      body: '',
     };
   }
 
-  // Basic origin check — only allow requests from our own app
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
+
   const origin = event.headers.origin || event.headers.Origin || '';
   const allowedOrigins = [
     'https://novo.windmillmortgage.com',
@@ -19,30 +26,22 @@ exports.handler = async function(event, context) {
   ];
 
   if (origin && !allowedOrigins.some(o => origin.startsWith(o))) {
-    return {
-      statusCode: 403,
-      body: JSON.stringify({ error: 'Forbidden' }),
-    };
+    return { statusCode: 403, body: JSON.stringify({ error: 'Forbidden' }) };
   }
 
   try {
     const body = JSON.parse(event.body || '{}');
-    const { model, max_tokens, messages, system, stream } = body;
+    const { model, max_tokens, messages, system } = body;
 
     if (!messages || !Array.isArray(messages)) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Invalid request — messages required' }),
-      };
+      return { statusCode: 400, body: JSON.stringify({ error: 'Invalid request' }) };
     }
 
-    const client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     const requestParams = {
       model: model || 'claude-haiku-4-5-20251001',
-      max_tokens: Math.min(max_tokens || 1000, 4096), // cap at 4096
+      max_tokens: Math.min(max_tokens || 4096, 8192),
       messages,
     };
 
@@ -63,10 +62,7 @@ exports.handler = async function(event, context) {
     console.error('Anthropic proxy error:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({
-        error: 'API request failed',
-        message: error.message
-      }),
+      body: JSON.stringify({ error: 'API request failed', message: error.message }),
     };
   }
 };

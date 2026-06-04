@@ -357,7 +357,6 @@ export function runMilestoneDetection(): void {
 }
 
 export function clearMilestoneHistory(): void {
-  localStorage.removeItem('novo_detected_milestones');
   localStorage.removeItem('novo_proactive_messages');
   localStorage.removeItem('novo_ben_tasks');
 }
