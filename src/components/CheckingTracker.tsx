@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Download, Upload, CreditCard as Edit2, X, DollarSign, CreditCard, TrendingUp, TrendingDown, Link2, ArrowRightLeft, PiggyBank } from 'lucide-react';
+import { Plus, Download, Upload, CreditCard as Edit2, X, DollarSign, CreditCard, TrendingUp, TrendingDown, Link2, ArrowRightLeft, PiggyBank, CheckCircle2 } from 'lucide-react';
 import StatementUploadModal from './StatementUploadModal';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CalculationService } from '../services/calculations';
@@ -8,7 +8,7 @@ import DatePicker from './DatePicker';
 import PaymentLoggingGuidance from './PaymentLoggingGuidance';
 import type { CheckingAccount, CheckingTransaction, UnifiedPayment } from '../types';
 import AddCheckingAccountModal from './AddCheckingAccountModal';
-import AccountReconcileButton from './AccountReconcileButton';
+import ReconcilePanel from './ReconcilePanel';
 
 const ESSENTIAL_CATEGORIES = [
   'Rent/Housing',
@@ -46,6 +46,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
     return accts.find(a => a.isDefault)?.id || accts[0]?.id || '';
   });
   const [showAddAccount, setShowAddAccount] = useState(false);
+  const [showReconcilePanel, setShowReconcilePanel] = useState(false);
 
   const handleAddAccount = (account: CheckingAccount) => {
     const updated = [...accounts, account];
@@ -200,15 +201,15 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
 
         {selectedAccount && (
           <div className="mb-4">
-            <AccountReconcileButton
-              account={selectedAccount}
-              currentBalance={currentBalance}
-              onReconciled={() => {
-                const updated = StorageService.getCheckingAccounts();
-                setAccounts(updated);
-                setRefreshTrigger(prev => prev + 1);
-              }}
-            />
+            <button
+              onClick={() => setShowReconcilePanel(true)}
+              className="flex items-center gap-2 text-sm font-semibold py-2 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-all"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              {accounts.find(a => a.id === selectedAccountId)?.lastReconciledAt
+                ? `Reconciled ${new Date(accounts.find(a => a.id === selectedAccountId)!.lastReconciledAt!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — Review Again`
+                : 'Reconcile Account'}
+            </button>
           </div>
         )}
 
@@ -423,6 +424,40 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
         <AddCheckingAccountModal
           onClose={() => setShowAddAccount(false)}
           onSave={handleAddAccount}
+        />
+      )}
+
+      {showReconcilePanel && (
+        <ReconcilePanel
+          accountName={accounts.find(a => a.id === selectedAccountId)?.name || 'Checking'}
+          accountId={selectedAccountId}
+          currentBalance={currentBalance}
+          lastReconciledAt={accounts.find(a => a.id === selectedAccountId)?.lastReconciledAt || null}
+          onClose={() => setShowReconcilePanel(false)}
+          onComplete={(reconciledIds, statementBalance) => {
+            const key = `novo_checking_transactions_${selectedAccountId}`;
+            const fallbackKey = 'novo_checking_transactions';
+            const stored = localStorage.getItem(key) || localStorage.getItem(fallbackKey) || '[]';
+            const transactions = JSON.parse(stored);
+            const updated = transactions.map((t: CheckingTransaction) =>
+              reconciledIds.includes(t.id)
+                ? { ...t, isReconciled: true, reconciledAt: new Date().toISOString() }
+                : t
+            );
+            localStorage.setItem(key, JSON.stringify(updated));
+
+            const allAccounts = StorageService.getCheckingAccounts();
+            const idx = allAccounts.findIndex(a => a.id === selectedAccountId);
+            if (idx !== -1) {
+              allAccounts[idx].lastReconciledAt = new Date().toISOString();
+              allAccounts[idx].lastReconciledBalance = statementBalance || currentBalance;
+              StorageService.saveCheckingAccounts(allAccounts);
+              setAccounts(allAccounts);
+            }
+
+            setRefreshTrigger(prev => prev + 1);
+            setShowReconcilePanel(false);
+          }}
         />
       )}
     </div>
