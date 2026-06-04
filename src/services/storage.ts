@@ -177,6 +177,28 @@ export const StorageService = {
     Object.values(STORAGE_KEYS).forEach(key => {
       localStorage.removeItem(key);
     });
+
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('novo_')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => {
+      if (key === 'novo_access_record') return;
+      localStorage.removeItem(key);
+    });
+
+    localStorage.removeItem('userName');
+    localStorage.removeItem('lastVisit');
+    localStorage.removeItem('userAddress');
+    localStorage.removeItem('chunkingQuizPassed');
+    localStorage.removeItem('novo_smarter_payments_visited');
+    localStorage.removeItem('novo_first_chat_completed');
+    localStorage.removeItem('novo_install_date');
+    localStorage.removeItem('novo_start_here_dismissed');
+
     sessionStorage.clear();
   },
 

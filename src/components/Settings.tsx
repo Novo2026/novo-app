@@ -272,10 +272,6 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
 
     StorageService.clearAllData();
     clearMilestoneHistory();
-    localStorage.removeItem('userName');
-    localStorage.removeItem('lastVisit');
-    localStorage.removeItem('userAddress');
-    localStorage.removeItem('chunkingQuizPassed');
     setShowDeleteConfirm(false);
     setShowSuccess(true);
     setQuizStatus('not-taken');
