@@ -16,10 +16,34 @@ interface DebtInput {
   loanTerm?: string;
 }
 
+export interface IncomeSource {
+  id: string;
+  type: 'w2' | 'self_employed' | 'commission' | 'rental' | 'other';
+  label: string;
+  monthlyAmount: string;
+  annualAmount: string;
+  useAnnual: boolean;
+  description: string;
+}
+
+export interface AdditionalProperty {
+  id: string;
+  description: string;
+  mortgageBalance: string;
+  monthlyPayment: string;
+  monthlyRentalIncome: string;
+  hasHELOC: boolean;
+  helocBalance: string;
+  helocLimit: string;
+  helocRate: string;
+}
+
 interface OnboardingData {
   userName: string;
   partnerName?: string;
   accountType?: 'solo' | 'couple' | 'family';
+  incomeSources?: IncomeSource[];
+  additionalProperties?: AdditionalProperty[];
   grossIncome: string;
   monthlyIncome: string;
   essentialExpenses: string;
@@ -49,6 +73,8 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
     userName: '',
     partnerName: '',
     accountType: 'solo',
+    incomeSources: [],
+    additionalProperties: [],
     grossIncome: '',
     monthlyIncome: '',
     essentialExpenses: '',
@@ -232,6 +258,8 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       userName: '',
       partnerName: '',
       accountType: 'solo',
+      incomeSources: [],
+      additionalProperties: [],
       grossIncome: '',
       monthlyIncome: '',
       essentialExpenses: '',
@@ -425,29 +453,192 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         <p className="text-gray-600">This helps us calculate your available cash flow</p>
       </div>
 
-      <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
-          Gross Monthly Income <span className="text-red-500">*</span>
-        </label>
-        <p className="text-xs text-gray-500 mb-2">Your total income before taxes and deductions</p>
-        <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-          <input
-            type="text"
-            value={data.grossIncome}
-            onChange={(e) => handleCurrencyChange('grossIncome', e.target.value)}
-            placeholder="7,000"
-            className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all min-h-[48px]"
-            style={{ fontSize: '16px' }}
-          />
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">
+            How does income come into your household? <span className="text-red-500">*</span>
+          </label>
+          <p className="text-xs text-gray-500 mb-3">Select all that apply — you can add up to 5 sources</p>
         </div>
+
+        <div className="grid grid-cols-1 gap-2">
+          {[
+            { type: 'w2', label: 'W2 / Salary', desc: 'Regular paycheck from employer', emoji: '💼' },
+            { type: 'self_employed', label: 'Self-Employed / Business', desc: 'Business income, owner draws, or distributions', emoji: '🏢' },
+            { type: 'commission', label: 'Commission / Variable', desc: 'Income that varies month to month', emoji: '📈' },
+            { type: 'rental', label: 'Rental Income', desc: 'Income from properties in your personal name only', emoji: '🏠' },
+            { type: 'other', label: 'Other Income', desc: 'Pension, Social Security, alimony, side income', emoji: '💰' },
+          ].map(source => {
+            const existing = (data.incomeSources || []).find(s => s.type === source.type);
+            const isActive = !!existing;
+            return (
+              <div key={source.type} className={`border-2 rounded-xl transition-all ${isActive ? 'border-[#FF6B35] bg-[#FF6B35]/5' : 'border-gray-200 bg-white'}`}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const current = data.incomeSources || [];
+                    if (isActive) {
+                      setData({ ...data, incomeSources: current.filter(s => s.type !== source.type) });
+                    } else if (current.length < 5) {
+                      const newSource: IncomeSource = {
+                        id: `income_${Date.now()}`,
+                        type: source.type as IncomeSource['type'],
+                        label: source.label,
+                        monthlyAmount: '',
+                        annualAmount: '',
+                        useAnnual: source.type === 'self_employed',
+                        description: '',
+                      };
+                      setData({ ...data, incomeSources: [...current, newSource] });
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 p-3 text-left"
+                >
+                  <span className="text-xl">{source.emoji}</span>
+                  <div className="flex-1">
+                    <p className={`text-sm font-semibold ${isActive ? 'text-[#FF6B35]' : 'text-gray-700'}`}>{source.label}</p>
+                    <p className="text-xs text-gray-500">{source.desc}</p>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isActive ? 'border-[#FF6B35] bg-[#FF6B35]' : 'border-gray-300'}`}>
+                    {isActive && <div className="w-2 h-2 rounded-full bg-white" />}
+                  </div>
+                </button>
+
+                {isActive && existing && (
+                  <div className="px-4 pb-4 space-y-3 border-t border-[#FF6B35]/20 pt-3">
+                    {source.type === 'self_employed' && (
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="text-xs font-semibold text-gray-600">Enter as:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = (data.incomeSources || []).map(s =>
+                              s.type === source.type ? { ...s, useAnnual: false } : s
+                            );
+                            setData({ ...data, incomeSources: updated });
+                          }}
+                          className={`text-xs px-3 py-1 rounded-full border transition-all ${!existing.useAnnual ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-white text-gray-600 border-gray-300'}`}
+                        >
+                          Monthly
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = (data.incomeSources || []).map(s =>
+                              s.type === source.type ? { ...s, useAnnual: true } : s
+                            );
+                            setData({ ...data, incomeSources: updated });
+                          }}
+                          className={`text-xs px-3 py-1 rounded-full border transition-all ${existing.useAnnual ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-white text-gray-600 border-gray-300'}`}
+                        >
+                          Annual (we'll average it)
+                        </button>
+                      </div>
+                    )}
+
+                    {(!existing.useAnnual || source.type !== 'self_employed') && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">
+                          {source.type === 'commission' ? '12-month average monthly amount' : 'Monthly amount (gross)'}
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                          <input
+                            type="text"
+                            value={existing.monthlyAmount}
+                            onChange={e => {
+                              const updated = (data.incomeSources || []).map(s =>
+                                s.type === source.type ? { ...s, monthlyAmount: e.target.value } : s
+                              );
+                              setData({ ...data, incomeSources: updated });
+                            }}
+                            placeholder="0"
+                            className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                          />
+                        </div>
+                        {source.type === 'commission' && (
+                          <p className="text-xs text-gray-400 mt-1">Add up last 12 months of commission and divide by 12</p>
+                        )}
+                      </div>
+                    )}
+
+                    {existing.useAnnual && source.type === 'self_employed' && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Annual amount</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                          <input
+                            type="text"
+                            value={existing.annualAmount}
+                            onChange={e => {
+                              const updated = (data.incomeSources || []).map(s =>
+                                s.type === source.type ? { ...s, annualAmount: e.target.value } : s
+                              );
+                              setData({ ...data, incomeSources: updated });
+                            }}
+                            placeholder="0"
+                            className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                          />
+                        </div>
+                        {existing.annualAmount && parseFloat(existing.annualAmount.replace(/[^0-9.]/g, '')) > 0 && (
+                          <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-2">
+                            <p className="text-xs text-blue-800 font-medium">
+                              📊 Using <strong>${(parseFloat(existing.annualAmount.replace(/[^0-9.]/g, '')) / 12).toLocaleString('en-US', { maximumFractionDigits: 0 })}/month</strong> as your monthly average for planning purposes
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {source.type === 'other' && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Description (optional)</label>
+                        <input
+                          type="text"
+                          value={existing.description}
+                          onChange={e => {
+                            const updated = (data.incomeSources || []).map(s =>
+                              s.type === source.type ? { ...s, description: e.target.value } : s
+                            );
+                            setData({ ...data, incomeSources: updated });
+                          }}
+                          placeholder="e.g. Social Security, rental income, pension"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {(data.incomeSources || []).length > 0 && (() => {
+          const totalMonthly = (data.incomeSources || []).reduce((sum, s) => {
+            if (s.useAnnual && s.annualAmount) {
+              return sum + (parseFloat(s.annualAmount.replace(/[^0-9.]/g, '')) / 12);
+            }
+            return sum + (parseFloat(s.monthlyAmount.replace(/[^0-9.]/g, '')) || 0);
+          }, 0);
+          if (totalMonthly === 0) return null;
+          return (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+              <div className="flex justify-between items-center">
+                <p className="text-sm font-semibold text-emerald-800">Combined Monthly Income</p>
+                <p className="text-lg font-bold text-emerald-700">${totalMonthly.toLocaleString('en-US', { maximumFractionDigits: 0 })}</p>
+              </div>
+              <p className="text-xs text-emerald-600 mt-1">Gross total across all {(data.incomeSources || []).length} income source{(data.incomeSources || []).length > 1 ? 's' : ''}</p>
+            </div>
+          );
+        })()}
       </div>
 
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">
-          Net Monthly Income <span className="text-red-500">*</span>
+          Combined Monthly Take-Home Pay <span className="text-red-500">*</span>
         </label>
-        <p className="text-xs text-gray-500 mb-2">Your take-home pay after taxes and deductions</p>
+        <p className="text-xs text-gray-500 mb-2">Total monthly amount that actually lands in your bank accounts after all taxes and deductions</p>
         <div className="relative">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
           <input
@@ -455,7 +646,26 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
             value={data.monthlyIncome}
             onChange={(e) => handleCurrencyChange('monthlyIncome', e.target.value)}
             placeholder="5,000"
-            className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all min-h-[48px]"
+            className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] transition-all min-h-[48px]"
+            style={{ fontSize: '16px' }}
+          />
+        </div>
+        <p className="text-xs text-gray-400 mt-1">For irregular income, use your typical monthly deposit amount</p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-2">
+          Combined Gross Monthly Income <span className="text-red-500">*</span>
+        </label>
+        <p className="text-xs text-gray-500 mb-2">Before taxes — used for DTI calculation</p>
+        <div className="relative">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+          <input
+            type="text"
+            value={data.grossIncome}
+            onChange={(e) => handleCurrencyChange('grossIncome', e.target.value)}
+            placeholder="7,000"
+            className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] transition-all min-h-[48px]"
             style={{ fontSize: '16px' }}
           />
         </div>
@@ -792,6 +1002,140 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
             </div>
           </div>
         )}
+
+        <div className="space-y-4 pt-2">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Do you own additional properties?</label>
+            <p className="text-xs text-gray-500 mb-3">Investment properties, rental properties, or second homes — in your personal name only. Do NOT include properties owned by an LLC or partnership.</p>
+          </div>
+
+          {(data.additionalProperties || []).map((prop, idx) => (
+            <div key={prop.id} className="border-2 border-[#1E3A5F]/20 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-bold text-[#1E3A5F]">Property {idx + 1}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setData({
+                      ...data,
+                      additionalProperties: (data.additionalProperties || []).filter(p => p.id !== prop.id)
+                    });
+                  }}
+                  className="text-xs text-red-400 hover:text-red-600 transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Description</label>
+                <input
+                  type="text"
+                  value={prop.description}
+                  onChange={e => {
+                    const updated = (data.additionalProperties || []).map(p =>
+                      p.id === prop.id ? { ...p, description: e.target.value } : p
+                    );
+                    setData({ ...data, additionalProperties: updated });
+                  }}
+                  placeholder="e.g. Rental property — 123 Main St, Investment property"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Mortgage Balance</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                    <input
+                      type="text"
+                      value={prop.mortgageBalance}
+                      onChange={e => {
+                        const updated = (data.additionalProperties || []).map(p =>
+                          p.id === prop.id ? { ...p, mortgageBalance: e.target.value } : p
+                        );
+                        setData({ ...data, additionalProperties: updated });
+                      }}
+                      placeholder="0"
+                      className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Monthly Payment</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                    <input
+                      type="text"
+                      value={prop.monthlyPayment}
+                      onChange={e => {
+                        const updated = (data.additionalProperties || []).map(p =>
+                          p.id === prop.id ? { ...p, monthlyPayment: e.target.value } : p
+                        );
+                        setData({ ...data, additionalProperties: updated });
+                      }}
+                      placeholder="0"
+                      className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Monthly Rental Income (if applicable)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                  <input
+                    type="text"
+                    value={prop.monthlyRentalIncome}
+                    onChange={e => {
+                      const updated = (data.additionalProperties || []).map(p =>
+                        p.id === prop.id ? { ...p, monthlyRentalIncome: e.target.value } : p
+                      );
+                      setData({ ...data, additionalProperties: updated });
+                    }}
+                    placeholder="0"
+                    className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                  />
+                </div>
+                {prop.monthlyRentalIncome && parseFloat(prop.monthlyRentalIncome.replace(/[^0-9.]/g, '')) > 0 && (
+                  <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-2">
+                    <p className="text-xs text-blue-800">
+                      💡 Rental income of <strong>${parseFloat(prop.monthlyRentalIncome.replace(/[^0-9.]/g, '')).toLocaleString()}/month</strong> will be added to your income for cash flow calculations
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {(data.additionalProperties || []).length < 5 && (
+            <button
+              type="button"
+              onClick={() => {
+                const newProp: AdditionalProperty = {
+                  id: `prop_${Date.now()}`,
+                  description: '',
+                  mortgageBalance: '',
+                  monthlyPayment: '',
+                  monthlyRentalIncome: '',
+                  hasHELOC: false,
+                  helocBalance: '',
+                  helocLimit: '',
+                  helocRate: '',
+                };
+                setData({
+                  ...data,
+                  additionalProperties: [...(data.additionalProperties || []), newProp]
+                });
+              }}
+              className="w-full border-2 border-dashed border-[#1E3A5F]/20 hover:border-[#1E3A5F]/40 rounded-xl p-4 text-sm font-medium text-[#1E3A5F]/60 hover:text-[#1E3A5F] transition-all"
+            >
+              + Add a property
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Debts Section */}

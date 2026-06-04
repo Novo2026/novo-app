@@ -165,7 +165,11 @@ function App() {
 
     StorageService.saveDebts(newDebts);
 
-    const netIncome = parseCurrency(data.monthlyIncome);
+    const totalRentalIncome = (data.additionalProperties || []).reduce((sum: number, prop: { monthlyRentalIncome?: string }) => {
+      return sum + (parseFloat(prop.monthlyRentalIncome?.replace(/[^0-9.]/g, '') || '0') || 0);
+    }, 0);
+
+    const netIncome = parseCurrency(data.monthlyIncome) + totalRentalIncome;
     const essential = parseCurrency(data.essentialExpenses);
     const discretionary = parseCurrency(data.discretionaryExpenses);
     const savingsGoal = parseCurrency(data.monthlySavingsGoal || '');
@@ -184,6 +188,36 @@ function App() {
       surplusCommitmentPercent: derivedSurplusCommitmentPercent,
     };
     StorageService.saveFinancialProfile(financialProfile);
+
+    const incomeSourcesSummary = (data.incomeSources || []).map((s: { type: string; label: string; useAnnual?: boolean; annualAmount?: string; monthlyAmount?: string }) => ({
+      type: s.type,
+      label: s.label,
+      monthlyAmount: s.useAnnual
+        ? parseFloat(s.annualAmount.replace(/[^0-9.]/g, '')) / 12
+        : parseFloat(s.monthlyAmount.replace(/[^0-9.]/g, '')) || 0,
+    }));
+
+    localStorage.setItem('novo_income_sources', JSON.stringify(incomeSourcesSummary));
+    localStorage.setItem('novo_rental_income', totalRentalIncome.toString());
+
+    const additionalPropertyDebts = (data.additionalProperties || [])
+      .filter((prop: { mortgageBalance?: string }) => prop.mortgageBalance && parseFloat(prop.mortgageBalance.replace(/[^0-9.]/g, '')) > 0)
+      .map((prop: { description?: string; mortgageBalance?: string; monthlyPayment?: string; monthlyRentalIncome?: string }) => ({
+        id: `prop_debt_${Date.now()}_${Math.random()}`,
+        accountName: prop.description || 'Investment Property Mortgage',
+        category: 'Mortgage' as const,
+        currentBalance: parseFloat(prop.mortgageBalance.replace(/[^0-9.]/g, '')) || 0,
+        startingBalance: parseFloat(prop.mortgageBalance.replace(/[^0-9.]/g, '')) || 0,
+        interestRate: 0,
+        minimumPayment: parseFloat(prop.monthlyPayment?.replace(/[^0-9.]/g, '') || '0') || 0,
+        isPaidOff: false,
+        createdAt: new Date().toISOString(),
+      }));
+
+    if (additionalPropertyDebts.length > 0) {
+      const existingDebts = StorageService.getDebts();
+      StorageService.saveDebts([...existingDebts, ...additionalPropertyDebts]);
+    }
 
     if (data.hasHELOC) {
       const homeEquity = {
