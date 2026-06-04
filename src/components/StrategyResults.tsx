@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { RefreshCw, TrendingDown, Calendar, DollarSign, BarChart3, AlertTriangle, CheckCircle } from 'lucide-react';
+import { RefreshCw, TrendingDown, Calendar, DollarSign, BarChart3, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import MyPlan from './MyPlan';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
@@ -66,6 +66,8 @@ export default function StrategyResults({
   const allStoredDebts = StorageService.getDebts();
   const debts = allStoredDebts.filter(d => !d.isPaidOff);
   const paidOffDebts = allStoredDebts.filter(d => d.isPaidOff);
+  const hasMortgages = allStoredDebts.some(d => d.category === 'Mortgage' && !d.isPaidOff);
+  const mortgageCount = allStoredDebts.filter(d => d.category === 'Mortgage' && !d.isPaidOff).length;
   const financialProfile = StorageService.getFinancialProfile();
   const featurePreferences = StorageService.getFeaturePreferences();
 
@@ -282,6 +284,15 @@ export default function StrategyResults({
               </div>
             </div>
           </div>
+
+          {hasMortgages && (
+            <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
+              <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-blue-800">
+                <strong>Note:</strong> Mortgage{mortgageCount > 1 ? 's' : ''} are on fixed payment schedules and not included in the accelerated payoff strategy. Your debt-free date above reflects your non-mortgage debts.
+              </p>
+            </div>
+          )}
 
           {isValidComparison ? (
             <div className="bg-gradient-to-br from-[#2D9CDB] to-[#1E8BBD] text-white rounded-lg shadow-lg p-6">

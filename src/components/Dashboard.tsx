@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, CreditCard as Edit2, Pencil, Trash2, TrendingUp, Target, Zap, Home, Sliders, CalendarClock } from 'lucide-react';
+import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, CreditCard as Edit2, Pencil, Trash2, TrendingUp, Target, Zap, Home, Sliders, CalendarClock, Info } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import { runMilestoneDetection } from '../utils/milestoneEngine';
@@ -492,6 +492,14 @@ export default function Dashboard({
                 {CalculationService.formatMonthYear(optimizedProjection.debtFreeDate)}
               </span>
             </p>
+            {debts.some(d => d.category === 'Mortgage' && !d.isPaidOff) && (
+              <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
+                <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-blue-800">
+                  <strong>Note:</strong> Mortgage{debts.filter(d => d.category === 'Mortgage' && !d.isPaidOff).length > 1 ? 's' : ''} are on fixed payment schedules and not included in the accelerated payoff strategy. Your debt-free date above reflects your non-mortgage debts.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

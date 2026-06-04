@@ -243,6 +243,8 @@ function App() {
     if (uid) {
       pushLocalStorageToCloud(uid).catch(err => console.error('NOVO cloud sync failed:', err));
     }
+
+    localStorage.setItem('novo_onboarding_complete', 'true');
   };
 
   const loadData = () => {

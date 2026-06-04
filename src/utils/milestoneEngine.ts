@@ -180,6 +180,9 @@ function triggerMilestone(
 }
 
 export function runMilestoneDetection(): void {
+  const onboardingComplete = localStorage.getItem('novo_onboarding_complete');
+  if (!onboardingComplete) return;
+
   const debts = StorageService.getDebts();
   const profile = StorageService.getFinancialProfile();
   const homeEquity = StorageService.getHomeEquity();

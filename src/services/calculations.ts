@@ -306,7 +306,20 @@ export const CalculationService = {
 
   /** Exclude stored HELOC rows; projectDebtPayoff adds tracker HELOC once as HELOC_VIRTUAL. */
   filterDebtsForPayoffProjection(debts: Debt[]): Debt[] {
-    return debts.filter((d) => d.category !== 'HELOC' && d.id !== 'HELOC_VIRTUAL');
+    // Mortgages stay on their fixed amortization schedule
+    // They are not targets for aggressive payoff in the avalanche/snowball strategy
+    // unless they are the ONLY debt remaining
+    const nonMortgageDebts = debts.filter((d) =>
+      d.category !== 'HELOC' &&
+      d.id !== 'HELOC_VIRTUAL' &&
+      d.category !== 'Mortgage'
+    );
+
+    if (nonMortgageDebts.length === 0) {
+      return debts.filter(d => d.category !== 'HELOC' && d.id !== 'HELOC_VIRTUAL');
+    }
+
+    return nonMortgageDebts;
   },
 
   /**
