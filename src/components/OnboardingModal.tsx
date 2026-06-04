@@ -18,6 +18,8 @@ interface DebtInput {
 
 interface OnboardingData {
   userName: string;
+  partnerName?: string;
+  accountType?: 'solo' | 'couple' | 'family';
   grossIncome: string;
   monthlyIncome: string;
   essentialExpenses: string;
@@ -45,6 +47,8 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const [showStrategyExplanation, setShowStrategyExplanation] = useState(false);
   const [data, setData] = useState<OnboardingData>({
     userName: '',
+    partnerName: '',
+    accountType: 'solo',
     grossIncome: '',
     monthlyIncome: '',
     essentialExpenses: '',
@@ -226,6 +230,8 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
     setStep(1);
     setData({
       userName: '',
+      partnerName: '',
+      accountType: 'solo',
       grossIncome: '',
       monthlyIncome: '',
       essentialExpenses: '',
@@ -301,33 +307,113 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
     </div>
   );
 
-  const renderStep1 = () => (
-    <div className="space-y-6">
-      <div className="text-center mb-6">
-        <div className="flex justify-center mb-4">
-          <img
-            src="/novo_primary.png"
-            alt="NOVO Logo"
-            className="h-auto"
-            style={{ width: '120px' }}
-          />
+  const renderStep1 = () => {
+    return (
+      <div className="space-y-6">
+        <div className="text-center mb-6">
+          <div className="flex justify-center mb-4">
+            <img
+              src="/novo_primary.png"
+              alt="NOVO Logo"
+              className="h-auto"
+              style={{ width: '120px' }}
+            />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to NOVO!</h1>
+          <p className="text-lg text-gray-600">Let's start your debt freedom journey.</p>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to NOVO!</h1>
-        <p className="text-lg text-gray-600">Let's start your debt freedom journey. What should I call you?</p>
-      </div>
 
-      <input
-        type="text"
-        value={data.userName}
-        onChange={(e) => setData({ ...data, userName: e.target.value })}
-        placeholder="Enter your name"
-        className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all min-h-[48px]"
-        style={{ fontSize: '16px' }}
-        autoFocus
-        maxLength={50}
-      />
-    </div>
-  );
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-3">Who's using NOVO?</label>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { value: 'solo', label: 'Just me', emoji: '👤' },
+              { value: 'couple', label: 'My partner & I', emoji: '👫' },
+              { value: 'family', label: 'Our family', emoji: '👨‍👩‍👧' },
+            ].map(option => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setData({ ...data, accountType: option.value as 'solo' | 'couple' | 'family' })}
+                className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                  data.accountType === option.value
+                    ? 'border-[#FF6B35] bg-[#FF6B35]/5 text-[#FF6B35]'
+                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                }`}
+              >
+                <span className="text-2xl">{option.emoji}</span>
+                <span className="text-xs font-semibold">{option.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {data.accountType === 'solo' && (
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Your first name</label>
+            <input
+              type="text"
+              value={data.userName}
+              onChange={(e) => setData({ ...data, userName: e.target.value })}
+              placeholder="First name"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] transition-all"
+              style={{ fontSize: '16px' }}
+              autoFocus
+              maxLength={30}
+            />
+          </div>
+        )}
+
+        {data.accountType === 'couple' && (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Your first name</label>
+              <input
+                type="text"
+                value={data.userName}
+                onChange={(e) => setData({ ...data, userName: e.target.value })}
+                placeholder="Your first name"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] transition-all"
+                style={{ fontSize: '16px' }}
+                autoFocus
+                maxLength={30}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Partner's first name <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={data.partnerName || ''}
+                onChange={(e) => setData({ ...data, partnerName: e.target.value })}
+                placeholder="Partner's first name"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] transition-all"
+                style={{ fontSize: '16px' }}
+                maxLength={30}
+              />
+            </div>
+          </div>
+        )}
+
+        {data.accountType === 'family' && (
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Family or last name</label>
+            <input
+              type="text"
+              value={data.userName}
+              onChange={(e) => setData({ ...data, userName: e.target.value })}
+              placeholder="e.g. Hulshof, Smith Family"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] transition-all"
+              style={{ fontSize: '16px' }}
+              autoFocus
+              maxLength={50}
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderStep2 = () => (
     <div className="space-y-6">

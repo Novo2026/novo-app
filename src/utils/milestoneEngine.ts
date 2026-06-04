@@ -92,11 +92,23 @@ function formatCurrency(amount: number): string {
 
 function getUserFirstName(): string {
   try {
+    const firstName = localStorage.getItem('userFirstName');
+    if (firstName && firstName.trim()) return firstName.trim();
+
     const userName = localStorage.getItem('userName');
-    if (userName && userName.trim()) {
-      return userName.trim().split(' ')[0];
+    if (!userName || !userName.trim()) return 'there';
+
+    const accountType = localStorage.getItem('userAccountType') || 'solo';
+
+    if (accountType === 'family') {
+      return `the ${userName.trim()} family`;
     }
-    return 'there';
+
+    if (accountType === 'couple') {
+      return userName.trim();
+    }
+
+    return userName.trim().split(' ')[0];
   } catch { return 'there'; }
 }
 

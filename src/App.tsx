@@ -117,7 +117,16 @@ function App() {
 
     StorageService.clearAllData();
 
-    localStorage.setItem('userName', data.userName);
+    let displayName = data.userName;
+    if (data.accountType === 'couple' && data.partnerName) {
+      displayName = `${data.userName} & ${data.partnerName}`;
+    } else if (data.accountType === 'family') {
+      displayName = data.userName;
+    }
+    localStorage.setItem('userName', displayName);
+    localStorage.setItem('userFirstName', data.userName);
+    localStorage.setItem('userPartnerName', data.partnerName || '');
+    localStorage.setItem('userAccountType', data.accountType || 'solo');
     localStorage.setItem('lastVisit', new Date().toISOString());
 
     if (data.address) {
