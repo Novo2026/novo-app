@@ -98,8 +98,8 @@ export default function ReconcilePanel({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center z-50 p-0 md:p-4">
-      <div className="bg-white w-full md:max-w-2xl md:rounded-2xl rounded-t-2xl max-h-[90vh] flex flex-col shadow-2xl">
+    <div className="fixed inset-0 bg-black/60 flex items-end md:items-center justify-center z-50 p-0 md:p-4 overflow-hidden">
+      <div className="bg-white w-full md:max-w-2xl md:rounded-2xl rounded-t-2xl max-h-[92vh] flex flex-col shadow-2xl mt-auto md:mt-0">
 
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
           <div>
@@ -265,9 +265,9 @@ export default function ReconcilePanel({
           {!showQuickConfirm ? (
             <button
               onClick={() => setShowQuickConfirm(true)}
-              className="w-full text-xs text-gray-400 hover:text-gray-600 py-1 transition-colors"
+              className="w-full text-sm font-medium text-gray-500 hover:text-[#1E3A5F] py-2 px-4 rounded-xl border border-gray-200 hover:border-[#1E3A5F]/30 bg-white transition-all flex items-center justify-center gap-2"
             >
-              Skip review — Quick Reconcile all transactions
+              ⚡ Skip review — Quick Reconcile all {totalCount} transactions
             </button>
           ) : (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between gap-3">
