@@ -104,9 +104,6 @@ function parseCSV(text: string): ParsedTransaction[] {
 }
 
 async function detectStatementType(file: File, base64: string): Promise<StatementDetectionResult> {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  if (!apiKey) return { type: 'unknown', accountName: '', confidence: 'low' };
-
   const isPDF = file.name.endsWith('.pdf');
 
   if (!isPDF) {
@@ -123,13 +120,10 @@ async function detectStatementType(file: File, base64: string): Promise<Statemen
     return { type: 'checking', accountName: 'Checking Account', confidence: 'high' };
   }
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const response = await fetch('/.netlify/functions/anthropic-proxy', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
@@ -250,9 +244,6 @@ async function importCreditCardStatement(
 }
 
 async function parsePDFWithAI(file: File): Promise<ParsedTransaction[]> {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('API key not configured');
-
   const base64 = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -263,13 +254,10 @@ async function parsePDFWithAI(file: File): Promise<ParsedTransaction[]> {
     reader.readAsDataURL(file);
   });
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const response = await fetch('/.netlify/functions/anthropic-proxy', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
