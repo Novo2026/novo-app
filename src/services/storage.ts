@@ -178,17 +178,11 @@ export const StorageService = {
       localStorage.removeItem(key);
     });
 
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('novo_')) {
-        keysToRemove.push(key);
-      }
+    const accessRecord = localStorage.getItem('novo_access_record');
+    localStorage.clear();
+    if (accessRecord) {
+      localStorage.setItem('novo_access_record', accessRecord);
     }
-    keysToRemove.forEach(key => {
-      if (key === 'novo_access_record') return;
-      localStorage.removeItem(key);
-    });
 
     localStorage.removeItem('userName');
     localStorage.removeItem('lastVisit');

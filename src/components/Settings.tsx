@@ -277,8 +277,9 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
     setQuizStatus('not-taken');
 
     setTimeout(() => {
-      window.location.href = '/';
-    }, 2000);
+      window.location.replace('/');
+      window.location.reload();
+    }, 500);
   };
 
   const handleResetQuiz = () => {
