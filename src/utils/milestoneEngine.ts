@@ -8,8 +8,6 @@ export type MilestoneType =
   | 'debt_10k'
   | 'debt_25k'
   | 'debt_50k'
-  | 'dti_under_43'
-  | 'dti_under_36'
   | 'consistent_payments'
   | 'surplus_increased'
   | 'expenses_exceed_income'
@@ -150,11 +148,14 @@ function triggerMilestone(
   milestones.push({ type, triggeredAt: now, data, seen: false, benTaskCreated: !!benMessage });
   saveMilestones(milestones);
 
+  // User-facing message is ALWAYS the NOVO message — Ben never messages users
+  // directly inside the app. Significant milestones create a private task for
+  // Ben instead, and Ben reaches out personally his own way.
   const messages = getProactiveMessages();
   messages.unshift({
     id: `msg_${Date.now()}`,
-    type: benMessage ? 'ben' : 'novo',
-    message: benMessage || novoMessage,
+    type: 'novo',
+    message: novoMessage,
     triggeredBy: type,
     triggeredAt: now,
     seen: false,
@@ -171,7 +172,7 @@ function triggerMilestone(
       createdAt: now,
       userName: getUserFirstName(),
       milestoneType: type,
-      summary: benMessage.substring(0, 120) + '...',
+      summary: benMessage.substring(0, 120) + (benMessage.length > 120 ? '...' : ''),
       details: buildUserSummary(debts),
       completed: false,
     });
@@ -271,27 +272,7 @@ export function runMilestoneDetection(): void {
     );
   }
 
-  if (!isHomeowner && dti > 0 && dti < 43 && dti >= 36 && !hasTriggered('dti_under_43')) {
-    triggerMilestone(
-      'dti_under_43',
-      { dti },
-      `📊 Your debt-to-income ratio just dropped to ${dti}%. That's meaningful progress — your monthly obligations are becoming a smaller piece of your income picture.`,
-      `${name} — NOVO flagged your DTI hit ${dti}%. That's a real milestone for your financial health. Things are moving in the right direction.`,
-      null,
-      null
-    );
-  }
-
-  if (!isHomeowner && dti > 0 && dti < 36 && !hasTriggered('dti_under_36')) {
-    triggerMilestone(
-      'dti_under_36',
-      { dti },
-      `🏠 DTI at ${dti}% — that's strong. Your income to debt ratio is in excellent shape. That hard work is showing up in your numbers.`,
-      `${name} — your DTI is at ${dti}%. NOVO flagged this. That's an exceptional number and it reflects real consistent effort on your part.`,
-      null,
-      null
-    );
-  }
+  // DTI milestones removed — most users don't connect emotionally with this metric.
 
   if (!hasTriggered('ninety_days_active')) {
     const createdDates = debts.map(d => new Date(d.createdAt).getTime()).filter(Boolean);
