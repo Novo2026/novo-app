@@ -8,6 +8,7 @@ import HelocSuccessModal from './HelocSuccessModal';
 import BenTaskPanel from './BenTaskPanel';
 import { clearMilestoneHistory } from '../utils/milestoneEngine';
 import { UpgradeModal } from './AccessGate';
+import IncomeSourcesEditor from './IncomeSourcesEditor';
 import { isPro, getAccessRecord, isProExpired } from '../services/accessControl';
 import type { FinancialProfile, FeaturePreferences, HomeEquity } from '../types';
 
@@ -494,6 +495,8 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
           )}
         </div>
       </div>
+
+      <IncomeSourcesEditor onSaved={() => {}} />
 
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center space-x-2 mb-4">
