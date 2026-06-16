@@ -104,6 +104,9 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
       }
     }
 
+    // Trigger a storage event so Settings Financial Profile refreshes
+    window.dispatchEvent(new Event('focus'));
+
     setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 3000);
     onSaved?.();

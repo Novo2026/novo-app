@@ -98,6 +98,15 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
     }
   }, []);
 
+  useEffect(() => {
+    const refreshProfile = () => {
+      const profile = StorageService.getFinancialProfile();
+      if (profile) setFinancialProfile(profile);
+    };
+    window.addEventListener('focus', refreshProfile);
+    return () => window.removeEventListener('focus', refreshProfile);
+  }, []);
+
   const handleDownloadNovoReport = () => {
     printHtmlDocument(buildNovoFullReportHtml(assembleNovoReportPayload()));
   };
@@ -161,14 +170,12 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
   };
 
   const handleSaveFinancialProfile = () => {
-    if (financialProfile.monthlyGrossIncome > 0 && financialProfile.monthlyNetIncome > 0) {
-      StorageService.saveFinancialProfile(financialProfile);
-      setShowFinancialSuccess(true);
-      onDataUpdate();
-      setTimeout(() => {
-        setShowFinancialSuccess(false);
-      }, 3000);
-    }
+    StorageService.saveFinancialProfile(financialProfile);
+    setShowFinancialSuccess(true);
+    onDataUpdate();
+    setTimeout(() => {
+      setShowFinancialSuccess(false);
+    }, 3000);
   };
 
   const handleToggleFeature = (feature: 'heloc' | 'checking') => {
