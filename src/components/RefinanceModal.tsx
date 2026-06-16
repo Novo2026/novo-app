@@ -59,7 +59,6 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
   // Get all other active debts that could have been paid off by this refinance
   const allDebts = StorageService.getDebts();
   const otherActiveDebts = allDebts.filter(d =>
-    d.id !== debt.id &&
     !d.isPaidOff &&
     d.currentBalance > 0
   );
@@ -172,20 +171,65 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
     if (consolidatedDebtIds.length > 0) {
       const now = new Date().toISOString();
       const currentDebts = StorageService.getDebts();
-      const withConsolidated = currentDebts.map(d => {
-        if (consolidatedDebtIds.includes(d.id)) {
-          return {
-            ...d,
-            isPaidOff: true,
-            currentBalance: 0,
-            paidOffDate: now,
-            paidOffAt: now,
-            notes: `${d.notes || ''} Consolidated into ${newAccountName.trim() || debt.accountName} refinance on ${refinanceDate}.`.trim(),
-          };
-        }
-        return d;
-      });
-      StorageService.saveDebts(withConsolidated);
+
+      // If the current debt is being consolidated (replaced by a new loan)
+      // we need to ADD the new loan as a separate debt entry instead of
+      // updating the existing one in place
+      const currentDebtConsolidated = consolidatedDebtIds.includes(debt.id);
+
+      if (currentDebtConsolidated) {
+        // Create the new loan as a fresh debt entry
+        const newDebt: Debt = {
+          id: `debt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          accountName: newAccountName.trim() || debt.accountName,
+          category: debt.category,
+          currentBalance: parsedBalance,
+          startingBalance: parsedBalance,
+          interestRate: parsedRate,
+          minimumPayment: parsedPayment,
+          loanTerm: parsedTerm ?? debt.loanTerm,
+          loanStartDate: refinanceDate,
+          isPaidOff: false,
+          createdAt: now,
+          notes: `New loan from refinance on ${refinanceDate}. Replaced ${debt.accountName}${newLender ? ` with ${newLender}` : ''}.`,
+          refinanceHistory: [],
+        };
+
+        // Mark ALL selected debts (including current) as paid off/consolidated
+        const withConsolidated = currentDebts.map(d => {
+          if (consolidatedDebtIds.includes(d.id)) {
+            return {
+              ...d,
+              isPaidOff: true,
+              currentBalance: 0,
+              paidOffDate: now,
+              paidOffAt: now,
+              notes: `${d.notes || ''} Paid off via refinance into ${newDebt.accountName} on ${refinanceDate}.`.trim(),
+            };
+          }
+          return d;
+        });
+
+        // Add the new loan
+        withConsolidated.push(newDebt);
+        StorageService.saveDebts(withConsolidated);
+      } else {
+        // Standard consolidation — current debt updated, others marked paid off
+        const withConsolidated = currentDebts.map(d => {
+          if (consolidatedDebtIds.includes(d.id)) {
+            return {
+              ...d,
+              isPaidOff: true,
+              currentBalance: 0,
+              paidOffDate: now,
+              paidOffAt: now,
+              notes: `${d.notes || ''} Consolidated into ${newAccountName.trim() || debt.accountName} refinance on ${refinanceDate}.`.trim(),
+            };
+          }
+          return d;
+        });
+        StorageService.saveDebts(withConsolidated);
+      }
     }
 
     const typeLabel = isCreditCard ? 'Balance Transfer' :
@@ -587,7 +631,14 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                         className="w-4 h-4 text-[#FF6B35] rounded"
                       />
                       <div className="flex-1">
-                        <p className="text-sm font-semibold text-gray-800">{d.accountName}</p>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {d.accountName}
+                          {d.id === debt.id && (
+                            <span className="ml-2 text-xs font-normal text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                              This loan
+                            </span>
+                          )}
+                        </p>
                         <p className="text-xs text-gray-500">{d.category} · {CalculationService.formatCurrency(d.currentBalance)} remaining</p>
                       </div>
                     </label>
