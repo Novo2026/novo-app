@@ -379,7 +379,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">$</span>
                 <input
                   type="number"
-                  step="0.01"
+                  step="0.001"
                   min="0"
                   value={newBalance}
                   onChange={e => setNewBalance(e.target.value)}
@@ -405,7 +405,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
               <div className="relative">
                 <input
                   type="number"
-                  step="0.01"
+                  step="0.001"
                   min="0"
                   value={newRate}
                   onChange={e => handleRateChange(e.target.value)}
@@ -450,7 +450,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                   <div className="relative">
                     <input
                       type="number"
-                      step="0.01"
+                      step="0.001"
                       min="0"
                       value={rateAfterIntro}
                       onChange={e => setRateAfterIntro(e.target.value)}
@@ -470,7 +470,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">$</span>
               <input
                 type="number"
-                step="0.01"
+                step="0.001"
                 min="0"
                 value={newPayment}
                 onChange={e => setNewPayment(e.target.value)}

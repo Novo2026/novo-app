@@ -211,6 +211,16 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
     onDataUpdate();
   };
 
+  const handleMarkPaidOff = (debt: Debt) => {
+    const debts = StorageService.getDebts();
+    const updated = debts.map(d => d.id === debt.id
+      ? { ...d, isPaidOff: true, currentBalance: 0, paidOffDate: new Date().toISOString() }
+      : d
+    );
+    StorageService.saveDebts(updated);
+    onDataUpdate();
+  };
+
   const handleMarkPaidOffClick = (debt: Debt, e: React.MouseEvent) => {
     e.stopPropagation();
     setMarkingPaidOffDebt(debt);
@@ -509,6 +519,12 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                   <RefreshCw className="w-3 h-3" />
                   <span>
                     {didRateImprove(debt) ? 'Rate Improved' : 'Refinanced'} {getLastRefinanceDate(debt)}
+                    {(() => {
+                      const lastRefi = debt.refinanceHistory?.[debt.refinanceHistory.length - 1];
+                      return lastRefi?.newLender ? (
+                        <span className="text-xs text-gray-500 ml-1">· {lastRefi.newLender}</span>
+                      ) : null;
+                    })()}
                   </span>
                 </span>
               )}
@@ -646,6 +662,14 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
               {getRefinanceIcon(debt)}
               <span>{getRefinanceButtonLabel(debt)}</span>
             </button>
+            {!debt.isPaidOff && (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleMarkPaidOff(debt); }}
+                className="w-full text-center py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors border border-emerald-200 mt-1"
+              >
+                ✓ Mark as Paid Off
+              </button>
+            )}
             {debt.category === 'Mortgage' && (
               <button
                 onClick={(e) => handleSoldHomeClick(debt, e)}
