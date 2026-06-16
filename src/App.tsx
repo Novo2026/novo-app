@@ -274,6 +274,13 @@ function App() {
     loadData();
     loadFeaturePreferences();
     setRefreshKey(prev => prev + 1);
+    // Push latest localStorage to cloud so refreshes don't revert changes
+    const uid = authSession?.user?.id;
+    if (uid) {
+      pushLocalStorageToCloud(uid).catch(err =>
+        console.error('NOVO cloud sync failed:', err)
+      );
+    }
   };
 
   const handleHelocEnabledFirstTime = () => {
