@@ -192,6 +192,18 @@ export function runMilestoneDetection(): void {
 
   if (!profile || debts.length === 0) return;
 
+  // Don't fire debt paydown milestones if the "paid off" amount includes
+  // refinanced debts — refinancing is not the same as paying down debt
+  // A refinance replaces one debt with another, not a true payoff
+  const trulyPaidOff = debts.filter(d =>
+    d.isPaidOff &&
+    !d.refinanceHistory?.length && // not refinanced
+    d.currentBalance === 0
+  );
+  const truePaidOffAmount = trulyPaidOff.reduce((s, d) =>
+    s + (d.startingBalance || 0), 0
+  );
+
   const totalStarting = debts.reduce((s, d) => s + (d.startingBalance || d.currentBalance), 0);
   const totalCurrent = debts.reduce((s, d) => s + d.currentBalance, 0);
   const totalPaid = totalStarting - totalCurrent;
@@ -226,47 +238,41 @@ export function runMilestoneDetection(): void {
     );
   }
 
-  if (totalPaid >= 5000 && !hasTriggered('debt_5k')) {
-    triggerMilestone(
-      'debt_5k',
-      { totalPaid },
-      `💪 ${formatCurrency(totalPaid)} paid down. Most people never get this far. You did — and the math only gets better from here as each payoff frees up more cash.`,
-      `Hey ${name} — NOVO just flagged ${formatCurrency(totalPaid)} paid down. Early progress matters more than people realize — it means the system is working. Nice work.`,
-      null,
-      null
-    );
-  }
-
-  if (totalPaid >= 10000 && !hasTriggered('debt_10k')) {
-    triggerMilestone(
-      'debt_10k',
-      { totalPaid },
-      `💪 ${formatCurrency(totalPaid)} eliminated. That's not a rounding error — that's real money back in your life. The discipline you've shown here compounds.`,
-      isHomeowner
-        ? `${name} — ${formatCurrency(totalPaid)} knocked out. NOVO flagged this and I wanted you to hear it from me — that kind of progress has a real impact on your financial picture. You should feel good about this.`
-        : `${name} — ${formatCurrency(totalPaid)} eliminated. NOVO flagged this. That's the kind of progress that changes trajectories. Keep going.`,
-      null,
-      null
-    );
-  }
-
-  if (totalPaid >= 25000 && !hasTriggered('debt_25k')) {
-    triggerMilestone(
-      'debt_25k',
-      { totalPaid },
-      `🚀 ${formatCurrency(totalPaid)} paid down. You're not the same person who started this. That's a quarter of the way to a serious financial transformation.`,
-      `${name} — ${formatCurrency(totalPaid)} eliminated. I have to be straight with you — NOVO flagged this and it caught my attention. That's genuinely impressive discipline. Whatever you're doing, keep doing it.`,
-      null,
-      null
-    );
-  }
-
-  if (totalPaid >= 50000 && !hasTriggered('debt_50k')) {
+  if (truePaidOffAmount >= 50000 && !hasTriggered('debt_50k')) {
     triggerMilestone(
       'debt_50k',
-      { totalPaid },
-      `🏆 ${formatCurrency(totalPaid)} paid off. That is extraordinary. Most people never get here. You did.`,
-      `${name} — ${formatCurrency(totalPaid)} eliminated. NOVO flagged this and I had to reach out personally. That is life-changing work. I don't say that lightly.`,
+      { totalPaid: truePaidOffAmount },
+      `🏆 ${formatCurrency(truePaidOffAmount)} paid off. That is extraordinary. Most people never get here. You did.`,
+      `${name} — ${formatCurrency(truePaidOffAmount)} eliminated. NOVO flagged this and I had to reach out personally. That is life-changing work. I don't say that lightly.`,
+      null,
+      null
+    );
+  } else if (truePaidOffAmount >= 25000 && !hasTriggered('debt_25k')) {
+    triggerMilestone(
+      'debt_25k',
+      { totalPaid: truePaidOffAmount },
+      `🚀 ${formatCurrency(truePaidOffAmount)} paid down. You're not the same person who started this. That's a quarter of the way to a serious financial transformation.`,
+      `${name} — ${formatCurrency(truePaidOffAmount)} eliminated. I have to be straight with you — NOVO flagged this and it caught my attention. That's genuinely impressive discipline. Whatever you're doing, keep doing it.`,
+      null,
+      null
+    );
+  } else if (truePaidOffAmount >= 10000 && !hasTriggered('debt_10k')) {
+    triggerMilestone(
+      'debt_10k',
+      { totalPaid: truePaidOffAmount },
+      `💪 ${formatCurrency(truePaidOffAmount)} eliminated. That's not a rounding error — that's real money back in your life. The discipline you've shown here compounds.`,
+      isHomeowner
+        ? `${name} — ${formatCurrency(truePaidOffAmount)} knocked out. NOVO flagged this and I wanted you to hear it from me — that kind of progress has a real impact on your financial picture. You should feel good about this.`
+        : `${name} — ${formatCurrency(truePaidOffAmount)} eliminated. NOVO flagged this. That's the kind of progress that changes trajectories. Keep going.`,
+      null,
+      null
+    );
+  } else if (truePaidOffAmount >= 5000 && !hasTriggered('debt_5k')) {
+    triggerMilestone(
+      'debt_5k',
+      { totalPaid: truePaidOffAmount },
+      `💪 ${formatCurrency(truePaidOffAmount)} paid down. Most people never get this far. You did — and the math only gets better from here as each payoff frees up more cash.`,
+      `Hey ${name} — NOVO just flagged ${formatCurrency(truePaidOffAmount)} paid down. Early progress matters more than people realize — it means the system is working. Nice work.`,
       null,
       null
     );

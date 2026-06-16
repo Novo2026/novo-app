@@ -212,9 +212,16 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
   };
 
   const handleMarkPaidOff = (debt: Debt) => {
+    const now = new Date().toISOString();
     const debts = StorageService.getDebts();
     const updated = debts.map(d => d.id === debt.id
-      ? { ...d, isPaidOff: true, currentBalance: 0, paidOffDate: new Date().toISOString() }
+      ? {
+          ...d,
+          isPaidOff: true,
+          currentBalance: 0,
+          paidOffDate: now,
+          paidOffAt: now,
+        }
       : d
     );
     StorageService.saveDebts(updated);
@@ -442,8 +449,11 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
               <div className="bg-emerald-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Date Paid Off</p>
                 <p className="font-bold text-[#27AE60]">
-                  {debt.paidOffDate ? CalculationService.formatDate(debt.paidOffDate) :
-                   debt.homeSaleDate ? CalculationService.formatDate(debt.homeSaleDate) : 'N/A'}
+                  {debt.paidOffDate && !isNaN(new Date(debt.paidOffDate).getTime())
+                    ? new Date(debt.paidOffDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    : debt.homeSaleDate && !isNaN(new Date(debt.homeSaleDate).getTime())
+                      ? new Date(debt.homeSaleDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                      : 'Recently'}
                 </p>
               </div>
               {totalPaid > 0 && (

@@ -17,6 +17,7 @@ export interface Debt {
   minimumPayment: number;
   isPaidOff: boolean;
   paidOffDate?: string;
+  paidOffAt?: string;
   createdAt: string;
   originalAmount?: number;
   loanStartDate?: string;
