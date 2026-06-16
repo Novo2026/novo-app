@@ -53,6 +53,20 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
   const [rateAfterIntro, setRateAfterIntro] = useState('');
   const [showWarning, setShowWarning] = useState<'balance' | 'rate' | null>(null);
   const [pendingSubmit, setPendingSubmit] = useState(false);
+  const [consolidatedDebtIds, setConsolidatedDebtIds] = useState<string[]>([]);
+  const [showConsolidation, setShowConsolidation] = useState(false);
+
+  // Get all other active debts that could have been paid off by this refinance
+  const allDebts = StorageService.getDebts();
+  const otherActiveDebts = allDebts.filter(d =>
+    d.id !== debt.id &&
+    !d.isPaidOff &&
+    d.currentBalance > 0
+  );
+
+  const consolidatedTotal = otherActiveDebts
+    .filter(d => consolidatedDebtIds.includes(d.id))
+    .reduce((sum, d) => sum + d.currentBalance, 0);
 
   const isCreditCard = debt.category === 'Credit Card';
   const isStudentLoan = debt.category === 'Student Loan';
@@ -153,6 +167,26 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
 
     debts[idx] = updatedDebt;
     StorageService.saveDebts(debts);
+
+    // Mark consolidated debts as paid off via refinance
+    if (consolidatedDebtIds.length > 0) {
+      const now = new Date().toISOString();
+      const currentDebts = StorageService.getDebts();
+      const withConsolidated = currentDebts.map(d => {
+        if (consolidatedDebtIds.includes(d.id)) {
+          return {
+            ...d,
+            isPaidOff: true,
+            currentBalance: 0,
+            paidOffDate: now,
+            paidOffAt: now,
+            notes: `${d.notes || ''} Consolidated into ${newAccountName.trim() || debt.accountName} refinance on ${refinanceDate}.`.trim(),
+          };
+        }
+        return d;
+      });
+      StorageService.saveDebts(withConsolidated);
+    }
 
     const typeLabel = isCreditCard ? 'Balance Transfer' :
                       isStudentLoan && subtype === 'consolidated' ? 'Consolidation' :
@@ -510,6 +544,56 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Debt Consolidation Section */}
+          {otherActiveDebts.length > 0 && (
+            <div className="border border-blue-200 rounded-xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowConsolidation(!showConsolidation)}
+                className="w-full flex items-center justify-between p-4 bg-blue-50 hover:bg-blue-100 transition-colors text-left"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-blue-900">Did this refinance pay off other debts?</p>
+                  <p className="text-xs text-blue-700 mt-0.5">
+                    {consolidatedDebtIds.length > 0
+                      ? `${consolidatedDebtIds.length} debt${consolidatedDebtIds.length > 1 ? 's' : ''} selected — ${CalculationService.formatCurrency(consolidatedTotal)} will be marked paid off`
+                      : 'Common in cash-out refinances and consolidation loans'}
+                  </p>
+                </div>
+                <span className="text-blue-600 text-lg">{showConsolidation ? '−' : '+'}</span>
+              </button>
+
+              {showConsolidation && (
+                <div className="p-4 space-y-2 bg-white">
+                  <p className="text-xs text-gray-500 mb-3">
+                    Select any debts that were paid off using proceeds from this refinance.
+                    They will be marked as consolidated and removed from your payoff plan.
+                  </p>
+                  {otherActiveDebts.map(d => (
+                    <label key={d.id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-blue-300 cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={consolidatedDebtIds.includes(d.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setConsolidatedDebtIds([...consolidatedDebtIds, d.id]);
+                          } else {
+                            setConsolidatedDebtIds(consolidatedDebtIds.filter(id => id !== d.id));
+                          }
+                        }}
+                        className="w-4 h-4 text-[#FF6B35] rounded"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-gray-800">{d.accountName}</p>
+                        <p className="text-xs text-gray-500">{d.category} · {CalculationService.formatCurrency(d.currentBalance)} remaining</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

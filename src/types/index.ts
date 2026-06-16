@@ -37,6 +37,7 @@ export interface Debt {
   replacedDebtId?: string;
   replacedDebtName?: string;
   replacementRelationship?: 'upgraded' | 'downsized' | 'relocated' | 'investment';
+  notes?: string;
 }
 
 export interface RefinanceRecord {
