@@ -12,7 +12,22 @@ export default function ProactiveNOVOMessages({ onOpenChat: _onOpenChat }: Proac
 
   useEffect(() => {
     runMilestoneDetection();
-    setMessages(getProactiveMessages().filter(m => !m.seen));
+    // Filter out any stale DTI messages that may exist in localStorage
+    // from before the DTI milestone was removed
+    const filtered = getProactiveMessages().filter(m =>
+      !m.seen &&
+      !m.message?.toLowerCase().includes('dti') &&
+      !m.message?.toLowerCase().includes('debt-to-income') &&
+      !m.triggeredBy?.includes('dti')
+    );
+    // Clean up stale DTI messages from storage permanently
+    const cleaned = getProactiveMessages().filter(m =>
+      !m.message?.toLowerCase().includes('dti') &&
+      !m.message?.toLowerCase().includes('debt-to-income') &&
+      !m.triggeredBy?.includes('dti')
+    );
+    saveProactiveMessages(cleaned);
+    setMessages(filtered);
   }, []);
 
   const dismiss = (id: string) => {
