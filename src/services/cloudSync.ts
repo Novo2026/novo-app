@@ -2,9 +2,25 @@ import { supabase } from '../lib/supabase';
 
 const EXCLUDE_PREFIXES = ['sb-'];
 
+// Ephemeral display state — never sync to cloud or restore on login
+const EXCLUDE_KEYS = [
+  'novo_proactive_messages',
+  'novo_proactive_ssages',
+  'novo_detected_milestones',
+  'novo_ben_tasks',
+  'novo_start_here_dismissed',
+  'novo_smarter_payments_visited',
+  'novo_first_chat_completed',
+  'askNovoClicked',
+  'lastVisit',
+  'novo_install_date',
+];
+
 function shouldSyncKey(key: string): boolean {
   if (!key) return false;
-  return !EXCLUDE_PREFIXES.some(prefix => key.startsWith(prefix));
+  if (EXCLUDE_PREFIXES.some(prefix => key.startsWith(prefix))) return false;
+  if (EXCLUDE_KEYS.includes(key)) return false;
+  return true;
 }
 
 export function collectLocalStorageSnapshot(): Record<string, string> {
@@ -47,8 +63,22 @@ export async function pullRemoteToLocalStorage(userId: string): Promise<void> {
   if (error) throw error;
   if (!data?.length) return;
 
+  // Delete excluded keys from Supabase — clean up any that were previously synced
+  const excludedInCloud = data
+    .filter(row => row.data_key && !shouldSyncKey(row.data_key))
+    .map(row => row.data_key);
+
+  if (excludedInCloud.length > 0) {
+    await supabase
+      .from('user_data')
+      .delete()
+      .eq('user_id', userId)
+      .in('data_key', excludedInCloud);
+  }
+
   for (const row of data) {
     if (row.data_key == null) continue;
+    if (!shouldSyncKey(row.data_key)) continue;
     const v = row.data_value;
     if (v === null || v === undefined) {
       localStorage.removeItem(row.data_key);
