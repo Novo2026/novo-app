@@ -89,6 +89,21 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
       : 0;
     localStorage.setItem('novo_rental_income', rentalIncome.toString());
 
+    // Auto-sync gross income total to Financial Profile
+    if (totalMonthly > 0) {
+      try {
+        const existingProfile = JSON.parse(
+          localStorage.getItem('novo_financial_profile') || 'null'
+        );
+        if (existingProfile) {
+          const updated = { ...existingProfile, monthlyGrossIncome: Math.round(totalMonthly) };
+          localStorage.setItem('novo_financial_profile', JSON.stringify(updated));
+        }
+      } catch {
+        // If no profile yet, skip
+      }
+    }
+
     setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 3000);
     onSaved?.();
