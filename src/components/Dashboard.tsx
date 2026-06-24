@@ -1,14 +1,26 @@
 import { useEffect, useState } from 'react';
-import { Plus, CheckCircle, DollarSign, PiggyBank, ArrowRight, CreditCard as Edit2, Pencil, Trash2, TrendingUp, Target, Zap, Home, Sliders, CalendarClock, Info } from 'lucide-react';
+import {
+  Plus,
+  CheckCircle,
+  CheckCircle2,
+  DollarSign,
+  CreditCard,
+  Pencil,
+  Trash2,
+  Target,
+  Home,
+  Sliders,
+  Info,
+  type LucideIcon,
+} from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import { runMilestoneDetection } from '../utils/milestoneEngine';
 import LogPaymentModal from './LogPaymentModal';
 import EditPaymentModal from './EditPaymentModal';
 import EditDebtModal from './EditDebtModal';
-import DailyTip from './DailyTip';
 import StartHereRibbon from './StartHereRibbon';
-import FinancialHealthScore from './FinancialHealthScore';
+import FinancialHealthScore, { computeFinancialHealthScore } from './FinancialHealthScore';
 import type { Debt, Transaction } from '../types';
 
 interface DashboardProps {
@@ -20,29 +32,57 @@ interface DashboardProps {
   onOpenChat?: (context: string) => void;
 }
 
-const PAYMENT_COMMITMENTS_KEY = 'novo_payment_commitments';
+function getCheckingAccountBalance(accountId: string, startingBalance: number): number {
+  const txs = StorageService.getCheckingTransactionsForAccount(accountId);
+  if (txs.length === 0) return startingBalance;
+  return txs[txs.length - 1].balance;
+}
 
-function countPaymentCommitments(): number {
-  try {
-    const raw = localStorage.getItem(PAYMENT_COMMITMENTS_KEY);
-    if (!raw) return 0;
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    return Object.keys(parsed).length;
-  } catch {
-    return 0;
+function formatPaidOffDate(date: string | undefined | null): string {
+  if (!date || Number.isNaN(new Date(date).getTime())) {
+    return 'Date not recorded';
+  }
+  return new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
+
+function getDebtProgressInfo(debt: Debt) {
+  const originalBalance = debt.startingBalance;
+  const paidOff = originalBalance - debt.currentBalance;
+  const isOpenAccount = debt.currentBalance === 0 && originalBalance === 0;
+  const percentage = originalBalance > 0 ? (paidOff / originalBalance) * 100 : 0;
+  return { paidOff, percentage, isOpenAccount };
+}
+
+function getActivityDisplayMeta(type: string): {
+  iconBg: string;
+  iconColor: string;
+  Icon: LucideIcon;
+} {
+  switch (type) {
+    case 'payment':
+    case 'heloc_payment':
+    case 'checking_deposit':
+      return { iconBg: 'bg-brand-green-light', iconColor: 'text-brand-green', Icon: DollarSign };
+    case 'charge':
+    case 'heloc_interest':
+    case 'checking_withdrawal':
+      return { iconBg: 'bg-brand-red-light', iconColor: 'text-red-700', Icon: CreditCard };
+    case 'heloc_draw':
+    case 'checking_transfer':
+      return { iconBg: 'bg-brand-blue-light', iconColor: 'text-brand-blue', Icon: Home };
+    case 'milestone':
+      return { iconBg: 'bg-brand-green-light', iconColor: 'text-brand-green', Icon: CheckCircle };
+    default:
+      return { iconBg: 'bg-brand-gray-light', iconColor: 'text-brand-gray', Icon: DollarSign };
   }
 }
 
 export default function Dashboard({
   onDataUpdate,
   onNavigateToSavings,
-  onNavigateToTracker,
-  onNavigateToSmarterPayments,
   onNavigate,
   onOpenChat,
 }: DashboardProps) {
-  const paymentCommitmentCount = countPaymentCommitments();
-
   useEffect(() => {
     runMilestoneDetection();
   }, []);
@@ -62,12 +102,6 @@ export default function Dashboard({
   const strategyResult = StorageService.getStrategyResult();
   const savingsAccounts = StorageService.getSavingsAccounts();
   const financialProfile = StorageService.getFinancialProfile();
-  const featurePreferences = StorageService.getFeaturePreferences();
-  const homeEquity = StorageService.getHomeEquity();
-  const helocTransactions = StorageService.getHELOCTransactions();
-  const currentHelocBalance = helocTransactions.length > 0
-    ? helocTransactions[helocTransactions.length - 1].balance
-    : (homeEquity?.helocBalance ?? 0);
 
   const metrics = CalculationService.calculateTotalDebtMetrics(debts, transactions);
   const savingsMetrics = CalculationService.calculateSavingsMetrics(savingsAccounts);
@@ -142,38 +176,6 @@ export default function Dashboard({
     if (hour < 12) return 'morning';
     if (hour < 18) return 'afternoon';
     return 'evening';
-  };
-
-  const getGreeting = (): string => {
-    const userName = localStorage.getItem('userName');
-    const lastVisit = localStorage.getItem('lastVisit');
-    const now = new Date();
-    const hour = now.getHours();
-
-    let timeGreeting = '';
-    if (hour < 12) {
-      timeGreeting = 'Good morning';
-    } else if (hour < 18) {
-      timeGreeting = 'Good afternoon';
-    } else {
-      timeGreeting = 'Good evening';
-    }
-
-    if (!lastVisit) {
-      localStorage.setItem('lastVisit', now.toISOString());
-      return `Welcome, ${userName}`;
-    }
-
-    const lastVisitDate = new Date(lastVisit);
-    const daysSinceLastVisit = Math.floor((now.getTime() - lastVisitDate.getTime()) / (1000 * 60 * 60 * 24));
-
-    localStorage.setItem('lastVisit', now.toISOString());
-
-    if (daysSinceLastVisit > 0) {
-      return `Welcome back, ${userName}`;
-    }
-
-    return `${timeGreeting}, ${userName}`;
   };
 
   const handleLogPaymentClick = (debtId?: string) => {
@@ -362,6 +364,35 @@ export default function Dashboard({
 
   const recentActivity = getRecentActivity();
 
+  const checkingAccounts = StorageService.getCheckingAccounts();
+  const cashOnHand = checkingAccounts.reduce(
+    (sum, account) => sum + getCheckingAccountBalance(account.id, account.startingBalance),
+    0
+  );
+
+  const healthScore = computeFinancialHealthScore({
+    monthlyGrossIncome: financialProfile?.monthlyGrossIncome ?? 0,
+    totalMinimumPayments,
+    monthlySurplus: cashFlowMetrics?.grossSurplus ?? null,
+    debtProgressPercent: metrics.progressPercentage,
+    monthlySavingsGoal: financialProfile?.monthlySavingsGoal ?? 0,
+    monthlySavingsRate: savingsMetrics.monthlySavingsRate,
+  });
+
+  const monthlyCashFlowTotal = financialProfile
+    ? financialProfile.monthlyNetIncome
+      - financialProfile.monthlyEssentialExpenses
+      - financialProfile.monthlyDiscretionaryExpenses
+    : 0;
+
+  const monthlySurplusValue = cashFlowMetrics?.surplusAfterSavings ?? 0;
+  const nonHelocActiveDebts = metrics.activeDebts.filter(debt => debt.category !== 'HELOC');
+  const todayLabel = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+
   if (debts.length === 0) {
     return (
       <div className="text-center py-16">
@@ -378,557 +409,466 @@ export default function Dashboard({
   const userName = localStorage.getItem('userName') || 'there';
 
   return (
-    <div className="space-y-8">
-      <StartHereRibbon
-        userName={userName}
-        onNavigate={(section) => onNavigate?.(section)}
-        onOpenChat={(context) => onOpenChat?.(context)}
-      />
-
-      {localStorage.getItem('userName') && (
-        <div className="relative rounded-2xl overflow-hidden mb-6 windmill-watermark" style={{ background: 'linear-gradient(135deg, #1E3A5F 0%, #2D5A8E 60%, #1E3A5F 100%)' }}>
-          <div className="absolute top-0 right-0 w-72 h-72 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(255,107,53,0.2) 0%, transparent 70%)', transform: 'translate(30%, -30%)' }} />
-          <div className="absolute bottom-0 left-1/4 w-48 h-48 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(255,107,53,0.1) 0%, transparent 70%)', transform: 'translate(-20%, 40%)' }} />
-          <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
-
-          <div className="relative z-10 px-6 py-6 md:px-8 md:py-8">
-            <p className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-1">
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </p>
-            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight mb-0.5">
+    <div className="bg-brand-gray-light min-h-screen">
+      <div className="bg-brand-navy py-3 px-5">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-white text-lg font-medium leading-tight">
               Good {getTimeOfDay()}, {userName}!
             </h1>
-            <p className="text-white/60 text-sm">Here&apos;s your debt freedom progress</p>
+            <p className="text-white/65 text-xs mt-0.5">{todayLabel}</p>
           </div>
+          <span className="bg-white/15 text-white text-xs px-3 py-1 rounded-full whitespace-nowrap shrink-0">
+            {healthScore.score} · {healthScore.label}
+          </span>
         </div>
-      )}
-
-      <DailyTip debts={debts} />
-
-      <FinancialHealthScore
-        monthlyGrossIncome={financialProfile?.monthlyGrossIncome ?? 0}
-        totalMinimumPayments={totalMinimumPayments}
-        monthlySurplus={cashFlowMetrics?.grossSurplus ?? null}
-        debtProgressPercent={metrics.progressPercentage}
-        monthlySavingsGoal={financialProfile?.monthlySavingsGoal ?? 0}
-        monthlySavingsRate={savingsMetrics.monthlySavingsRate}
-      />
-
-      {paymentCommitmentCount > 0 && onNavigateToSmarterPayments && (
-        <div className="bg-white border border-emerald-300 border-l-4 border-l-emerald-500 rounded-xl p-4 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-start gap-3 min-w-0">
-              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <CalendarClock className="w-5 h-5 text-emerald-700" />
-              </div>
-              <div className="min-w-0">
-                <p className="font-semibold text-emerald-900 text-sm sm:text-base">
-                  Smarter Payments Active — {paymentCommitmentCount}{' '}
-                  {paymentCommitmentCount === 1 ? 'debt' : 'debts'} on accelerated payoff
-                </p>
-                <p className="text-emerald-700 text-sm mt-0.5">
-                  You&apos;re paying smarter without spending more
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onNavigateToSmarterPayments}
-              className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors flex-shrink-0"
-            >
-              Smarter Payments
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="novo-card p-6 md:p-8">
-        <h2 className="text-xl font-bold text-brand-navy mb-4">Total Debt Progress</h2>
-        <div className="mb-4">
-          <div className="flex items-center justify-between text-sm mb-2 text-brand-navy/70">
-            <span>{metrics.progressPercentage.toFixed(1)}% paid off</span>
-            <span>{CalculationService.formatCurrency(metrics.totalCurrentBalance)} remaining</span>
-          </div>
-          <div className="w-full bg-brand-cream-border/60 rounded-full h-4 overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(metrics.progressPercentage, 100)}%`, background: 'linear-gradient(90deg, #FF6B35, #E55A25)' }}
-            />
-          </div>
-        </div>
-        <p className="text-lg mb-2 text-brand-navy">
-          <span className="font-bold">{CalculationService.formatCurrency(metrics.totalCurrentBalance)}</span> remaining of{' '}
-          <span className="font-bold">{CalculationService.formatCurrency(metrics.totalStartingBalance)}</span> starting
-        </p>
-        <div className="group relative">
-          <p className="text-xl font-bold text-emerald-600">
-            You&apos;ve paid off {CalculationService.formatCurrency(metrics.actualDebtEliminated)} from cash flow!
-          </p>
-          {(metrics.traditionalDebtPrincipal > 0 || metrics.helocNetPaydown > 0) && (
-            <div className="absolute hidden group-hover:block bg-white text-gray-800 rounded-lg shadow-xl p-4 mt-2 z-10 min-w-[300px]">
-              <p className="font-semibold text-sm mb-2">Breakdown:</p>
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Traditional debt principal:</span>
-                  <span className="font-semibold">{CalculationService.formatCurrency(metrics.traditionalDebtPrincipal)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">HELOC net paydown:</span>
-                  <span className="font-semibold">{CalculationService.formatCurrency(metrics.helocNetPaydown)}</span>
-                </div>
-                <div className="flex justify-between pt-1.5 border-t border-gray-200">
-                  <span className="font-semibold">Total:</span>
-                  <span className="font-bold text-brand-green">{CalculationService.formatCurrency(metrics.actualDebtEliminated)}</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-        {optimizedProjection && (
-          <div className="mt-4 space-y-2">
-            <p className="text-sm text-brand-navy/70">
-              Projected debt-free date:{' '}
-              <span className="font-semibold">
-                {CalculationService.formatMonthYear(optimizedProjection.debtFreeDate)}
-              </span>
-            </p>
-            {debts.some(d => d.category === 'Mortgage' && !d.isPaidOff) && (
-              <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
-                <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-blue-800">
-                  <strong>Note:</strong> Mortgage{debts.filter(d => d.category === 'Mortgage' && !d.isPaidOff).length > 1 ? 's' : ''} are on fixed payment schedules and not included in the accelerated payoff strategy. Your debt-free date above reflects your non-mortgage debts.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
-      {featurePreferences.helocEnabled && homeEquity && homeEquity.hasHELOC && (
-        <button
-          onClick={onNavigateToTracker}
-          className="w-full text-left bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 p-5 group"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Home className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="font-bold text-white text-base">HELOC Overview</p>
-                <p className="text-emerald-100 text-xs">Velocity banking tracker</p>
-              </div>
-            </div>
-            <ArrowRight className="w-5 h-5 text-emerald-200 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
-          </div>
-          <div className="mt-4 grid grid-cols-3 gap-3">
-            <div className="bg-white/10 rounded-lg p-3 text-center">
-              <p className="text-emerald-100 text-xs mb-1">Credit Limit</p>
-              <p className="font-bold text-white text-sm">
-                {homeEquity.helocLimit ? `$${homeEquity.helocLimit.toLocaleString()}` : '—'}
-              </p>
-            </div>
-            <div className="bg-white/10 rounded-lg p-3 text-center">
-              <p className="text-emerald-100 text-xs mb-1">Balance</p>
-              <p className="font-bold text-white text-sm">
-                {`$${currentHelocBalance.toLocaleString()}`}
-              </p>
-            </div>
-            <div className="bg-white/10 rounded-lg p-3 text-center">
-              <p className="text-emerald-100 text-xs mb-1">Available</p>
-              <p className="font-bold text-white text-sm">
-                {homeEquity.helocLimit
-                  ? `$${((homeEquity.helocLimit) - currentHelocBalance).toLocaleString()}`
-                  : '—'}
-              </p>
-            </div>
-          </div>
-        </button>
-      )}
-
-      <div className="flex justify-center">
-        <button
-          onClick={() => handleLogPaymentClick()}
-          className="flex items-center justify-center space-x-3 bg-brand-orange hover:bg-brand-orange-dark text-white font-bold py-5 px-12 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
-        >
-          <Plus className="w-6 h-6" />
-          <span className="text-lg">Log Payment</span>
-        </button>
-      </div>
-
-      {financialProfile && cashFlowMetrics && (
-        <div className="novo-card p-6 text-white" style={{ background: 'linear-gradient(135deg, #1E3A5F 0%, #2D5A8E 100%)' }}>
-          <div className="flex items-center space-x-3 mb-4">
-            <TrendingUp className="w-8 h-8 text-white" />
-            <h3 className="text-xl font-bold text-white">Total Monthly Cash Flow</h3>
-          </div>
-          <p className="text-4xl font-bold mb-4 text-white">
-            {CalculationService.formatCurrency(
-              financialProfile.monthlyNetIncome -
-              financialProfile.monthlyEssentialExpenses -
-              financialProfile.monthlyDiscretionaryExpenses
-            )}
-          </p>
-          <div className="space-y-2 text-sm bg-white/10 rounded-lg p-4 mb-4">
-            <p className="font-semibold mb-2 text-white">Income Allocation:</p>
-            <div className="flex justify-between">
-              <span className="text-white/85">Net income:</span>
-              <span className="font-semibold">
-                {CalculationService.formatCurrency(financialProfile.monthlyNetIncome)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/85">Essential expenses:</span>
-              <span className="font-semibold">
-                - {CalculationService.formatCurrency(financialProfile.monthlyEssentialExpenses)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/85">Discretionary expenses:</span>
-              <span className="font-semibold">
-                - {CalculationService.formatCurrency(financialProfile.monthlyDiscretionaryExpenses)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/85">Minimum debt payments:</span>
-              <span className="font-semibold">
-                - {CalculationService.formatCurrency(totalMinimumPayments)}
-              </span>
-            </div>
-            <div className="flex justify-between pt-2 border-t border-white/20">
-              <span className="text-white/85">Gross monthly surplus:</span>
-              <span className="font-semibold">
-                {CalculationService.formatCurrency(cashFlowMetrics.grossSurplus)}
-              </span>
-            </div>
-            <div className="flex justify-between bg-emerald-500/30 -mx-2 px-2 py-1 rounded">
-              <span className="text-white/90 font-medium">Savings carve-out:</span>
-              <span className="font-bold">
-                - {CalculationService.formatCurrency(cashFlowMetrics.savingsCarveOut)}
-              </span>
-            </div>
-            <div className="flex justify-between pt-2 border-t border-white/20 font-bold">
-              <span>Surplus after savings:</span>
-              <span>
-                {CalculationService.formatCurrency(cashFlowMetrics.surplusAfterSavings)}
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white/10 rounded-lg p-4 mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Sliders className="w-4 h-4" />
-                <span className="font-semibold text-sm">Surplus Commitment</span>
-              </div>
-              <span className="font-bold text-lg">{commitmentPercent}%</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={5}
-              value={commitmentPercent}
-              onChange={(e) => handleCommitmentChange(parseInt(e.target.value, 10))}
-              onMouseUp={handleCommitmentCommit}
-              onTouchEnd={handleCommitmentCommit}
-              onKeyUp={handleCommitmentCommit}
-              className="w-full accent-brand-green cursor-pointer"
-              aria-label="Percent of surplus committed to debt payoff"
-            />
-            <div className="flex justify-between text-xs text-white/60 mt-1">
-              <span>0%</span>
-              <span>50%</span>
-              <span>100%</span>
-            </div>
-            <p className="text-xs text-white/80 mt-2">
-              How much of your remaining surplus you'll realistically put toward debt this month.
+      <div className="max-w-5xl mx-auto px-5 pb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 my-5">
+          <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-orange">
+            <p className="text-[11px] text-brand-gray uppercase tracking-wide">Total debt</p>
+            <p className="text-[22px] font-medium text-brand-navy mt-1">
+              {CalculationService.formatCurrency(metrics.totalCurrentBalance)}
+            </p>
+            <p className="text-[11px] text-brand-gray mt-0.5">
+              {metrics.progressPercentage.toFixed(1)}% paid off
             </p>
           </div>
-
-          <div className="space-y-2 text-sm bg-white/10 rounded-lg p-4 mb-4">
-            <div className="flex justify-between">
-              <span className="text-white/85">Surplus available:</span>
-              <span className="font-semibold">
-                {CalculationService.formatCurrency(cashFlowMetrics.surplusAfterSavings)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/85">Committed:</span>
-              <span className="font-semibold">{commitmentPercent}%</span>
-            </div>
-            <div className="flex justify-between pt-2 border-t border-white/20 font-bold text-base">
-              <span>Going to debt:</span>
-              <span className="text-[#F2C94C]">
-                {CalculationService.formatCurrency(extraForDebtPayoff)}
-              </span>
-            </div>
-            {optimizedProjection && (
-              <div className="flex justify-between pt-2 border-t border-white/20">
-                <span className="text-white/85">Revised debt-free date:</span>
-                <span className="font-semibold">
-                  {CalculationService.formatMonthYear(optimizedProjection.debtFreeDate)}
-                </span>
-              </div>
-            )}
+          <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-green">
+            <p className="text-[11px] text-brand-gray uppercase tracking-wide">Cash on hand</p>
+            <p className="text-[22px] font-medium text-brand-navy mt-1">
+              {CalculationService.formatCurrency(cashOnHand)}
+            </p>
+            <p className="text-[11px] text-brand-gray mt-0.5">
+              {checkingAccounts.length > 0
+                ? `Across ${checkingAccounts.length} account${checkingAccounts.length !== 1 ? 's' : ''}`
+                : 'No checking accounts'}
+            </p>
           </div>
-
-          {metrics.paidOffDebts.length > 0 && (
-            <div className="bg-brand-green/20 border border-brand-green/60 rounded-lg p-3 mb-3">
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-[#4ADE80] flex-shrink-0" />
-                <p className="text-sm font-semibold">
-                  {CalculationService.formatCurrency(
-                    metrics.paidOffDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
-                  )} freed from {metrics.paidOffDebts.length} paid-off debt{metrics.paidOffDebts.length !== 1 ? 's' : ''} now accelerating payoff!
-                </p>
-              </div>
-            </div>
-          )}
-
-          {targetDebt && extraForDebtPayoff > 0 && (
-            <div className="bg-white rounded-xl p-4 mt-2">
-              <div className="flex items-center gap-2 mb-3">
-                <Target className="w-5 h-5 text-brand-green" />
-                <span className="font-bold text-gray-800 text-sm uppercase tracking-wide">Focus This Month</span>
-              </div>
-              <p className="text-gray-700 text-sm mb-3">
-                Apply extra{' '}
-                <span className="font-bold text-[#1E8BBD]">{CalculationService.formatCurrency(extraForDebtPayoff)}</span>
-                {' '}to{' '}
-                <span className="font-bold text-gray-900">{targetDebt.accountName}</span>
-                <span className="ml-1.5 text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-semibold">
-                  {targetDebt.interestRate}% APR
-                </span>
-              </p>
-              <div className="bg-white border border-brand-cream-border/60 rounded-2xl p-3 mb-3">
-                <div className="flex justify-between text-xs text-gray-600 mb-1">
-                  <span>Minimum payment</span>
-                  <span className="font-semibold text-gray-800">{CalculationService.formatCurrency(targetDebt.minimumPayment)}</span>
-                </div>
-                <div className="flex justify-between text-xs text-gray-600 mb-1">
-                  <span>Extra cash flow</span>
-                  <span className="font-semibold text-brand-green">+ {CalculationService.formatCurrency(extraForDebtPayoff)}</span>
-                </div>
-                <div className="flex justify-between text-sm font-bold pt-1.5 border-t border-gray-300 mt-1">
-                  <span className="text-gray-800">Total to pay</span>
-                  <span className="text-brand-green">{CalculationService.formatCurrency(targetTotalPayment)}</span>
-                </div>
-              </div>
-              <button
-                onClick={handleQuickPay}
-                className="w-full flex items-center justify-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-bold py-2.5 px-4 rounded-lg transition-colors text-sm"
-              >
-                <Plus className="w-4 h-4" />
-                Quick Pay {CalculationService.formatCurrency(targetTotalPayment)} to {targetDebt.accountName}
-              </button>
-            </div>
-          )}
-
-          {targetDebt && extraForDebtPayoff <= 0 && nonHelocActive.length > 0 && (
-            <div className="bg-white/10 border border-white/20 rounded-xl p-4 mt-2">
-              <div className="flex items-center gap-2 mb-1">
-                <Target className="w-5 h-5 text-white/80" />
-                <span className="font-bold text-sm uppercase tracking-wide">Focus This Month</span>
-              </div>
-              <p className="text-sm text-white/80">
-                Pay minimum on{' '}
-                <span className="font-bold">{targetDebt.accountName}</span>
-                <span className="ml-1.5 text-xs bg-white/20 px-1.5 py-0.5 rounded">
-                  {targetDebt.interestRate}% APR
-                </span>
-                <span className="ml-1"> — {CalculationService.formatCurrency(targetDebt.minimumPayment)}</span>
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {savingsAccounts.length > 0 && (
-        <div className="bg-gradient-to-br from-brand-green to-[#229954] text-white rounded-2xl shadow-card p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <PiggyBank className="w-8 h-8 text-white" />
-              <h3 className="text-xl font-bold text-white">Savings Summary</h3>
-            </div>
-            {onNavigateToSavings && (
-              <button
-                onClick={onNavigateToSavings}
-                className="flex items-center space-x-2 text-sm bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
-              >
-                <span className="text-white">View Details</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
+          <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-blue">
+            <p className="text-[11px] text-brand-gray uppercase tracking-wide">Monthly surplus</p>
+            <p className="text-[22px] font-medium text-brand-navy mt-1">
+              {CalculationService.formatCurrency(monthlySurplusValue)}
+            </p>
+            <p className="text-[11px] text-brand-gray mt-0.5">After savings carve-out</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
-            <div className="novo-card p-5 flex flex-col gap-2 animate-fade-up bg-white/95">
-              <p className="stat-label">Total Savings</p>
-              <p className="stat-value number-display text-emerald-600">{CalculationService.formatCurrency(savingsMetrics.totalSavings)}</p>
-            </div>
-            <div className="novo-card p-5 flex flex-col gap-2 animate-fade-up bg-white/95">
-              <p className="stat-label">Accounts</p>
-              <p className="stat-value number-display text-brand-navy">{savingsMetrics.numberOfAccounts}</p>
-            </div>
-            <div className="novo-card p-5 flex flex-col gap-2 animate-fade-up bg-white/95">
-              <p className="stat-label">Interest Earned (YTD)</p>
-              <p className="stat-value number-display text-emerald-600">{CalculationService.formatCurrency(savingsMetrics.totalInterestEarnedYTD)}</p>
-            </div>
+          <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-orange-dark">
+            <p className="text-[11px] text-brand-gray uppercase tracking-wide">Debt-free date</p>
+            <p className="text-[22px] font-medium text-brand-navy mt-1">
+              {optimizedProjection
+                ? CalculationService.formatMonthYear(optimizedProjection.debtFreeDate)
+                : '—'}
+            </p>
+            <p className="text-[11px] text-brand-gray mt-0.5">Non-mortgage debts</p>
           </div>
         </div>
-      )}
 
-      <div>
-        <h3 className="text-xl font-bold text-brand-navy mb-4">Active Debts</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {metrics.activeDebts.filter(debt => debt.category !== 'HELOC').map(debt => {
-            const paidOff = debt.startingBalance - debt.currentBalance;
-            const progress = (paidOff / debt.startingBalance) * 100;
+        <div className="flex flex-col lg:flex-row gap-5">
+          <div className="flex-1 min-w-0 space-y-5">
+            <StartHereRibbon
+              userName={userName}
+              onNavigate={(section) => onNavigate?.(section)}
+              onOpenChat={(context) => onOpenChat?.(context)}
+            />
+            {financialProfile && cashFlowMetrics && (
+              <div className="bg-white border border-brand-gray-border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-medium text-brand-navy">Monthly cash flow</h3>
+                  <span className="text-lg font-medium text-brand-navy">
+                    {CalculationService.formatCurrency(monthlyCashFlowTotal)}
+                  </span>
+                </div>
 
-            return (
-              <div
-                key={debt.id}
-                className="novo-card-hover p-6"
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h4 className="font-bold text-lg text-gray-800">{debt.accountName}</h4>
-                    <p className="text-sm text-gray-500">{debt.category}</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded font-medium">
-                      {debt.interestRate}% APR
-                    </span>
-                    <button
-                      onClick={(e) => handleEditClick(debt, e)}
-                      className="p-1.5 text-gray-500 hover:text-brand-blue hover:bg-blue-50 rounded transition-colors"
-                      title="Edit debt"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={(e) => handleDeleteClick(debt, e)}
-                      className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                      title="Delete debt"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-                <div className="mb-4">
-                  <p className="text-3xl font-bold text-brand-navy mb-1">
-                    {CalculationService.formatCurrency(debt.currentBalance)}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {CalculationService.formatCurrency(paidOff)} paid off
-                  </p>
-                </div>
-                <div className="mb-3">
-                  <div className="flex justify-between text-xs text-gray-600 mb-1">
-                    <span>{progress.toFixed(1)}% complete</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="rounded-lg overflow-hidden text-sm">
+                  {[
+                    { label: 'Net income', value: financialProfile.monthlyNetIncome, prefix: '' },
+                    { label: 'Essential expenses', value: financialProfile.monthlyEssentialExpenses, prefix: '- ' },
+                    { label: 'Discretionary expenses', value: financialProfile.monthlyDiscretionaryExpenses, prefix: '- ' },
+                    { label: 'Minimum debt payments', value: totalMinimumPayments, prefix: '- ' },
+                  ].map((row, index) => (
                     <div
-                      className="bg-brand-blue h-full rounded-full"
-                      style={{ width: `${Math.min(progress, 100)}%` }}
-                    />
+                      key={row.label}
+                      className={`flex justify-between px-3 py-2 ${index % 2 === 0 ? 'bg-brand-gray-light' : 'bg-white'}`}
+                    >
+                      <span className="text-brand-navy">{row.label}</span>
+                      <span className="font-medium text-brand-navy">
+                        {row.prefix}{CalculationService.formatCurrency(row.value)}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between px-3 py-2 font-bold border-t border-brand-gray-border bg-white">
+                    <span className="text-brand-navy">Gross monthly surplus</span>
+                    <span className="text-brand-navy">
+                      {CalculationService.formatCurrency(cashFlowMetrics.grossSurplus)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between px-3 py-2 bg-brand-blue-light text-brand-blue">
+                    <span>Savings carve-out</span>
+                    <span className="font-medium">
+                      - {CalculationService.formatCurrency(cashFlowMetrics.savingsCarveOut)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between px-3 py-2 font-bold bg-white">
+                    <span className="text-brand-navy">Surplus after savings</span>
+                    <span className="text-brand-navy">
+                      {CalculationService.formatCurrency(cashFlowMetrics.surplusAfterSavings)}
+                    </span>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleLogPaymentClick(debt.id)}
-                  className="w-full mt-3 bg-brand-orange hover:bg-brand-orange-dark text-white text-sm font-semibold py-2 px-4 rounded transition-colors"
-                >
-                  Log Payment
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
-      {metrics.paidOffDebts.length > 0 && (
-        <div>
-          <h3 className="text-xl font-bold text-brand-navy mb-4">Paid Off Debts</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {metrics.paidOffDebts.map(debt => (
-              <div
-                key={debt.id}
-                className={`${
-                  debt.transferredToHELOC
-                    ? 'bg-gradient-to-br from-[#F2994A] to-[#E67E22]'
-                    : 'bg-gradient-to-br from-brand-green to-[#229954]'
-                } text-white rounded-lg shadow-md p-6`}
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <h4 className="font-bold text-lg">{debt.accountName}</h4>
-                  <CheckCircle className="w-6 h-6" />
+                <div className="mt-4 pt-4 border-t border-brand-gray-border">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 text-brand-navy">
+                      <Sliders className="w-4 h-4" />
+                      <span className="text-sm font-medium">Surplus commitment</span>
+                    </div>
+                    <span className="font-medium text-brand-navy">{commitmentPercent}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={commitmentPercent}
+                    onChange={(e) => handleCommitmentChange(parseInt(e.target.value, 10))}
+                    onMouseUp={handleCommitmentCommit}
+                    onTouchEnd={handleCommitmentCommit}
+                    onKeyUp={handleCommitmentCommit}
+                    className="slider-surplus"
+                    aria-label="Percent of surplus committed to debt payoff"
+                  />
+                  <div className="flex justify-between text-[11px] text-brand-gray mt-1">
+                    <span>0%</span>
+                    <span>50%</span>
+                    <span>100%</span>
+                  </div>
                 </div>
-                <p className="text-2xl font-bold mb-1">
-                  {debt.transferredToHELOC ? 'Transferred to HELOC' : 'PAID OFF!'}
-                </p>
-                <p className="text-sm text-white/80">
-                  {debt.paidOffDate && CalculationService.formatMonthYear(debt.paidOffDate)}
-                </p>
-                {debt.transferredToHELOC && (
-                  <p className="text-xs text-white/80 mt-2">
-                    This debt was moved to your HELOC for lower interest
+
+                <div className="mt-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-brand-gray">Surplus available</span>
+                    <span className="text-brand-navy">
+                      {CalculationService.formatCurrency(cashFlowMetrics.surplusAfterSavings)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-brand-gray">Committed</span>
+                    <span className="text-brand-navy">{commitmentPercent}%</span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t border-brand-gray-border">
+                    <span className="text-brand-navy">Going to debt</span>
+                    <span className="font-medium text-brand-orange">
+                      {CalculationService.formatCurrency(extraForDebtPayoff)}
+                    </span>
+                  </div>
+                  {optimizedProjection && (
+                    <div className="flex justify-between">
+                      <span className="text-brand-gray">Revised debt-free date</span>
+                      <span className="text-brand-navy">
+                        {CalculationService.formatMonthYear(optimizedProjection.debtFreeDate)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {targetDebt && (
+              <div className="bg-white border border-brand-gray-border rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Target className="w-4 h-4 text-brand-orange" />
+                  <h3 className="text-sm font-medium text-brand-navy">Focus this month</h3>
+                </div>
+                {extraForDebtPayoff > 0 ? (
+                  <>
+                    <p className="text-sm text-brand-navy mb-3">
+                      Apply extra{' '}
+                      <span className="font-medium">{CalculationService.formatCurrency(extraForDebtPayoff)}</span>
+                      {' '}to{' '}
+                      <span className="font-medium">{targetDebt.accountName}</span>
+                      <span className="ml-1.5 text-[11px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-medium">
+                        {targetDebt.interestRate}% APR
+                      </span>
+                    </p>
+                    <div className="space-y-2 text-sm border-b border-brand-gray-border pb-3 mb-3">
+                      <div className="flex justify-between">
+                        <span className="text-brand-gray">Minimum payment</span>
+                        <span className="text-brand-navy">{CalculationService.formatCurrency(targetDebt.minimumPayment)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-brand-gray">Extra cash flow</span>
+                        <span className="text-brand-green">+ {CalculationService.formatCurrency(extraForDebtPayoff)}</span>
+                      </div>
+                      <div className="flex justify-between font-medium pt-2 border-t border-brand-gray-border">
+                        <span className="text-brand-navy">Total to pay</span>
+                        <span className="text-brand-navy">{CalculationService.formatCurrency(targetTotalPayment)}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleQuickPay}
+                      className="w-full flex items-center justify-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-medium py-2.5 px-4 rounded-lg transition-colors text-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Quick Pay {CalculationService.formatCurrency(targetTotalPayment)}
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-sm text-brand-navy">
+                    Pay minimum on{' '}
+                    <span className="font-medium">{targetDebt.accountName}</span>
+                    <span className="ml-1.5 text-[11px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-medium">
+                      {targetDebt.interestRate}% APR
+                    </span>
+                    <span className="ml-1 text-brand-gray">
+                      — {CalculationService.formatCurrency(targetDebt.minimumPayment)}
+                    </span>
                   </p>
                 )}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+            )}
 
-      {recentActivity.length > 0 && (
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-brand-navy">Recent Activity</h3>
-            <span className="text-xs text-gray-500 uppercase tracking-wide">Last 15 transactions</span>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="space-y-4">
-              {recentActivity.map((activity, index) => (
-                <div key={index} className="flex items-start justify-between pb-4 border-b border-gray-100 last:border-0 last:pb-0">
-                  <div className="flex items-start space-x-3 flex-1">
-                    <span className="text-2xl mt-0.5">{activity.icon}</span>
-                    <div className="flex-1">
-                      <p className={`font-medium ${activity.type === 'milestone' ? 'text-brand-green' : 'text-gray-800'}`}>
-                        {activity.description}
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-sm text-gray-500">{CalculationService.formatDate(activity.date)}</p>
-                        <span className="text-brand-navy/30">•</span>
-                        <span className="text-xs text-brand-navy/50 capitalize">{activity.source}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {activity.amount && (
-                      <span className={`font-semibold text-sm ${activity.amountColor || 'text-gray-800'}`}>
-                        {activity.amountColor === 'text-red-600' ? '+' : ''}{CalculationService.formatCurrency(activity.amount)}
-                      </span>
-                    )}
-                    {activity.transaction && activity.source === 'debt' && (
-                      <button
-                        onClick={() => {
-                          setEditingTransaction(activity.transaction!);
-                          setShowEditPayment(true);
-                        }}
-                        className="text-brand-blue hover:text-[#1E8BBD] transition-colors p-1"
-                        title="Edit transaction"
+            <div className="mt-6">
+              <h3 className="text-base font-medium text-brand-navy mb-3">Active debts</h3>
+              {nonHelocActiveDebts.length > 0 ? (
+                <div className="bg-white border border-brand-gray-border rounded-lg overflow-hidden">
+                  {nonHelocActiveDebts.map((debt, index) => {
+                    const { paidOff, percentage, isOpenAccount } = getDebtProgressInfo(debt);
+                    return (
+                      <div
+                        key={debt.id}
+                        className={`px-4 py-3 ${index > 0 ? 'border-t border-brand-gray-border' : ''}`}
                       >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                    )}
+                        <div className="flex items-start gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                              <span className="text-[13px] font-medium text-brand-navy">{debt.accountName}</span>
+                              <span className="text-[11px] text-brand-gray">{debt.category}</span>
+                              <span className="text-[11px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-medium">
+                                {debt.interestRate}% APR
+                              </span>
+                            </div>
+                            {isOpenAccount ? (
+                              <span className="inline-flex text-[11px] bg-brand-gray-light text-brand-gray px-2 py-0.5 rounded-full">
+                                Open account
+                              </span>
+                            ) : (
+                              <div className="w-full bg-brand-gray-border rounded-full h-1 mt-1">
+                                <div
+                                  className="bg-brand-orange h-1 rounded-full transition-all"
+                                  style={{ width: `${Math.min(percentage, 100)}%` }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-2 shrink-0">
+                            <span className="text-[13px] font-medium text-brand-navy">
+                              {CalculationService.formatCurrency(debt.currentBalance)}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleLogPaymentClick(debt.id)}
+                                className="text-[12px] px-3 py-1 rounded-lg border border-brand-orange text-brand-orange hover:bg-brand-orange/5 transition-colors"
+                              >
+                                Log Payment
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => handleEditClick(debt, e)}
+                                className="p-1 text-brand-gray hover:text-brand-blue rounded transition-colors"
+                                title="Edit debt"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteClick(debt, e)}
+                                className="p-1 text-brand-gray hover:text-red-600 rounded transition-colors"
+                                title="Delete debt"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            {!isOpenAccount && (
+                              <span className="text-[11px] text-brand-gray">
+                                {CalculationService.formatCurrency(paidOff)} paid off
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-brand-gray">No active non-HELOC debts.</p>
+              )}
+            </div>
+
+            {metrics.paidOffDebts.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-sm text-brand-gray mb-3">Paid off</h3>
+                <div className="bg-white border border-brand-gray-border rounded-lg overflow-hidden">
+                  {metrics.paidOffDebts.map((debt, index) => (
+                    <div
+                      key={debt.id}
+                      className={`flex items-center gap-3 px-4 py-3 ${index > 0 ? 'border-t border-brand-gray-border' : ''}`}
+                    >
+                      <CheckCircle2 className="w-5 h-5 text-brand-green shrink-0" />
+                      <span className="text-[13px] text-brand-navy flex-1">{debt.accountName}</span>
+                      <span className="text-[11px] bg-green-50 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                        {debt.transferredToHELOC ? 'Transferred' : 'Paid off'}
+                      </span>
+                      <span className="text-[11px] text-brand-gray shrink-0">
+                        {formatPaidOffDate(debt.paidOffDate)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {recentActivity.length > 0 && (
+              <div className="bg-white border border-brand-gray-border rounded-lg overflow-hidden">
+                <div className="flex justify-between items-center px-4 py-3 border-b border-brand-gray-border">
+                  <h3 className="text-sm font-medium text-brand-navy">Recent activity</h3>
+                  <span className="text-[11px] text-brand-gray">Last 15 transactions</span>
+                </div>
+                <ul>
+                  {recentActivity.map((activity, index) => {
+                    const meta = getActivityDisplayMeta(activity.type);
+                    const ActivityIcon = meta.Icon;
+                    return (
+                      <li
+                        key={`${activity.type}-${activity.date}-${index}`}
+                        className="flex items-center gap-3 px-4 py-3 border-b border-brand-gray-border last:border-b-0"
+                      >
+                        <div className={`w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 ${meta.iconBg}`}>
+                          <ActivityIcon className={`w-4 h-4 ${meta.iconColor}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-[13px] truncate ${activity.type === 'milestone' ? 'text-brand-green' : 'text-brand-navy'}`}>
+                            {activity.description}
+                          </p>
+                          <p className="text-[11px] text-brand-gray">
+                            {CalculationService.formatDate(activity.date)} · {activity.source}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {activity.amount != null && (
+                            <span className={`text-[13px] font-medium ${activity.amountColor || 'text-brand-navy'}`}>
+                              {activity.amountColor === 'text-red-600' ? '+' : ''}
+                              {CalculationService.formatCurrency(activity.amount)}
+                            </span>
+                          )}
+                          {activity.transaction && activity.source === 'debt' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingTransaction(activity.transaction!);
+                                setShowEditPayment(true);
+                              }}
+                              className="text-brand-blue hover:text-brand-navy transition-colors p-1"
+                              title="Edit transaction"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          <aside className="w-full lg:w-[300px] shrink-0 space-y-5">
+            <FinancialHealthScore
+              monthlyGrossIncome={financialProfile?.monthlyGrossIncome ?? 0}
+              totalMinimumPayments={totalMinimumPayments}
+              monthlySurplus={cashFlowMetrics?.grossSurplus ?? null}
+              debtProgressPercent={metrics.progressPercentage}
+              monthlySavingsGoal={financialProfile?.monthlySavingsGoal ?? 0}
+              monthlySavingsRate={savingsMetrics.monthlySavingsRate}
+              variant="sidebar"
+            />
+
+            {savingsAccounts.length > 0 && (
+              <div className="bg-white border border-brand-gray-border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-medium text-brand-navy">Savings summary</h3>
+                  {onNavigateToSavings && (
+                    <button
+                      type="button"
+                      onClick={onNavigateToSavings}
+                      className="text-[12px] text-brand-blue hover:underline"
+                    >
+                      View details →
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-[11px] text-brand-gray uppercase tracking-wide">Total savings</p>
+                    <p className="text-xl font-medium text-brand-navy mt-0.5">
+                      {CalculationService.formatCurrency(savingsMetrics.totalSavings)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-brand-gray uppercase tracking-wide">Accounts</p>
+                    <p className="text-xl font-medium text-brand-navy mt-0.5">
+                      {savingsMetrics.numberOfAccounts}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-brand-gray uppercase tracking-wide">Interest earned YTD</p>
+                    <p className="text-xl font-medium text-brand-navy mt-0.5">
+                      {CalculationService.formatCurrency(savingsMetrics.totalInterestEarnedYTD)}
+                    </p>
                   </div>
                 </div>
-              ))}
+              </div>
+            )}
+
+            <div className="bg-white border border-brand-gray-border rounded-lg p-4">
+              <h3 className="text-sm font-medium text-brand-navy mb-3">Total debt progress</h3>
+              <div className="flex items-center justify-between text-[11px] text-brand-gray mb-1.5">
+                <span>{metrics.progressPercentage.toFixed(1)}% paid off</span>
+                <span>{CalculationService.formatCurrency(metrics.totalCurrentBalance)} remaining</span>
+              </div>
+              <div className="w-full bg-brand-gray-border rounded-full h-2 overflow-hidden mb-3">
+                <div
+                  className="h-full bg-brand-orange rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(metrics.progressPercentage, 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-brand-gray mb-2">
+                {CalculationService.formatCurrency(metrics.totalCurrentBalance)} remaining of{' '}
+                {CalculationService.formatCurrency(metrics.totalStartingBalance)} starting
+              </p>
+              <p className="text-xs font-medium text-brand-green mb-2">
+                You&apos;ve paid off {CalculationService.formatCurrency(metrics.actualDebtEliminated)} from cash flow!
+              </p>
+              {optimizedProjection && (
+                <p className="text-xs text-brand-gray mb-2">
+                  Debt-free: {CalculationService.formatMonthYear(optimizedProjection.debtFreeDate)}
+                </p>
+              )}
+              {debts.some(d => d.category === 'Mortgage' && !d.isPaidOff) && (
+                <div className="flex items-start gap-2 bg-brand-blue-light text-brand-blue border-l-4 border-brand-blue p-3 text-[11px]">
+                  <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <p>
+                    Mortgages are on fixed schedules and not included in accelerated payoff. Your debt-free date reflects non-mortgage debts.
+                  </p>
+                </div>
+              )}
             </div>
-          </div>
+          </aside>
         </div>
-      )}
+      </div>
 
       {showLogPayment && (
         <LogPaymentModal

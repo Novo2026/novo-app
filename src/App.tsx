@@ -339,17 +339,19 @@ function App() {
     switch (currentSection) {
       case 'dashboard':
         return (
-          <Dashboard
-            onDataUpdate={handleDataUpdate}
-            onNavigateToSavings={() => setCurrentSection('savings')}
-            onNavigateToTracker={() => setCurrentSection('tracker')}
-            onNavigateToSmarterPayments={() => setCurrentSection('smarter-payments')}
-            onNavigate={(section) => setCurrentSection(section as Section)}
-            onOpenChat={(context) => {
-              setNovoChatContext(context);
-              setShowNovoChat(true);
-            }}
-          />
+          <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 md:-mt-8">
+            <Dashboard
+              onDataUpdate={handleDataUpdate}
+              onNavigateToSavings={() => setCurrentSection('savings')}
+              onNavigateToTracker={() => setCurrentSection('tracker')}
+              onNavigateToSmarterPayments={() => setCurrentSection('smarter-payments')}
+              onNavigate={(section) => setCurrentSection(section as Section)}
+              onOpenChat={(context) => {
+                setNovoChatContext(context);
+                setShowNovoChat(true);
+              }}
+            />
+          </div>
         );
       case 'debts':
         return (

@@ -16,7 +16,7 @@ export interface FinancialHealthScoreResult {
   label: string;
   actionLine: string;
   colorClass: string;
-  strokeColor: string;
+  strokeClass: string;
 }
 
 function countPaymentCommitments(): number {
@@ -62,18 +62,18 @@ function scoreSavings(monthlySavingsGoal: number, monthlySavingsRate: number): n
 function getLabelAndColors(score: number): {
   label: string;
   colorClass: string;
-  strokeColor: string;
+  strokeClass: string;
 } {
   if (score >= 86) {
-    return { label: 'Excellent', colorClass: 'text-emerald-600', strokeColor: '#16a34a' };
+    return { label: 'Excellent', colorClass: 'text-brand-green', strokeClass: 'text-brand-green' };
   }
   if (score >= 66) {
-    return { label: 'On Track', colorClass: 'text-brand-blue', strokeColor: '#2D9CDB' };
+    return { label: 'On Track', colorClass: 'text-brand-green', strokeClass: 'text-brand-blue' };
   }
   if (score >= 41) {
-    return { label: 'Building Momentum', colorClass: 'text-orange-600', strokeColor: '#ea580c' };
+    return { label: 'Building Momentum', colorClass: 'text-brand-orange', strokeClass: 'text-brand-orange' };
   }
-  return { label: 'Needs Work', colorClass: 'text-red-600', strokeColor: '#dc2626' };
+  return { label: 'Needs Work', colorClass: 'text-red-700', strokeClass: 'text-red-600' };
 }
 
 function getTopActionLine(input: {
@@ -86,14 +86,10 @@ function getTopActionLine(input: {
   monthlySavingsGoal: number;
   totalScore: number;
 }): string {
-  if (input.totalScore >= 86) {
-    return 'Your finances are in excellent shape - keep it up';
-  }
-
   const opportunities: { message: string; gain: number }[] = [];
 
-  if (input.smarterPaymentsPoints < 10) {
-    opportunities.push({ message: 'Switch to bi-weekly payments to gain 10 points', gain: 10 });
+  if (input.smarterPaymentsPoints === 0) {
+    opportunities.push({ message: 'Switch to bi-weekly to gain 10 points', gain: 10 });
   }
 
   if (input.savingsPoints < 10) {
@@ -155,7 +151,7 @@ export function computeFinancialHealthScore(input: FinancialHealthScoreInput): F
     dtiPoints + cashFlowPoints + debtPoints + smarterPaymentsPoints + savingsPoints;
   const score = Math.min(100, Math.max(0, Math.round(rawScore)));
 
-  const { label, colorClass, strokeColor } = getLabelAndColors(score);
+  const { label, colorClass, strokeClass } = getLabelAndColors(score);
   const actionLine = getTopActionLine({
     dtiPercent,
     dtiPoints,
@@ -167,7 +163,7 @@ export function computeFinancialHealthScore(input: FinancialHealthScoreInput): F
     totalScore: score,
   });
 
-  return { score, label, actionLine, colorClass, strokeColor };
+  return { score, label, actionLine, colorClass, strokeClass };
 }
 
 interface FinancialHealthScoreProps {
@@ -177,6 +173,7 @@ interface FinancialHealthScoreProps {
   debtProgressPercent: number;
   monthlySavingsGoal: number;
   monthlySavingsRate: number;
+  variant?: 'default' | 'sidebar';
 }
 
 export default function FinancialHealthScore({
@@ -186,6 +183,7 @@ export default function FinancialHealthScore({
   debtProgressPercent,
   monthlySavingsGoal,
   monthlySavingsRate,
+  variant = 'sidebar',
 }: FinancialHealthScoreProps) {
   const result = useMemo(
     () =>
@@ -212,39 +210,66 @@ export default function FinancialHealthScore({
   const progress = result.score / 100;
   const dashOffset = arcLength * (1 - progress);
 
-  return (
-    <div className="bg-white border border-brand-cream-border/60 rounded-2xl p-6" style={{ boxShadow: '0 1px 3px rgba(30,58,95,0.06), 0 4px 12px rgba(30,58,95,0.04)' }}>
-      <p className="text-sm font-semibold text-brand-navy/50 uppercase tracking-wide text-center mb-4">
-        Monthly Financial Health Score
-      </p>
-      <div className="flex flex-col items-center">
-        <div className="relative w-40 h-28 mb-2">
-          <svg viewBox="0 0 120 70" className="w-full h-full" aria-hidden>
-            <path
-              d="M 10 60 A 50 50 0 0 1 110 60"
-              fill="none"
-              stroke="#e5e7eb"
-              strokeWidth="10"
-              strokeLinecap="round"
-            />
-            <path
-              d="M 10 60 A 50 50 0 0 1 110 60"
-              fill="none"
-              stroke={result.strokeColor}
-              strokeWidth="10"
-              strokeLinecap="round"
-              strokeDasharray={`${arcLength} ${arcLength}`}
-              strokeDashoffset={dashOffset}
-              className="transition-all duration-500"
-            />
-          </svg>
-          <div className="absolute inset-0 flex items-end justify-center pb-1">
-            <span className={`text-4xl font-bold tabular-nums ${result.colorClass}`}>{result.score}</span>
-          </div>
-        </div>
-        <p className={`text-lg font-semibold ${result.colorClass}`}>{result.label}</p>
-        <p className="text-sm text-gray-600 text-center mt-3 max-w-md leading-relaxed">{result.actionLine}</p>
+  if (variant === 'default') {
+    return (
+      <div className="bg-white border border-brand-gray-border rounded-lg p-6">
+        <p className="text-sm font-semibold text-brand-gray uppercase tracking-wide text-center mb-4">
+          Monthly Financial Health Score
+        </p>
+        <ScoreGauge result={result} arcLength={arcLength} dashOffset={dashOffset} size="large" />
       </div>
+    );
+  }
+
+  return (
+    <div className="bg-white border border-brand-gray-border rounded-lg p-4">
+      <h3 className="text-sm font-medium text-brand-navy mb-3">Financial health score</h3>
+      <ScoreGauge result={result} arcLength={arcLength} dashOffset={dashOffset} size="sidebar" />
+      <p className="text-xs text-brand-gray text-center mt-3 leading-relaxed">{result.actionLine}</p>
+    </div>
+  );
+}
+
+function ScoreGauge({
+  result,
+  arcLength,
+  dashOffset,
+  size,
+}: {
+  result: FinancialHealthScoreResult;
+  arcLength: number;
+  dashOffset: number;
+  size: 'large' | 'sidebar';
+}) {
+  return (
+    <div className="flex flex-col items-center">
+      <div className={`relative ${size === 'large' ? 'w-40 h-28' : 'w-36 h-24'} mb-1`}>
+        <svg viewBox="0 0 120 70" className="w-full h-full" aria-hidden>
+          <path
+            d="M 10 60 A 50 50 0 0 1 110 60"
+            fill="none"
+            className="stroke-brand-gray-border"
+            strokeWidth="10"
+            strokeLinecap="round"
+          />
+          <path
+            d="M 10 60 A 50 50 0 0 1 110 60"
+            fill="none"
+            className={`${result.strokeClass} transition-all duration-500`}
+            stroke="currentColor"
+            strokeWidth="10"
+            strokeLinecap="round"
+            strokeDasharray={`${arcLength} ${arcLength}`}
+            strokeDashoffset={dashOffset}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-end justify-center pb-1">
+          <span className={`font-medium tabular-nums text-brand-navy ${size === 'large' ? 'text-4xl font-bold' : 'text-[28px]'}`}>
+            {result.score}
+          </span>
+        </div>
+      </div>
+      <p className={`font-semibold ${result.colorClass}`}>{result.label}</p>
     </div>
   );
 }

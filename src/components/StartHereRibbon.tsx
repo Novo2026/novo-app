@@ -138,68 +138,33 @@ export default function StartHereRibbon({ onNavigate, onOpenChat, userName }: St
   const completedSteps = steps.filter(s => s.checkComplete());
   const allComplete = completedSteps.length === steps.length;
 
-  const installDate = localStorage.getItem(INSTALL_DATE_KEY);
-  const daysSinceInstall = installDate
-    ? Math.floor((Date.now() - new Date(installDate).getTime()) / (1000 * 60 * 60 * 24))
-    : 0;
-
   const dismissed = localStorage.getItem(RIBBON_KEY) === 'true';
 
   if (dismissed) return null;
-  if (allComplete && daysSinceInstall > 30) return null;
+  if (allComplete) return null;
 
   const currentStep = steps.find(s => !s.checkComplete());
 
-  if (allComplete) {
-    return (
-      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl p-5 text-white mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="font-bold text-lg">🎉 You're fully set up, {userName}!</p>
-            <p className="text-emerald-100 text-sm mt-0.5">
-              All 6 steps complete. NOVO has everything it needs to coach you effectively.
-            </p>
-          </div>
-          <button
-            onClick={() => {
-              localStorage.setItem(RIBBON_KEY, 'true');
-              forceUpdate(n => n + 1);
-            }}
-            className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const progressPercent = Math.round((completedSteps.length / steps.length) * 100);
 
   return (
-    <div className="bg-white border-2 border-brand-orange rounded-xl overflow-hidden mb-6 shadow-sm">
+    <div className="bg-white border border-brand-gray-border rounded-lg overflow-hidden">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full px-5 py-4 flex items-center justify-between bg-gradient-to-r from-brand-navy to-brand-navy-light text-white"
+        className="w-full px-4 py-3 flex items-center justify-between bg-brand-navy text-white rounded-t-lg"
       >
         <div className="flex items-center gap-3">
-          <div className="bg-brand-orange rounded-lg px-2.5 py-1 text-xs font-bold">
-            {completedSteps.length}/{steps.length}
-          </div>
-          <div className="text-left">
-            <p className="font-bold text-sm">Start Here — Your Setup Guide</p>
-            <p className="text-blue-200 text-xs mt-0.5">
-              {completedSteps.length === 0
-                ? `Let's get you set up, ${userName}. This takes about 10 minutes.`
-                : completedSteps.length < steps.length
-                ? `Good progress ${userName} — ${steps.length - completedSteps.length} step${steps.length - completedSteps.length > 1 ? 's' : ''} left to unlock full coaching`
-                : `Almost there — one more step to go`}
-            </p>
-          </div>
+          <span className="text-sm font-medium">Setup guide</span>
+          <span className="bg-brand-orange text-white text-[11px] font-semibold px-2 py-0.5 rounded-full">
+            {completedSteps.length} of {steps.length}
+          </span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="h-1.5 w-24 bg-white/20 rounded-full overflow-hidden">
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-white/70">{progressPercent}%</span>
+          <div className="h-1.5 w-20 bg-white/20 rounded-full overflow-hidden">
             <div
               className="h-full bg-brand-orange rounded-full transition-all duration-500"
-              style={{ width: `${(completedSteps.length / steps.length) * 100}%` }}
+              style={{ width: `${progressPercent}%` }}
             />
           </div>
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -207,7 +172,7 @@ export default function StartHereRibbon({ onNavigate, onOpenChat, userName }: St
       </button>
 
       {expanded && (
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-brand-gray-border">
           {steps.map((step, index) => {
             const isComplete = step.checkComplete();
             const isCurrent = currentStep?.id === step.id;
@@ -217,7 +182,7 @@ export default function StartHereRibbon({ onNavigate, onOpenChat, userName }: St
             return (
               <div
                 key={step.id}
-                className={`${isCurrent ? 'bg-orange-50' : isComplete ? 'bg-gray-50' : 'bg-white'}`}
+                className={`${isCurrent ? 'bg-orange-50' : ''}`}
               >
                 <button
                   onClick={() => {
@@ -225,23 +190,23 @@ export default function StartHereRibbon({ onNavigate, onOpenChat, userName }: St
                       setActiveStep(isExpanded ? null : step.id);
                     }
                   }}
-                  className="w-full px-5 py-3.5 flex items-center gap-3 text-left"
+                  className="w-full px-4 py-3 flex items-center gap-3 text-left"
                   disabled={isLocked}
                 >
                   <div className="flex-shrink-0">
                     {isComplete ? (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                      <CheckCircle2 className="w-5 h-5 text-brand-green" />
                     ) : isCurrent ? (
                       <div className="w-5 h-5 rounded-full border-2 border-brand-orange flex items-center justify-center">
                         <div className="w-2 h-2 rounded-full bg-brand-orange" />
                       </div>
                     ) : (
-                      <Circle className="w-5 h-5 text-gray-300" />
+                      <Circle className="w-5 h-5 text-brand-gray-border" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold ${isCurrent ? 'text-brand-orange' : isComplete ? 'text-emerald-600' : 'text-gray-400'}`}>
+                      <span className={`text-xs font-bold ${isCurrent ? 'text-brand-orange' : isComplete ? 'text-brand-gray' : 'text-brand-gray'}`}>
                         Step {index + 1}
                       </span>
                       {isCurrent && (
@@ -250,17 +215,17 @@ export default function StartHereRibbon({ onNavigate, onOpenChat, userName }: St
                         </span>
                       )}
                     </div>
-                    <p className={`text-sm font-semibold mt-0.5 ${isLocked ? 'text-gray-400' : 'text-gray-800'}`}>
+                    <p className={`text-sm mt-0.5 ${isComplete ? 'text-brand-gray' : isCurrent ? 'font-bold text-brand-navy' : isLocked ? 'text-brand-gray' : 'text-brand-navy'}`}>
                       {step.title}
                     </p>
                     {isComplete && (
-                      <p className="text-xs text-emerald-600 mt-0.5">{step.completedMessage}</p>
+                      <p className="text-xs text-brand-gray mt-0.5">{step.completedMessage}</p>
                     )}
                   </div>
                   {!isLocked && (
                     isExpanded
-                      ? <ChevronUp className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                      : <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      ? <ChevronUp className="w-4 h-4 text-brand-gray flex-shrink-0" />
+                      : <ChevronDown className="w-4 h-4 text-brand-gray flex-shrink-0" />
                   )}
                 </button>
 
