@@ -6,8 +6,8 @@ import { CalculationService } from '../services/calculations';
 import { StorageService } from '../services/storage';
 import DatePicker from './DatePicker';
 import PaymentLoggingGuidance from './PaymentLoggingGuidance';
-import type { CheckingAccount, CheckingTransaction, UnifiedPayment } from '../types';
-import { recalculateSavingsTransactions } from '../utils/savingsTransactions';
+import type { CheckingAccount, CheckingTransaction } from '../types';
+import { recordDebtPaymentFromChecking } from '../utils/checkingDebtPayment';
 import {
   getActiveCheckingAccountId,
   setActiveCheckingAccountId,
@@ -791,6 +791,7 @@ function TransactionModal({
     editTransaction?.category === 'Discretionary Expense' ? 'discretionary' : 'other'
   );
   const [subcategory, setSubcategory] = useState(editTransaction?.subcategory || '');
+  const [error, setError] = useState<string | null>(null);
 
   const selectedDebtObj = debts.find(d => d.id === selectedDebt);
 
@@ -800,17 +801,46 @@ function TransactionModal({
     : Math.max(0, currentBalance - transactionAmount);
 
   const handleSubmit = () => {
+    setError(null);
+
+    if (!accountId) {
+      setError('No checking account selected. Please select a checking account and try again.');
+      return;
+    }
+
     if (!transactionAmount || transactionAmount <= 0) {
-      alert('Please enter a valid amount');
+      setError('Please enter a valid amount.');
       return;
     }
 
     if (type === 'debt_payment' && !selectedDebt) {
-      alert('Please select a debt to pay');
+      setError('Please select a debt to pay.');
+      return;
+    }
+
+    if (type === 'debt_payment' && selectedDebtObj) {
+      try {
+        const result = recordDebtPaymentFromChecking({
+          accountId,
+          startingBalance,
+          debtId: selectedDebt,
+          amount: transactionAmount,
+          date,
+          description: description.trim() || undefined,
+          editCheckingTransactionId: editTransaction?.id,
+        });
+
+        const message = `✓ Debt Payment recorded: -${CalculationService.formatCurrency(transactionAmount)}. New balance: ${CalculationService.formatCurrency(result.updatedBalance)}`;
+        onSuccess(message);
+      } catch (err) {
+        console.error('Debt payment failed:', err);
+        setError(err instanceof Error ? err.message : 'Payment failed. Please try again.');
+      }
       return;
     }
 
     const transactions: CheckingTransaction[] = StorageService.getCheckingTransactionsForAccount(accountId);
+    const paymentDate = CalculationService.normalizeDateString(date);
 
     let category = undefined;
     let finalSubcategory = undefined;
@@ -827,8 +857,6 @@ function TransactionModal({
       if (!finalDescription) {
         finalDescription = 'Expense/Withdrawal';
       }
-    } else if (type === 'debt_payment') {
-      finalDescription = description || `Paid ${selectedDebtObj?.accountName}`;
     } else if (type === 'deposit' && !finalDescription) {
       finalDescription = 'Cash Flow Deposit';
     }
@@ -836,7 +864,7 @@ function TransactionModal({
     const newTransaction: CheckingTransaction = {
       id: editTransaction?.id || `checking_${Date.now()}`,
       accountId,
-      date,
+      date: paymentDate,
       type: editTransaction?.type || type,
       amount: transactionAmount,
       description: finalDescription,
@@ -845,8 +873,6 @@ function TransactionModal({
       subcategory: finalSubcategory,
       isReconciled: editTransaction?.isReconciled ?? false,
       reconciledAt: editTransaction?.reconciledAt,
-      debtId: type === 'debt_payment' ? selectedDebt : undefined,
-      debtName: type === 'debt_payment' ? selectedDebtObj?.accountName : undefined
     };
 
     if (editTransaction) {
@@ -861,47 +887,7 @@ function TransactionModal({
 
     StorageService.saveCheckingTransactionsForAccount(accountId, transactions);
 
-    if (type === 'debt_payment' && selectedDebtObj) {
-      const allDebts = StorageService.getDebts();
-      const debtIndex = allDebts.findIndex(d => d.id === selectedDebt);
-
-      if (debtIndex !== -1) {
-        const debt = allDebts[debtIndex];
-
-        const calculation = debt.isAmortized
-          ? CalculationService.calculateAmortizedPayment(debt, transactionAmount)
-          : CalculationService.calculatePayment(debt.currentBalance, debt.interestRate, transactionAmount);
-
-        const isPaidOff = calculation.newBalance === 0;
-
-        debt.currentBalance = calculation.newBalance;
-
-        if (isPaidOff && !debt.isPaidOff) {
-          debt.isPaidOff = true;
-          debt.paidOffDate = date;
-        }
-
-        const unifiedPayment: UnifiedPayment = {
-          id: `payment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          date,
-          debtId: debt.id,
-          debtName: debt.accountName,
-          amount: transactionAmount,
-          source: 'checking',
-          interestCharged: calculation.interestCharged,
-          principalPaid: calculation.principalPaid,
-          previousBalance: debt.currentBalance,
-          newBalance: calculation.newBalance,
-          description: finalDescription,
-          isPaidOff,
-        };
-
-        StorageService.addUnifiedPayment(unifiedPayment);
-        StorageService.saveDebts(allDebts);
-      }
-    }
-
-    const typeLabel = type === 'deposit' ? 'Deposit' : type === 'debt_payment' ? 'Debt Payment' : 'Withdrawal';
+    const typeLabel = type === 'deposit' ? 'Deposit' : 'Withdrawal';
     const message = `✓ ${typeLabel} recorded: ${type === 'deposit' ? '+' : '-'}${CalculationService.formatCurrency(transactionAmount)}. New balance: ${CalculationService.formatCurrency(newBalance)}`;
     onSuccess(message);
   };
@@ -1083,6 +1069,12 @@ function TransactionModal({
             </div>
           )}
         </div>
+
+        {error && (
+          <div className="mt-4 bg-red-50 border border-red-200 text-red-800 text-sm rounded-lg px-4 py-3">
+            {error}
+          </div>
+        )}
 
         <div className="flex space-x-3 mt-6">
           <button
