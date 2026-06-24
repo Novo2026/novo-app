@@ -5,7 +5,15 @@ import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import AddSavingsAccountModal from './AddSavingsAccountModal';
 import LogSavingsTransactionModal from './LogSavingsTransactionModal';
-import type { SavingsAccount, SavingsTransactionType } from '../types';
+import {
+  getSavingsCategory,
+  getSavingsTypeLabel,
+  isSavingsOutflow,
+  recalculateSavingsTransactions,
+  removeLinkedCheckingTransaction,
+} from '../utils/savingsTransactions';
+import EditSavingsTransactionModal from './EditSavingsTransactionModal';
+import type { SavingsAccount, SavingsTransaction, SavingsTransactionType } from '../types';
 
 export default function SavingsTracker() {
   const [showAddAccount, setShowAddAccount] = useState(false);
@@ -15,6 +23,10 @@ export default function SavingsTracker() {
   const [editingAccount, setEditingAccount] = useState<SavingsAccount | undefined>(undefined);
   const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
   const [refreshKey, setRefreshKey] = useState(0);
+  const [editingTransaction, setEditingTransaction] = useState<{
+    account: SavingsAccount;
+    transaction: SavingsTransaction;
+  } | null>(null);
 
   const accounts = StorageService.getSavingsAccounts();
   const metrics = CalculationService.calculateSavingsMetrics(accounts);
@@ -62,6 +74,44 @@ export default function SavingsTracker() {
       }
       return newSet;
     });
+  };
+
+  const handleDeleteTransaction = (account: SavingsAccount, transaction: SavingsTransaction) => {
+    if (transaction.linkedCheckingTransactionId && transaction.linkedCheckingAccountId) {
+      const deleteBoth = confirm(
+        'This transaction is linked to a checking account transfer.\n\n' +
+        'Click OK to delete both transactions, or Cancel to delete only the savings transaction.'
+      );
+      if (deleteBoth) {
+        removeLinkedCheckingTransaction(
+          transaction.linkedCheckingAccountId,
+          transaction.linkedCheckingTransactionId
+        );
+      }
+    } else if (!confirm('Delete this transaction? Balances will be recalculated.')) {
+      return;
+    }
+
+    const remaining = account.transactions.filter((t) => t.id !== transaction.id);
+    const { transactions, balance } = recalculateSavingsTransactions(remaining);
+    const updatedAccounts = StorageService.getSavingsAccounts().map((acc) =>
+      acc.id === account.id ? { ...acc, transactions, balance } : acc
+    );
+    StorageService.saveSavingsAccounts(updatedAccounts);
+    setRefreshKey((prev) => prev + 1);
+  };
+
+  const getTransactionTypeClass = (transaction: SavingsTransaction) => {
+    if (transaction.type === 'withdrawal' || transaction.type === 'transfer_to_checking') {
+      return 'bg-red-100 text-red-700';
+    }
+    if (transaction.type === 'interest') {
+      return 'bg-blue-100 text-blue-700';
+    }
+    if (transaction.type === 'transfer_from_checking') {
+      return 'bg-yellow-100 text-yellow-700';
+    }
+    return 'bg-green-100 text-green-700';
   };
 
   const chartData = growthData.map(item => ({
@@ -240,39 +290,60 @@ export default function SavingsTracker() {
                             <tr className="text-left text-gray-600">
                               <th className="pb-2">Date</th>
                               <th className="pb-2">Type</th>
+                              <th className="pb-2">Category</th>
+                              <th className="pb-2">Description</th>
                               <th className="pb-2 text-right">Amount</th>
                               <th className="pb-2 text-right">Balance</th>
+                              <th className="pb-2 text-right">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
                             {[...account.transactions]
-                              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                              .sort((a, b) => CalculationService.compareDateStrings(b.date, a.date))
                               .map(transaction => (
-                                <tr key={transaction.id} className="border-b border-gray-100">
+                                <tr key={transaction.id} className="border-b border-gray-100 hover:bg-gray-50">
                                   <td className="py-2 text-gray-700">
-                                    {CalculationService.formatDate(transaction.date)}
+                                    {CalculationService.formatLocalDateShort(transaction.date)}
                                   </td>
                                   <td className="py-2">
                                     <span
-                                      className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                                        transaction.type === 'deposit'
-                                          ? 'bg-green-100 text-green-700'
-                                          : transaction.type === 'withdrawal'
-                                          ? 'bg-red-100 text-red-700'
-                                          : 'bg-blue-100 text-blue-700'
-                                      }`}
+                                      className={`inline-block px-2 py-1 rounded text-xs font-medium ${getTransactionTypeClass(transaction)}`}
                                     >
-                                      {transaction.type}
+                                      {getSavingsTypeLabel(transaction.type)}
                                     </span>
                                   </td>
+                                  <td className="py-2 text-gray-600">
+                                    {getSavingsCategory(transaction)}
+                                  </td>
+                                  <td className="py-2 text-gray-700">
+                                    {transaction.description || '—'}
+                                  </td>
                                   <td className="py-2 text-right font-medium">
-                                    <span className={transaction.type === 'withdrawal' ? 'text-red-600' : 'text-green-600'}>
-                                      {transaction.type === 'withdrawal' ? '-' : '+'}
+                                    <span className={isSavingsOutflow(transaction.type) ? 'text-red-600' : 'text-green-600'}>
+                                      {isSavingsOutflow(transaction.type) ? '-' : '+'}
                                       {CalculationService.formatCurrency(transaction.amount)}
                                     </span>
                                   </td>
                                   <td className="py-2 text-right text-gray-700">
                                     {CalculationService.formatCurrency(transaction.balanceAfter)}
+                                  </td>
+                                  <td className="py-2 text-right">
+                                    <div className="flex items-center justify-end gap-1">
+                                      <button
+                                        onClick={() => setEditingTransaction({ account, transaction })}
+                                        className="p-2 text-[#2D9CDB] hover:bg-blue-50 rounded-lg transition-colors"
+                                        title="Edit"
+                                      >
+                                        <Edit2 className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteTransaction(account, transaction)}
+                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Delete"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
                                   </td>
                                 </tr>
                               ))}
@@ -331,6 +402,18 @@ export default function SavingsTracker() {
           onSuccess={handleSuccess}
           accountId={selectedAccountId}
           transactionType={transactionType}
+        />
+      )}
+
+      {editingTransaction && (
+        <EditSavingsTransactionModal
+          account={editingTransaction.account}
+          transaction={editingTransaction.transaction}
+          onClose={() => setEditingTransaction(null)}
+          onSuccess={() => {
+            setEditingTransaction(null);
+            setRefreshKey((prev) => prev + 1);
+          }}
         />
       )}
     </div>

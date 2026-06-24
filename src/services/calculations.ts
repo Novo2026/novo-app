@@ -672,7 +672,7 @@ export const CalculationService = {
     const currentYear = new Date().getFullYear();
     const totalInterestEarnedYTD = accounts.reduce((sum, account) => {
       const interestTransactions = account.transactions.filter(t => {
-        const transactionYear = new Date(t.date).getFullYear();
+        const transactionYear = CalculationService.parseLocalDate(t.date).getFullYear();
         return t.type === 'interest' && transactionYear === currentYear;
       });
       return sum + interestTransactions.reduce((tSum, t) => tSum + t.amount, 0);
@@ -682,15 +682,15 @@ export const CalculationService = {
     const currentMonthYear = new Date().getFullYear();
     const monthlySavingsRate = accounts.reduce((sum, account) => {
       const monthTransactions = account.transactions.filter(t => {
-        const transactionDate = new Date(t.date);
+        const transactionDate = CalculationService.parseLocalDate(t.date);
         return transactionDate.getMonth() === currentMonth &&
                transactionDate.getFullYear() === currentMonthYear;
       });
       const deposits = monthTransactions
-        .filter(t => t.type === 'deposit')
+        .filter(t => t.type === 'deposit' || t.type === 'transfer_from_checking')
         .reduce((tSum, t) => tSum + t.amount, 0);
       const withdrawals = monthTransactions
-        .filter(t => t.type === 'withdrawal')
+        .filter(t => t.type === 'withdrawal' || t.type === 'transfer_to_checking')
         .reduce((tSum, t) => tSum + t.amount, 0);
       return sum + (deposits - withdrawals);
     }, 0);
@@ -712,7 +712,7 @@ export const CalculationService = {
 
     accounts.forEach(account => {
       account.transactions.forEach(transaction => {
-        const date = new Date(transaction.date);
+        const date = CalculationService.parseLocalDate(transaction.date);
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
         if (!growthMap.has(monthKey)) {
@@ -731,12 +731,15 @@ export const CalculationService = {
         const endOfMonth = new Date(year, month, 0, 23, 59, 59);
 
         const transactionsUntilMonth = account.transactions.filter(t => {
-          const transactionDate = new Date(t.date);
+          const transactionDate = CalculationService.parseLocalDate(t.date);
           return transactionDate <= endOfMonth;
         });
 
         if (transactionsUntilMonth.length > 0) {
-          const lastTransaction = transactionsUntilMonth[transactionsUntilMonth.length - 1];
+          const sorted = [...transactionsUntilMonth].sort((a, b) =>
+            CalculationService.compareDateStrings(a.date, b.date)
+          );
+          const lastTransaction = sorted[sorted.length - 1];
           totalBalanceAtMonth += lastTransaction.balanceAfter;
         }
       });

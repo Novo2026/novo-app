@@ -87,7 +87,13 @@ export type SavingsAccountType =
   | 'Checking'
   | 'Other';
 
-export type SavingsTransactionType = 'deposit' | 'withdrawal' | 'interest';
+export type SavingsTransactionType =
+  | 'deposit'
+  | 'withdrawal'
+  | 'interest'
+  | 'transfer'
+  | 'transfer_to_checking'
+  | 'transfer_from_checking';
 
 export interface SavingsTransaction {
   id: string;
@@ -96,6 +102,9 @@ export interface SavingsTransaction {
   amount: number;
   description: string;
   balanceAfter: number;
+  category?: string;
+  linkedCheckingTransactionId?: string;
+  linkedCheckingAccountId?: string;
 }
 
 export interface SavingsAccount {
@@ -219,6 +228,7 @@ export type CheckingTransactionType =
   | 'withdrawal'
   | 'debt_payment'
   | 'transfer_to_savings'
+  | 'transfer_from_savings'
   | 'transfer_to_checking'
   | 'transfer_from_checking'
   | 'transfer_to_heloc'
@@ -243,6 +253,7 @@ export interface CheckingTransaction {
   debtName?: string;
   linkedHelocTransactionId?: string;
   linkedCheckingTransactionId?: string;
+  linkedSavingsTransactionId?: string;
   isTransferToHeloc?: boolean;
   isTransferFromHeloc?: boolean;
 }

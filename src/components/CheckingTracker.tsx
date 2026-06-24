@@ -7,6 +7,7 @@ import { StorageService } from '../services/storage';
 import DatePicker from './DatePicker';
 import PaymentLoggingGuidance from './PaymentLoggingGuidance';
 import type { CheckingAccount, CheckingTransaction, UnifiedPayment } from '../types';
+import { recalculateSavingsTransactions } from '../utils/savingsTransactions';
 import AddCheckingAccountModal from './AddCheckingAccountModal';
 import ReconcilePanel from './ReconcilePanel';
 
@@ -416,6 +417,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
           currentBalance={currentBalance}
           startingBalance={startingBalance}
           accountId={selectedAccountId}
+          sourceAccountName={selectedAccount?.name || 'Checking'}
         />
       )}
 
@@ -668,6 +670,7 @@ function TransactionLedger({
                         transaction.type === 'deposit' ? 'bg-green-100 text-green-800' :
                         transaction.type === 'debt_payment' ? 'bg-blue-100 text-blue-800' :
                         transaction.type === 'transfer_to_savings' ? 'bg-yellow-100 text-yellow-800' :
+                        transaction.type === 'transfer_from_savings' ? 'bg-yellow-100 text-yellow-800' :
                         transaction.type === 'transfer_to_checking' ? 'bg-sky-100 text-sky-800' :
                         transaction.type === 'transfer_from_checking' ? 'bg-sky-100 text-sky-800' :
                         transaction.type === 'transfer_from_heloc' ? 'bg-purple-100 text-purple-800' :
@@ -676,6 +679,7 @@ function TransactionLedger({
                       }`}>
                         {transaction.type === 'debt_payment' ? 'Debt Payment' :
                          transaction.type === 'transfer_to_savings' ? 'To Savings' :
+                         transaction.type === 'transfer_from_savings' ? 'From Savings' :
                          transaction.type === 'transfer_to_checking' ? 'To Checking' :
                          transaction.type === 'transfer_from_checking' ? 'From Checking' :
                          transaction.type === 'transfer_from_heloc' ? 'From HELOC' :
@@ -697,9 +701,9 @@ function TransactionLedger({
                   </td>
                   <td className="py-3 px-4 text-gray-800">{transaction.description}</td>
                   <td className={`py-3 px-4 text-right font-semibold ${
-                    transaction.type === 'deposit' || transaction.type === 'transfer_from_heloc' || transaction.type === 'transfer_from_checking' ? 'text-green-600' : 'text-red-600'
+                    transaction.type === 'deposit' || transaction.type === 'transfer_from_heloc' || transaction.type === 'transfer_from_checking' || transaction.type === 'transfer_from_savings' ? 'text-green-600' : 'text-red-600'
                   }`}>
-                    {transaction.type === 'deposit' || transaction.type === 'transfer_from_heloc' || transaction.type === 'transfer_from_checking' ? '+' : '-'}{CalculationService.formatCurrency(transaction.amount)}
+                    {transaction.type === 'deposit' || transaction.type === 'transfer_from_heloc' || transaction.type === 'transfer_from_checking' || transaction.type === 'transfer_from_savings' ? '+' : '-'}{CalculationService.formatCurrency(transaction.amount)}
                   </td>
                   <td className="py-3 px-4 text-right font-semibold text-gray-800">
                     {CalculationService.formatCurrency(transaction.balance)}
@@ -1333,12 +1337,14 @@ function TransferToSavingsModal({
   currentBalance,
   startingBalance,
   accountId,
+  sourceAccountName,
 }: {
   onClose: () => void;
   onSuccess: (message: string) => void;
   currentBalance: number;
   startingBalance: number;
   accountId: string;
+  sourceAccountName: string;
 }) {
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(CalculationService.getTodayDateString());
@@ -1382,16 +1388,22 @@ function TransferToSavingsModal({
     setIsSubmitting(true);
 
     try {
+      const savingsTxId = `savings_tx_${Date.now()}`;
+      const checkingTxId = `checking_${Date.now()}`;
+      const checkingDescription = description.trim() || `Transfer to ${selectedAccount?.name || 'Savings'}`;
+      const savingsDescription = description.trim() || `Transfer from ${sourceAccountName}`;
+
       const checkingTransactions = StorageService.getCheckingTransactionsForAccount(accountId);
       const newCheckingTx: CheckingTransaction = {
-        id: `checking_${Date.now()}`,
+        id: checkingTxId,
         accountId,
         date: transferDate,
         type: 'transfer_to_savings',
         amount: transferAmount,
-        description: description || `Transfer to ${selectedAccount?.name || 'Savings'}`,
+        description: checkingDescription,
         balance: 0,
         isReconciled: false,
+        linkedSavingsTransactionId: savingsTxId,
       };
       checkingTransactions.push(newCheckingTx);
       checkingTransactions.sort((a, b) => CalculationService.compareDateStrings(a.date, b.date));
@@ -1405,22 +1417,27 @@ function TransferToSavingsModal({
       }
 
       const account = allAccounts[accountIndex];
-      const newSavingsBalance = Math.round((account.balance + transferAmount) * 100) / 100;
-      const newTransaction = {
-        id: `savings_tx_${Date.now()}`,
+      const newSavingsTransaction = {
+        id: savingsTxId,
         date: transferDate,
-        type: 'deposit' as const,
+        type: 'transfer_from_checking' as const,
         amount: transferAmount,
-        description: description || 'Transfer from Checking',
-        balanceAfter: newSavingsBalance,
+        description: savingsDescription,
+        category: 'From Checking',
+        balanceAfter: 0,
+        linkedCheckingTransactionId: checkingTxId,
+        linkedCheckingAccountId: accountId,
       };
+
+      const { transactions: recalculated, balance: newSavingsBalance } = recalculateSavingsTransactions([
+        ...(account.transactions || []),
+        newSavingsTransaction,
+      ]);
 
       allAccounts[accountIndex] = {
         ...account,
         balance: newSavingsBalance,
-        transactions: [...(account.transactions || []), newTransaction].sort(
-          (a, b) => CalculationService.compareDateStrings(a.date, b.date)
-        ),
+        transactions: recalculated,
       };
       StorageService.saveSavingsAccounts(allAccounts);
 
@@ -1767,7 +1784,8 @@ function recalculateBalances(transactions: CheckingTransaction[], startingBalanc
     if (
       transaction.type === 'deposit' ||
       transaction.type === 'transfer_from_heloc' ||
-      transaction.type === 'transfer_from_checking'
+      transaction.type === 'transfer_from_checking' ||
+      transaction.type === 'transfer_from_savings'
     ) {
       runningBalance += transaction.amount;
     } else {

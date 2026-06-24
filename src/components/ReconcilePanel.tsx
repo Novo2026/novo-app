@@ -88,13 +88,13 @@ export default function ReconcilePanel({
   };
 
   const typeColor = (type: string) => {
-    if (type === 'deposit' || type === 'transfer_from_heloc' || type === 'transfer_from_checking') return 'text-emerald-600';
+    if (type === 'deposit' || type === 'transfer_from_heloc' || type === 'transfer_from_checking' || type === 'transfer_from_savings') return 'text-emerald-600';
     if (type === 'debt_payment') return 'text-orange-600';
     return 'text-red-500';
   };
 
   const typeSign = (type: string) => {
-    return type === 'deposit' || type === 'transfer_from_heloc' || type === 'transfer_from_checking' ? '+' : '-';
+    return type === 'deposit' || type === 'transfer_from_heloc' || type === 'transfer_from_checking' || type === 'transfer_from_savings' ? '+' : '-';
   };
 
   return (
