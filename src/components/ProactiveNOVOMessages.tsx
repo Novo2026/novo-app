@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, Calendar, MessageCircle } from 'lucide-react';
-import { getProactiveMessages, saveProactiveMessages, runMilestoneDetection } from '../utils/milestoneEngine';
+import { getProactiveMessages, saveProactiveMessages, runMilestoneDetection, MILESTONE_CELEBRATIONS_DISABLED } from '../utils/milestoneEngine';
 import type { NovoChatMessage } from '../utils/milestoneEngine';
 
 interface ProactiveNOVOMessagesProps {
@@ -11,6 +11,7 @@ export default function ProactiveNOVOMessages({ onOpenChat: _onOpenChat }: Proac
   const [messages, setMessages] = useState<NovoChatMessage[]>([]);
 
   useEffect(() => {
+    if (MILESTONE_CELEBRATIONS_DISABLED) return;
     runMilestoneDetection();
     // Filter out any stale DTI messages that may exist in localStorage
     // from before the DTI milestone was removed
@@ -37,7 +38,7 @@ export default function ProactiveNOVOMessages({ onOpenChat: _onOpenChat }: Proac
     setMessages(prev => prev.filter(m => m.id !== id));
   };
 
-  if (messages.length === 0) return null;
+  if (MILESTONE_CELEBRATIONS_DISABLED || messages.length === 0) return null;
 
   return (
     <div className="fixed bottom-24 right-4 z-40 space-y-3 max-w-sm w-full">

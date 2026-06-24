@@ -81,7 +81,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
     const data: { month: string; balance: number }[] = [];
 
     transactions.forEach((t) => {
-      const date = new Date(t.date);
+      const date = CalculationService.parseLocalDate(t.date);
       const monthStr = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
       if (data.length === 0 || data[data.length - 1].month !== monthStr) {
@@ -100,7 +100,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
     const currentYear = now.getFullYear();
 
     const currentMonthTransactions = transactions.filter(t => {
-      const txDate = new Date(t.date);
+      const txDate = CalculationService.parseLocalDate(t.date);
       return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
     });
 
@@ -587,7 +587,7 @@ function TransactionLedger({
   };
 
   const sortedTransactions = [...transactions].sort((a, b) =>
-    new Date(b.date).getTime() - new Date(a.date).getTime()
+    CalculationService.compareDateStrings(b.date, a.date)
   );
 
   return (
@@ -627,7 +627,7 @@ function TransactionLedger({
               {sortedTransactions.map((transaction) => (
                 <tr key={transaction.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-3 px-4 text-gray-800">
-                    {new Date(transaction.date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}
+                    {CalculationService.formatLocalDateShort(transaction.date)}
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center space-x-2">
@@ -715,7 +715,11 @@ function TransactionModal({
   const debts = StorageService.getDebts().filter(d => !d.isPaidOff);
 
   const [amount, setAmount] = useState(editTransaction?.amount.toString() || '');
-  const [date, setDate] = useState(editTransaction?.date || CalculationService.getTodayDateString());
+  const [date, setDate] = useState(
+    editTransaction?.date
+      ? CalculationService.normalizeDateString(editTransaction.date)
+      : CalculationService.getTodayDateString()
+  );
   const [description, setDescription] = useState(editTransaction?.description || '');
   const [selectedDebt, setSelectedDebt] = useState(editTransaction?.debtId || (debts.length > 0 ? debts[0].id : ''));
   const [expenseType, setExpenseType] = useState<'essential' | 'discretionary' | 'other'>(
@@ -788,7 +792,7 @@ function TransactionModal({
       transactions.push(newTransaction);
     }
 
-    transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    transactions.sort((a, b) => CalculationService.compareDateStrings(a.date, b.date));
     recalculateBalances(transactions, startingBalance);
 
     StorageService.saveCheckingTransactionsForAccount(accountId, transactions);
@@ -1103,7 +1107,7 @@ function TransferToHelocModal({
     };
 
     checkingTransactions.push(newCheckingTransaction);
-    checkingTransactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    checkingTransactions.sort((a, b) => CalculationService.compareDateStrings(a.date, b.date));
     recalculateBalances(checkingTransactions, startingBalance);
 
     StorageService.saveCheckingTransactionsForAccount(accountId, checkingTransactions);
@@ -1133,7 +1137,7 @@ function TransferToHelocModal({
       };
 
       helocTransactions.push(newHelocTransaction);
-      helocTransactions.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      helocTransactions.sort((a: any, b: any) => CalculationService.compareDateStrings(a.date, b.date));
 
       let runningHelocBalance = helocBalance;
       helocTransactions.forEach((txn: any) => {
@@ -1347,7 +1351,7 @@ function TransferToSavingsModal({
         isReconciled: false,
       };
       checkingTransactions.push(newCheckingTx);
-      checkingTransactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      checkingTransactions.sort((a, b) => CalculationService.compareDateStrings(a.date, b.date));
       recalculateBalances(checkingTransactions, startingBalance);
       StorageService.saveCheckingTransactionsForAccount(accountId, checkingTransactions);
 
@@ -1372,7 +1376,7 @@ function TransferToSavingsModal({
         ...account,
         balance: newSavingsBalance,
         transactions: [...(account.transactions || []), newTransaction].sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+          (a, b) => CalculationService.compareDateStrings(a.date, b.date)
         ),
       };
       StorageService.saveSavingsAccounts(allAccounts);

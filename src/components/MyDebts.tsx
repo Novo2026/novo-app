@@ -12,6 +12,7 @@ import SoldHomeModal from './SoldHomeModal';
 import HomeSaleCelebrationModal from './HomeSaleCelebrationModal';
 import AddReplacementMortgageModal from './AddReplacementMortgageModal';
 import CelebrationModal from './CelebrationModal';
+import { MILESTONE_CELEBRATIONS_DISABLED } from '../utils/milestoneEngine';
 import {
   formatLoanStartDateForDisplay,
   formatLoanTermForDisplay,
@@ -201,7 +202,9 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
       netProceeds: data.netProceeds,
     });
     setSoldHomeDebt(null);
-    setShowHomeSaleCelebration(true);
+    if (!MILESTONE_CELEBRATIONS_DISABLED) {
+      setShowHomeSaleCelebration(true);
+    }
     onDataUpdate();
   };
 
@@ -315,7 +318,9 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
 
     setShowMarkPaidOffConfirm(false);
     setMarkingPaidOffDebt(null);
-    setShowCelebration(true);
+    if (!MILESTONE_CELEBRATIONS_DISABLED) {
+      setShowCelebration(true);
+    }
     onDataUpdate();
   };
 
@@ -359,7 +364,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
     );
   }
 
-  if (showCelebration && celebrationData) {
+  if (showCelebration && celebrationData && !MILESTONE_CELEBRATIONS_DISABLED) {
     return (
       <CelebrationModal
         debtName={celebrationData.debtName}
@@ -872,7 +877,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
         />
       )}
 
-      {showHomeSaleCelebration && homeSaleCelebrationData && (
+      {showHomeSaleCelebration && homeSaleCelebrationData && !MILESTONE_CELEBRATIONS_DISABLED && (
         <HomeSaleCelebrationModal
           mortgageName={homeSaleCelebrationData.mortgageName}
           saleDate={homeSaleCelebrationData.saleDate}

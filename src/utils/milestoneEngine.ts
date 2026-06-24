@@ -36,6 +36,9 @@ export interface NovoChatMessage {
   ctaUrl?: string;
 }
 
+/** Suppress milestone toasts/popups until trigger logic is rebuilt post-launch. */
+export const MILESTONE_CELEBRATIONS_DISABLED = true;
+
 const STORAGE_KEY = 'novo_detected_milestones';
 const MESSAGES_KEY = 'novo_proactive_messages';
 const BEN_TASKS_KEY = 'novo_ben_tasks';
@@ -140,6 +143,7 @@ function triggerMilestone(
   ctaUrl?: string,
   isUrgent: boolean = false
 ): void {
+  if (MILESTONE_CELEBRATIONS_DISABLED) return;
   if (hasTriggered(type) && !isUrgent) return;
 
   const now = new Date().toISOString();
@@ -181,6 +185,7 @@ function triggerMilestone(
 }
 
 export function runMilestoneDetection(): void {
+  if (MILESTONE_CELEBRATIONS_DISABLED) return;
   const onboardingComplete = localStorage.getItem('novo_onboarding_complete');
   if (!onboardingComplete) return;
 

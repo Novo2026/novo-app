@@ -614,6 +614,30 @@ export const CalculationService = {
     return `${year}-${month}-${day}`;
   },
 
+  /** Parse YYYY-MM-DD (or ISO prefix) as local midnight — avoids UTC timezone rollback. */
+  parseLocalDate(dateString: string): Date {
+    const datePart = dateString.split('T')[0];
+    const [year, month, day] = datePart.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  },
+
+  /** Normalize stored dates to YYYY-MM-DD for date inputs. */
+  normalizeDateString(dateString: string): string {
+    return dateString.split('T')[0];
+  },
+
+  compareDateStrings(a: string, b: string): number {
+    return this.parseLocalDate(a).getTime() - this.parseLocalDate(b).getTime();
+  },
+
+  formatLocalDateShort(dateString: string): string {
+    return this.parseLocalDate(dateString).toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: '2-digit',
+    });
+  },
+
   addMonthsToDate(baseDate: Date, monthsToAdd: number): string {
     const newDate = new Date(baseDate);
     newDate.setMonth(newDate.getMonth() + monthsToAdd);
@@ -624,8 +648,7 @@ export const CalculationService = {
   },
 
   formatDate(dateString: string): string {
-    const [year, month, day] = dateString.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
+    const date = this.parseLocalDate(dateString);
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',

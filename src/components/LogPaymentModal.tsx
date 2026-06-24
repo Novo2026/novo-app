@@ -3,6 +3,7 @@ import { X, CheckCircle, AlertTriangle, CreditCard as Edit2, CreditCard, Home, F
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import CelebrationModal from './CelebrationModal';
+import { MILESTONE_CELEBRATIONS_DISABLED } from '../utils/milestoneEngine';
 import EditDebtModal from './EditDebtModal';
 import DatePicker from './DatePicker';
 import PaymentLoggingGuidance from './PaymentLoggingGuidance';
@@ -277,7 +278,11 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
         }
       }
 
-      setShowCelebration(true);
+      if (!MILESTONE_CELEBRATIONS_DISABLED) {
+        setShowCelebration(true);
+      } else {
+        setShowSuccess(true);
+      }
     } else {
       setShowSuccess(true);
     }
@@ -296,7 +301,7 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
     }
   };
 
-  if (showCelebration && calculationResult) {
+  if (showCelebration && calculationResult && !MILESTONE_CELEBRATIONS_DISABLED) {
     return (
       <CelebrationModal
         debtName={calculationResult.debtName}
