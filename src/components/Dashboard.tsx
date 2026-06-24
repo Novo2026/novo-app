@@ -8,9 +8,12 @@ import {
   Pencil,
   Trash2,
   Target,
-  Home,
   Sliders,
   Info,
+  ArrowDown,
+  ArrowUp,
+  PiggyBank,
+  ArrowLeftRight,
   type LucideIcon,
 } from 'lucide-react';
 import { StorageService } from '../services/storage';
@@ -53,6 +56,22 @@ function getDebtProgressInfo(debt: Debt) {
   return { paidOff, percentage, isOpenAccount };
 }
 
+function getDebtRowAccentBorder(debt: Debt, isOpenAccount: boolean): string {
+  if (isOpenAccount) return 'border-l-brand-gray';
+  switch (debt.category) {
+    case 'Mortgage':
+      return 'border-l-brand-blue';
+    case 'Auto Loan':
+      return 'border-l-brand-orange';
+    case 'Credit Card':
+      return 'border-l-brand-red';
+    case 'Personal Loan':
+      return 'border-l-brand-green';
+    default:
+      return 'border-l-brand-gray';
+  }
+}
+
 function getActivityDisplayMeta(type: string): {
   iconBg: string;
   iconColor: string;
@@ -60,20 +79,25 @@ function getActivityDisplayMeta(type: string): {
 } {
   switch (type) {
     case 'payment':
-    case 'heloc_payment':
+      return { iconBg: 'bg-purple-100', iconColor: 'text-purple-700', Icon: CreditCard };
     case 'checking_deposit':
-      return { iconBg: 'bg-brand-green-light', iconColor: 'text-brand-green', Icon: DollarSign };
+    case 'heloc_payment':
+    case 'transfer_from_savings':
+      return { iconBg: 'bg-green-100', iconColor: 'text-green-700', Icon: ArrowDown };
     case 'charge':
     case 'heloc_interest':
     case 'checking_withdrawal':
-      return { iconBg: 'bg-brand-red-light', iconColor: 'text-red-700', Icon: CreditCard };
+      return { iconBg: 'bg-red-100', iconColor: 'text-red-700', Icon: ArrowUp };
+    case 'transfer_to_savings':
+      return { iconBg: 'bg-amber-100', iconColor: 'text-amber-700', Icon: PiggyBank };
     case 'heloc_draw':
     case 'checking_transfer':
-      return { iconBg: 'bg-brand-blue-light', iconColor: 'text-brand-blue', Icon: Home };
+    case 'transfer_to_checking':
+      return { iconBg: 'bg-blue-100', iconColor: 'text-blue-700', Icon: ArrowLeftRight };
     case 'milestone':
-      return { iconBg: 'bg-brand-green-light', iconColor: 'text-brand-green', Icon: CheckCircle };
+      return { iconBg: 'bg-green-100', iconColor: 'text-green-700', Icon: CheckCircle };
     default:
-      return { iconBg: 'bg-brand-gray-light', iconColor: 'text-brand-gray', Icon: DollarSign };
+      return { iconBg: 'bg-brand-gray-light', iconColor: 'text-brand-gray', Icon: ArrowDown };
   }
 }
 
@@ -318,7 +342,7 @@ export default function Dashboard({
           date: ct.date,
           description: `Received from HELOC for expenses`,
           type: 'checking_transfer',
-          icon: '🏦',
+          icon: '',
           amount: ct.amount,
           amountColor: 'text-brand-blue',
           source: 'checking',
@@ -328,7 +352,7 @@ export default function Dashboard({
           date: ct.date,
           description: `Paid ${ct.category || 'bill'}`,
           type: 'checking_withdrawal',
-          icon: '💳',
+          icon: '',
           amount: ct.amount,
           amountColor: 'text-red-600',
           source: 'checking',
@@ -338,7 +362,7 @@ export default function Dashboard({
           date: ct.date,
           description: ct.description || 'Deposit',
           type: 'checking_deposit',
-          icon: '💰',
+          icon: '',
           amount: ct.amount,
           amountColor: 'text-brand-green',
           source: 'checking',
@@ -426,7 +450,7 @@ export default function Dashboard({
 
       <div className="max-w-5xl mx-auto px-5 pb-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 my-5">
-          <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-orange">
+          <div className="bg-orange-50 border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-orange">
             <p className="text-[11px] text-brand-gray uppercase tracking-wide">Total debt</p>
             <p className="text-[22px] font-medium text-brand-navy mt-1">
               {CalculationService.formatCurrency(metrics.totalCurrentBalance)}
@@ -435,7 +459,7 @@ export default function Dashboard({
               {metrics.progressPercentage.toFixed(1)}% paid off
             </p>
           </div>
-          <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-green">
+          <div className="bg-green-50 border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-green">
             <p className="text-[11px] text-brand-gray uppercase tracking-wide">Cash on hand</p>
             <p className="text-[22px] font-medium text-brand-navy mt-1">
               {CalculationService.formatCurrency(cashOnHand)}
@@ -446,14 +470,14 @@ export default function Dashboard({
                 : 'No checking accounts'}
             </p>
           </div>
-          <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-blue">
+          <div className="bg-blue-50 border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-blue">
             <p className="text-[11px] text-brand-gray uppercase tracking-wide">Monthly surplus</p>
             <p className="text-[22px] font-medium text-brand-navy mt-1">
               {CalculationService.formatCurrency(monthlySurplusValue)}
             </p>
             <p className="text-[11px] text-brand-gray mt-0.5">After savings carve-out</p>
           </div>
-          <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-orange-dark">
+          <div className="bg-purple-50 border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-orange-dark">
             <p className="text-[11px] text-brand-gray uppercase tracking-wide">Debt-free date</p>
             <p className="text-[22px] font-medium text-brand-navy mt-1">
               {optimizedProjection
@@ -575,7 +599,7 @@ export default function Dashboard({
             )}
 
             {targetDebt && (
-              <div className="bg-white border border-brand-gray-border rounded-lg p-4">
+              <div className="bg-orange-50 border border-brand-gray-border rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Target className="w-4 h-4 text-brand-orange" />
                   <h3 className="text-sm font-medium text-brand-navy">Focus this month</h3>
@@ -638,7 +662,7 @@ export default function Dashboard({
                     return (
                       <div
                         key={debt.id}
-                        className={`px-4 py-3 ${index > 0 ? 'border-t border-brand-gray-border' : ''}`}
+                        className={`px-4 py-3 border-l-4 ${getDebtRowAccentBorder(debt, isOpenAccount)} ${index > 0 ? 'border-t border-brand-gray-border' : ''}`}
                       >
                         <div className="flex items-start gap-3">
                           <div className="flex-1 min-w-0">

@@ -141,7 +141,14 @@ export default function StartHereRibbon({ onNavigate, onOpenChat, userName }: St
   const dismissed = localStorage.getItem(RIBBON_KEY) === 'true';
 
   if (dismissed) return null;
-  if (allComplete) return null;
+  if (allComplete) {
+    return (
+      <div className="bg-green-50 border border-green-200 rounded-lg py-3 px-4 flex items-center gap-3">
+        <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+        <p className="text-[13px] text-green-800">Setup complete — your plan is fully activated</p>
+      </div>
+    );
+  }
 
   const currentStep = steps.find(s => !s.checkComplete());
 
