@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Plus, Download, Upload, CreditCard as Edit2, X, DollarSign, CreditCard, TrendingUp, TrendingDown, Link2, ArrowRightLeft, PiggyBank, CheckCircle2, Building2 } from 'lucide-react';
 import StatementUploadModal from './StatementUploadModal';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -8,6 +8,10 @@ import DatePicker from './DatePicker';
 import PaymentLoggingGuidance from './PaymentLoggingGuidance';
 import type { CheckingAccount, CheckingTransaction, UnifiedPayment } from '../types';
 import { recalculateSavingsTransactions } from '../utils/savingsTransactions';
+import {
+  getActiveCheckingAccountId,
+  setActiveCheckingAccountId,
+} from '../utils/activeAccountSession';
 import AddCheckingAccountModal from './AddCheckingAccountModal';
 import ReconcilePanel from './ReconcilePanel';
 
@@ -43,18 +47,37 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<CheckingAccount[]>(() => StorageService.getCheckingAccounts());
-  const [selectedAccountId, setSelectedAccountId] = useState<string>(() => {
-    const accts = StorageService.getCheckingAccounts();
-    return accts.find(a => a.isDefault)?.id || accts[0]?.id || '';
-  });
+  const [selectedAccountId, setSelectedAccountId] = useState<string>(() =>
+    getActiveCheckingAccountId(StorageService.getCheckingAccounts())
+  );
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [showReconcilePanel, setShowReconcilePanel] = useState(false);
+
+  useEffect(() => {
+    const accts = StorageService.getCheckingAccounts();
+    setAccounts(accts);
+    setSelectedAccountId((current) => {
+      if (current && accts.some((a) => a.id === current)) {
+        return current;
+      }
+      const fallback = getActiveCheckingAccountId(accts);
+      if (fallback) {
+        setActiveCheckingAccountId(fallback);
+      }
+      return fallback;
+    });
+  }, [refreshTrigger]);
+
+  const selectCheckingAccount = (accountId: string) => {
+    setSelectedAccountId(accountId);
+    setActiveCheckingAccountId(accountId);
+  };
 
   const handleAddAccount = (account: CheckingAccount) => {
     const updated = [...accounts, account];
     StorageService.saveCheckingAccounts(updated);
     setAccounts(updated);
-    setSelectedAccountId(account.id);
+    selectCheckingAccount(account.id);
     setShowAddAccount(false);
   };
 
@@ -151,7 +174,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
         {accounts.map(account => (
           <button
             key={account.id}
-            onClick={() => setSelectedAccountId(account.id)}
+            onClick={() => selectCheckingAccount(account.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
               selectedAccountId === account.id
                 ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'

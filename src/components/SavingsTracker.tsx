@@ -13,15 +13,24 @@ import {
   removeLinkedCheckingTransaction,
 } from '../utils/savingsTransactions';
 import EditSavingsTransactionModal from './EditSavingsTransactionModal';
+import {
+  getActiveSavingsAccountId,
+  setActiveSavingsAccountId,
+} from '../utils/activeAccountSession';
 import type { SavingsAccount, SavingsTransaction, SavingsTransactionType } from '../types';
 
 export default function SavingsTracker() {
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [showLogTransaction, setShowLogTransaction] = useState(false);
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+  const [activeAccountId, setActiveAccountId] = useState<string | null>(() =>
+    getActiveSavingsAccountId(StorageService.getSavingsAccounts())
+  );
   const [transactionType, setTransactionType] = useState<SavingsTransactionType>('deposit');
   const [editingAccount, setEditingAccount] = useState<SavingsAccount | undefined>(undefined);
-  const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(new Set());
+  const [expandedAccounts, setExpandedAccounts] = useState<Set<string>>(() => {
+    const activeId = getActiveSavingsAccountId(StorageService.getSavingsAccounts());
+    return activeId ? new Set([activeId]) : new Set();
+  });
   const [refreshKey, setRefreshKey] = useState(0);
   const [editingTransaction, setEditingTransaction] = useState<{
     account: SavingsAccount;
@@ -31,6 +40,12 @@ export default function SavingsTracker() {
   const accounts = StorageService.getSavingsAccounts();
   const metrics = CalculationService.calculateSavingsMetrics(accounts);
   const growthData = CalculationService.calculateSavingsGrowthData(accounts);
+
+  const selectActiveAccount = (accountId: string) => {
+    setActiveAccountId(accountId);
+    setActiveSavingsAccountId(accountId);
+    setExpandedAccounts((prev) => new Set(prev).add(accountId));
+  };
 
   const handleAddAccountClick = () => {
     setEditingAccount(undefined);
@@ -46,12 +61,20 @@ export default function SavingsTracker() {
     if (confirm('Are you sure you want to delete this account? This action cannot be undone.')) {
       const updatedAccounts = accounts.filter(acc => acc.id !== accountId);
       StorageService.saveSavingsAccounts(updatedAccounts);
+      if (activeAccountId === accountId) {
+        const nextActive = updatedAccounts[0]?.id ?? null;
+        if (nextActive) {
+          selectActiveAccount(nextActive);
+        } else {
+          setActiveAccountId(null);
+        }
+      }
       setRefreshKey(prev => prev + 1);
     }
   };
 
   const handleLogTransactionClick = (accountId: string, type: SavingsTransactionType) => {
-    setSelectedAccountId(accountId);
+    selectActiveAccount(accountId);
     setTransactionType(type);
     setShowLogTransaction(true);
   };
@@ -59,13 +82,13 @@ export default function SavingsTracker() {
   const handleSuccess = () => {
     setShowAddAccount(false);
     setShowLogTransaction(false);
-    setSelectedAccountId(null);
     setEditingAccount(undefined);
-    setRefreshKey(prev => prev + 1);
+    setRefreshKey((prev) => prev + 1);
   };
 
   const toggleAccountExpansion = (accountId: string) => {
-    setExpandedAccounts(prev => {
+    selectActiveAccount(accountId);
+    setExpandedAccounts((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(accountId)) {
         newSet.delete(accountId);
@@ -98,6 +121,7 @@ export default function SavingsTracker() {
       acc.id === account.id ? { ...acc, transactions, balance } : acc
     );
     StorageService.saveSavingsAccounts(updatedAccounts);
+    selectActiveAccount(account.id);
     setRefreshKey((prev) => prev + 1);
   };
 
@@ -149,7 +173,7 @@ export default function SavingsTracker() {
   }
 
   return (
-    <div className="space-y-8" key={refreshKey}>
+    <div className="space-y-8">
       <div className="bg-gradient-to-br from-[#27AE60] to-[#229954] text-white rounded-xl shadow-lg p-8">
         <h2 className="text-2xl font-bold mb-6">Savings Summary</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -190,11 +214,14 @@ export default function SavingsTracker() {
               ? (account.balance / account.goalAmount) * 100
               : 0;
             const isExpanded = expandedAccounts.has(account.id);
+            const isActive = activeAccountId === account.id;
 
             return (
               <div
-                key={account.id}
-                className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden"
+                key={`${account.id}-${refreshKey}`}
+                className={`bg-white rounded-lg shadow-md border overflow-hidden ${
+                  isActive ? 'border-[#27AE60] ring-2 ring-[#27AE60]/30' : 'border-gray-200'
+                }`}
               >
                 <div className="p-6">
                   <div className="flex justify-between items-start mb-3">
@@ -330,14 +357,20 @@ export default function SavingsTracker() {
                                   <td className="py-2 text-right">
                                     <div className="flex items-center justify-end gap-1">
                                       <button
-                                        onClick={() => setEditingTransaction({ account, transaction })}
+                                        onClick={() => {
+                                          selectActiveAccount(account.id);
+                                          setEditingTransaction({ account, transaction });
+                                        }}
                                         className="p-2 text-[#2D9CDB] hover:bg-blue-50 rounded-lg transition-colors"
                                         title="Edit"
                                       >
                                         <Edit2 className="w-4 h-4" />
                                       </button>
                                       <button
-                                        onClick={() => handleDeleteTransaction(account, transaction)}
+                                        onClick={() => {
+                                          selectActiveAccount(account.id);
+                                          handleDeleteTransaction(account, transaction);
+                                        }}
                                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                         title="Delete"
                                       >
@@ -393,14 +426,13 @@ export default function SavingsTracker() {
         />
       )}
 
-      {showLogTransaction && selectedAccountId && (
+      {showLogTransaction && activeAccountId && (
         <LogSavingsTransactionModal
           onClose={() => {
             setShowLogTransaction(false);
-            setSelectedAccountId(null);
           }}
           onSuccess={handleSuccess}
-          accountId={selectedAccountId}
+          accountId={activeAccountId}
           transactionType={transactionType}
         />
       )}
@@ -411,6 +443,7 @@ export default function SavingsTracker() {
           transaction={editingTransaction.transaction}
           onClose={() => setEditingTransaction(null)}
           onSuccess={() => {
+            selectActiveAccount(editingTransaction.account.id);
             setEditingTransaction(null);
             setRefreshKey((prev) => prev + 1);
           }}
