@@ -1291,16 +1291,20 @@ function TransferToSavingsModal({
   onSuccess,
   currentBalance,
   startingBalance,
+  accountId,
 }: {
   onClose: () => void;
   onSuccess: (message: string) => void;
   currentBalance: number;
   startingBalance: number;
+  accountId: string;
 }) {
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(CalculationService.getTodayDateString());
   const [description, setDescription] = useState('');
   const [selectedAccountId, setSelectedAccountId] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const savingsAccounts = StorageService.getSavingsAccounts().filter(a => !('isArchived' in a && a.isArchived));
 
@@ -1309,56 +1313,79 @@ function TransferToSavingsModal({
   const selectedAccount = savingsAccounts.find(a => a.id === selectedAccountId);
 
   const handleSubmit = () => {
+    setError(null);
+
+    if (!accountId) {
+      setError('No checking account selected. Please select a checking account and try again.');
+      return;
+    }
     if (!transferAmount || transferAmount <= 0) {
-      alert('Please enter a valid amount');
+      setError('Please enter a valid amount.');
       return;
     }
     if (transferAmount > currentBalance) {
-      alert('Transfer amount cannot exceed current checking balance');
+      setError('Transfer amount cannot exceed your current checking balance.');
       return;
     }
     if (!selectedAccountId) {
-      alert('Please select a savings account');
+      setError('Please select a savings account.');
       return;
     }
 
-    // Record outflow in checking
-    const checkingTransactions = StorageService.getCheckingTransactionsForAccount(accountId);
-    const newCheckingTx: CheckingTransaction = {
-      id: `checking_${Date.now()}`,
-      accountId,
-      date,
-      type: 'transfer_to_savings',
-      amount: transferAmount,
-      description: description || `Transfer to ${selectedAccount?.name || 'Savings'}`,
-      balance: 0,
-      isReconciled: false,
-    };
-    checkingTransactions.push(newCheckingTx);
-    checkingTransactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    recalculateBalances(checkingTransactions, startingBalance);
-    StorageService.saveCheckingTransactionsForAccount(accountId, checkingTransactions);
+    setIsSubmitting(true);
 
-    // Auto-deposit into the selected savings account
-    const allAccounts = StorageService.getSavingsAccounts();
-    const accountIndex = allAccounts.findIndex(a => a.id === selectedAccountId);
-    if (accountIndex !== -1) {
+    try {
+      const checkingTransactions = StorageService.getCheckingTransactionsForAccount(accountId);
+      const newCheckingTx: CheckingTransaction = {
+        id: `checking_${Date.now()}`,
+        accountId,
+        date,
+        type: 'transfer_to_savings',
+        amount: transferAmount,
+        description: description || `Transfer to ${selectedAccount?.name || 'Savings'}`,
+        balance: 0,
+        isReconciled: false,
+      };
+      checkingTransactions.push(newCheckingTx);
+      checkingTransactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      recalculateBalances(checkingTransactions, startingBalance);
+      StorageService.saveCheckingTransactionsForAccount(accountId, checkingTransactions);
+
+      const allAccounts = StorageService.getSavingsAccounts();
+      const accountIndex = allAccounts.findIndex(a => a.id === selectedAccountId);
+      if (accountIndex === -1) {
+        throw new Error('Selected savings account could not be found.');
+      }
+
       const account = allAccounts[accountIndex];
+      const newSavingsBalance = Math.round((account.balance + transferAmount) * 100) / 100;
       const newTransaction = {
         id: `savings_tx_${Date.now()}`,
         date,
         type: 'deposit' as const,
         amount: transferAmount,
         description: description || 'Transfer from Checking',
-        balanceAfter: account.balance + transferAmount,
+        balanceAfter: newSavingsBalance,
       };
-      account.balance = account.balance + transferAmount;
-      account.transactions = [...(account.transactions || []), newTransaction];
-      allAccounts[accountIndex] = account;
-      StorageService.saveSavingsAccounts(allAccounts);
-    }
 
-    onSuccess(`✓ Transferred ${CalculationService.formatCurrency(transferAmount)} to ${selectedAccount?.name || 'Savings'}. New checking balance: ${CalculationService.formatCurrency(newBalance)}`);
+      allAccounts[accountIndex] = {
+        ...account,
+        balance: newSavingsBalance,
+        transactions: [...(account.transactions || []), newTransaction].sort(
+          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        ),
+      };
+      StorageService.saveSavingsAccounts(allAccounts);
+
+      onSuccess(
+        `Transfer complete — ${CalculationService.formatCurrency(transferAmount)} moved to ${selectedAccount?.name || 'Savings'}. Checking balance: ${CalculationService.formatCurrency(newBalance)}`
+      );
+    } catch (err) {
+      console.error('Transfer to Savings failed:', err);
+      setError(err instanceof Error ? err.message : 'Transfer failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -1434,16 +1461,22 @@ function TransferToSavingsModal({
           </div>
         )}
 
+        {error && (
+          <div className="mt-4 bg-red-50 border border-red-200 text-red-800 text-sm rounded-lg px-4 py-3">
+            {error}
+          </div>
+        )}
+
         <div className="flex space-x-3 mt-6">
           <button onClick={onClose} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-colors">
             Cancel
           </button>
           <button
             onClick={handleSubmit}
-            disabled={savingsAccounts.length === 0}
+            disabled={savingsAccounts.length === 0 || isSubmitting}
             className="flex-1 bg-[#F59E0B] hover:bg-[#D97706] disabled:opacity-50 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
           >
-            Transfer
+            {isSubmitting ? 'Transferring...' : 'Transfer'}
           </button>
         </div>
       </div>
