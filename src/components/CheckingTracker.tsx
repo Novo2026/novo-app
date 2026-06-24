@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Plus, Download, Upload, CreditCard as Edit2, X, DollarSign, CreditCard, TrendingUp, TrendingDown, Link2, ArrowRightLeft, PiggyBank, CheckCircle2 } from 'lucide-react';
+import { Plus, Download, Upload, CreditCard as Edit2, X, DollarSign, CreditCard, TrendingUp, TrendingDown, Link2, ArrowRightLeft, PiggyBank, CheckCircle2, Building2 } from 'lucide-react';
 import StatementUploadModal from './StatementUploadModal';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CalculationService } from '../services/calculations';
@@ -36,6 +36,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
   const [showStatementUpload, setShowStatementUpload] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showSavingsTransferModal, setShowSavingsTransferModal] = useState(false);
+  const [showCheckingTransferModal, setShowCheckingTransferModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<CheckingTransaction | null>(null);
   const [modalType, setModalType] = useState<'deposit' | 'withdrawal' | 'debt_payment'>('deposit');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -67,6 +68,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
   const currentBalance = transactions.length > 0
     ? transactions[transactions.length - 1].balance
     : startingBalance;
+  const canTransferToChecking = accounts.length > 1;
 
   const recentDeposits = transactions
     .filter(t => t.type === 'deposit')
@@ -250,6 +252,19 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
             <span>Transfer to Savings</span>
           </button>
           <button
+            onClick={() => canTransferToChecking && setShowCheckingTransferModal(true)}
+            disabled={!canTransferToChecking}
+            title={!canTransferToChecking ? 'Add another checking account to enable transfers between accounts' : undefined}
+            className={`flex items-center space-x-2 font-semibold py-2 px-4 rounded-lg transition-colors ${
+              canTransferToChecking
+                ? 'bg-[#F59E0B] hover:bg-[#D97706] text-white'
+                : 'bg-[#F59E0B]/40 text-white/80 cursor-not-allowed'
+            }`}
+          >
+            <Building2 className="w-4 h-4" />
+            <span>Transfer to Checking</span>
+          </button>
+          <button
             onClick={() => setShowTransferModal(true)}
             className="flex items-center space-x-2 bg-[#9B59B6] hover:bg-[#8E44AD] font-semibold py-2 px-4 rounded-lg transition-colors"
           >
@@ -401,6 +416,24 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
           currentBalance={currentBalance}
           startingBalance={startingBalance}
           accountId={selectedAccountId}
+        />
+      )}
+
+      {showCheckingTransferModal && (
+        <TransferToCheckingModal
+          onClose={() => setShowCheckingTransferModal(false)}
+          onSuccess={(message) => {
+            setShowCheckingTransferModal(false);
+            setSuccessMessage(message);
+            setRefreshTrigger(prev => prev + 1);
+            onDataUpdate?.();
+            setTimeout(() => setSuccessMessage(null), 5000);
+          }}
+          sourceAccountId={selectedAccountId}
+          sourceAccountName={selectedAccount?.name || 'Checking'}
+          currentBalance={currentBalance}
+          startingBalance={startingBalance}
+          checkingAccounts={accounts}
         />
       )}
 
@@ -635,12 +668,16 @@ function TransactionLedger({
                         transaction.type === 'deposit' ? 'bg-green-100 text-green-800' :
                         transaction.type === 'debt_payment' ? 'bg-blue-100 text-blue-800' :
                         transaction.type === 'transfer_to_savings' ? 'bg-yellow-100 text-yellow-800' :
+                        transaction.type === 'transfer_to_checking' ? 'bg-sky-100 text-sky-800' :
+                        transaction.type === 'transfer_from_checking' ? 'bg-sky-100 text-sky-800' :
                         transaction.type === 'transfer_from_heloc' ? 'bg-purple-100 text-purple-800' :
                         transaction.type === 'transfer_to_heloc' ? 'bg-purple-100 text-purple-800' :
                         'bg-red-100 text-red-800'
                       }`}>
                         {transaction.type === 'debt_payment' ? 'Debt Payment' :
                          transaction.type === 'transfer_to_savings' ? 'To Savings' :
+                         transaction.type === 'transfer_to_checking' ? 'To Checking' :
+                         transaction.type === 'transfer_from_checking' ? 'From Checking' :
                          transaction.type === 'transfer_from_heloc' ? 'From HELOC' :
                          transaction.type === 'transfer_to_heloc' ? 'To HELOC' :
                          transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
@@ -660,9 +697,9 @@ function TransactionLedger({
                   </td>
                   <td className="py-3 px-4 text-gray-800">{transaction.description}</td>
                   <td className={`py-3 px-4 text-right font-semibold ${
-                    transaction.type === 'deposit' || transaction.type === 'transfer_from_heloc' ? 'text-green-600' : 'text-red-600'
+                    transaction.type === 'deposit' || transaction.type === 'transfer_from_heloc' || transaction.type === 'transfer_from_checking' ? 'text-green-600' : 'text-red-600'
                   }`}>
-                    {transaction.type === 'deposit' || transaction.type === 'transfer_from_heloc' ? '+' : '-'}{CalculationService.formatCurrency(transaction.amount)}
+                    {transaction.type === 'deposit' || transaction.type === 'transfer_from_heloc' || transaction.type === 'transfer_from_checking' ? '+' : '-'}{CalculationService.formatCurrency(transaction.amount)}
                   </td>
                   <td className="py-3 px-4 text-right font-semibold text-gray-800">
                     {CalculationService.formatCurrency(transaction.balance)}
@@ -1501,11 +1538,237 @@ function TransferToSavingsModal({
   );
 }
 
+function TransferToCheckingModal({
+  onClose,
+  onSuccess,
+  sourceAccountId,
+  sourceAccountName,
+  currentBalance,
+  startingBalance,
+  checkingAccounts,
+}: {
+  onClose: () => void;
+  onSuccess: (message: string) => void;
+  sourceAccountId: string;
+  sourceAccountName: string;
+  currentBalance: number;
+  startingBalance: number;
+  checkingAccounts: CheckingAccount[];
+}) {
+  const [amount, setAmount] = useState('');
+  const [date, setDate] = useState(CalculationService.getTodayDateString());
+  const [description, setDescription] = useState('');
+  const [destinationAccountId, setDestinationAccountId] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const otherCheckingAccounts = checkingAccounts.filter(a => a.id !== sourceAccountId);
+  const destinationAccount = otherCheckingAccounts.find(a => a.id === destinationAccountId);
+  const destinationBalance = destinationAccountId
+    ? getCheckingAccountBalance(destinationAccountId, checkingAccounts)
+    : 0;
+
+  const transferAmount = parseFloat(amount) || 0;
+  const sourceBalanceAfter = Math.max(0, currentBalance - transferAmount);
+  const destinationBalanceAfter = destinationAccountId
+    ? Math.round((destinationBalance + transferAmount) * 100) / 100
+    : destinationBalance;
+
+  const handleSubmit = () => {
+    setError(null);
+
+    if (!sourceAccountId) {
+      setError('No source checking account selected.');
+      return;
+    }
+    if (!transferAmount || transferAmount <= 0) {
+      setError('Please enter a valid amount.');
+      return;
+    }
+    if (transferAmount > currentBalance) {
+      setError('Transfer amount cannot exceed your current checking balance.');
+      return;
+    }
+    if (!destinationAccountId) {
+      setError('Please select a receiving checking account.');
+      return;
+    }
+    if (!date) {
+      setError('Please select a date.');
+      return;
+    }
+
+    const transferDate = CalculationService.normalizeDateString(date);
+    const sharedDescription = description.trim()
+      || `Transfer: ${sourceAccountName} → ${destinationAccount?.name || 'Checking'}`;
+
+    setIsSubmitting(true);
+
+    try {
+      const sourceTxId = `checking_${Date.now()}_out`;
+      const destTxId = `checking_${Date.now()}_in`;
+
+      const sourceTransactions = StorageService.getCheckingTransactionsForAccount(sourceAccountId);
+      const newSourceTx: CheckingTransaction = {
+        id: sourceTxId,
+        accountId: sourceAccountId,
+        date: transferDate,
+        type: 'transfer_to_checking',
+        amount: transferAmount,
+        description: sharedDescription,
+        balance: 0,
+        isReconciled: false,
+        linkedCheckingTransactionId: destTxId,
+      };
+      sourceTransactions.push(newSourceTx);
+      sourceTransactions.sort((a, b) => CalculationService.compareDateStrings(a.date, b.date));
+      recalculateBalances(sourceTransactions, startingBalance);
+      StorageService.saveCheckingTransactionsForAccount(sourceAccountId, sourceTransactions);
+
+      const destAccount = checkingAccounts.find(a => a.id === destinationAccountId);
+      if (!destAccount) {
+        throw new Error('Receiving checking account could not be found.');
+      }
+
+      const destStartingBalance = destAccount.startingBalance ?? 0;
+      const destTransactions = StorageService.getCheckingTransactionsForAccount(destinationAccountId);
+      const newDestTx: CheckingTransaction = {
+        id: destTxId,
+        accountId: destinationAccountId,
+        date: transferDate,
+        type: 'transfer_from_checking',
+        amount: transferAmount,
+        description: sharedDescription,
+        balance: 0,
+        isReconciled: false,
+        linkedCheckingTransactionId: sourceTxId,
+      };
+      destTransactions.push(newDestTx);
+      destTransactions.sort((a, b) => CalculationService.compareDateStrings(a.date, b.date));
+      recalculateBalances(destTransactions, destStartingBalance);
+      StorageService.saveCheckingTransactionsForAccount(destinationAccountId, destTransactions);
+
+      onSuccess(
+        `Transfer complete — ${CalculationService.formatCurrency(transferAmount)} moved to ${destinationAccount?.name || 'Checking'}. This account balance: ${CalculationService.formatCurrency(sourceBalanceAfter)}`
+      );
+    } catch (err) {
+      console.error('Transfer to Checking failed:', err);
+      setError(err instanceof Error ? err.message : 'Transfer failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+        <h3 className="text-xl font-bold text-gray-800 mb-2">Transfer to Checking</h3>
+        <p className="text-sm text-gray-600 mb-4">Move money to another checking account</p>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Select Checking Account</label>
+            <select
+              value={destinationAccountId}
+              onChange={(e) => setDestinationAccountId(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
+            >
+              <option value="">Choose account...</option>
+              {otherCheckingAccounts.map(a => (
+                <option key={a.id} value={a.id}>
+                  {a.name}{a.bankName ? ` · ${a.bankName}` : ''} — Balance: {CalculationService.formatCurrency(getCheckingAccountBalance(a.id, checkingAccounts))}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Amount</label>
+            <div className="relative">
+              <span className="absolute left-3 top-2 text-gray-600">$</span>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
+                placeholder="0.00"
+                step="0.01"
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Available: {CalculationService.formatCurrency(currentBalance)}</p>
+          </div>
+
+          <DatePicker
+            label="Date"
+            value={date}
+            onChange={setDate}
+            demoMode={JSON.parse(localStorage.getItem('novo_demo_mode') || 'false')}
+          />
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Description (optional)</label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F59E0B] focus:border-transparent"
+              placeholder="e.g. Move funds to joint account"
+            />
+          </div>
+
+          {transferAmount > 0 && destinationAccountId && (
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">This account balance after:</span>
+                <span className="font-semibold text-gray-800">{CalculationService.formatCurrency(sourceBalanceAfter)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Receiving account balance after:</span>
+                <span className="font-semibold text-gray-800">{CalculationService.formatCurrency(destinationBalanceAfter)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {error && (
+          <div className="mt-4 bg-red-50 border border-red-200 text-red-800 text-sm rounded-lg px-4 py-3">
+            {error}
+          </div>
+        )}
+
+        <div className="flex space-x-3 mt-6">
+          <button onClick={onClose} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={otherCheckingAccounts.length === 0 || isSubmitting}
+            className="flex-1 bg-[#F59E0B] hover:bg-[#D97706] disabled:opacity-50 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+          >
+            {isSubmitting ? 'Transferring...' : 'Transfer'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getCheckingAccountBalance(accountId: string, accounts: CheckingAccount[]): number {
+  const account = accounts.find(a => a.id === accountId);
+  const txs = StorageService.getCheckingTransactionsForAccount(accountId);
+  const starting = account?.startingBalance ?? 0;
+  return txs.length > 0 ? txs[txs.length - 1].balance : starting;
+}
+
 function recalculateBalances(transactions: CheckingTransaction[], startingBalance: number) {
   let runningBalance = startingBalance;
 
   transactions.forEach(transaction => {
-    if (transaction.type === 'deposit' || transaction.type === 'transfer_from_heloc') {
+    if (
+      transaction.type === 'deposit' ||
+      transaction.type === 'transfer_from_heloc' ||
+      transaction.type === 'transfer_from_checking'
+    ) {
       runningBalance += transaction.amount;
     } else {
       runningBalance -= transaction.amount;

@@ -219,6 +219,8 @@ export type CheckingTransactionType =
   | 'withdrawal'
   | 'debt_payment'
   | 'transfer_to_savings'
+  | 'transfer_to_checking'
+  | 'transfer_from_checking'
   | 'transfer_to_heloc'
   | 'transfer_from_heloc'
   | 'internal_transfer'
@@ -240,6 +242,7 @@ export interface CheckingTransaction {
   debtId?: string;
   debtName?: string;
   linkedHelocTransactionId?: string;
+  linkedCheckingTransactionId?: string;
   isTransferToHeloc?: boolean;
   isTransferFromHeloc?: boolean;
 }

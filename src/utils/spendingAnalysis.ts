@@ -60,7 +60,7 @@ export function analyzeSpending(
     .reduce((sum, t) => sum + t.amount, 0);
 
   const totalExpenses = recent
-    .filter(t => t.type === 'withdrawal' || t.type === 'transfer_to_savings' || t.type === 'transfer_to_heloc')
+    .filter(t => t.type === 'withdrawal' || t.type === 'transfer_to_savings' || t.type === 'transfer_to_checking' || t.type === 'transfer_to_heloc')
     .reduce((sum, t) => sum + t.amount, 0);
 
   const netCashFlow = totalIncome - totalExpenses - totalDebtPayments;
