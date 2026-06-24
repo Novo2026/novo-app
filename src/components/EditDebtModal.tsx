@@ -32,6 +32,9 @@ export default function EditDebtModal({ debt, onClose, onSuccess }: EditDebtModa
   const [accountName, setAccountName] = useState(debt.accountName);
   const [category, setCategory] = useState<DebtCategory>(debt.category);
   const [balance, setBalance] = useState(debt.currentBalance.toString());
+  const [startingBalance, setStartingBalance] = useState(debt.startingBalance.toString());
+  const [showOriginalBalanceField, setShowOriginalBalanceField] = useState(false);
+  const [showBalanceCorrectionPrompt, setShowBalanceCorrectionPrompt] = useState(false);
   const [interestRate, setInterestRate] = useState(debt.interestRate.toString());
   const [minimumPayment, setMinimumPayment] = useState(debt.minimumPayment.toString());
   const [originalAmount, setOriginalAmount] = useState(initialInstallment.originalAmount);
@@ -41,21 +44,52 @@ export default function EditDebtModal({ debt, onClose, onSuccess }: EditDebtModa
 
   const showInstallmentFields = isInstallmentLoanCategory(category);
 
+  const handleBalanceChange = (value: string) => {
+    setBalance(value);
+    const balanceNum = parseFloat(value);
+    if (
+      !isNaN(balanceNum) &&
+      balanceNum !== debt.currentBalance &&
+      debt.startingBalance !== balanceNum
+    ) {
+      setShowBalanceCorrectionPrompt(true);
+    } else {
+      setShowBalanceCorrectionPrompt(false);
+    }
+  };
+
+  const handleConfirmUpdateOriginal = () => {
+    setShowOriginalBalanceField(true);
+    setStartingBalance(balance);
+    setShowBalanceCorrectionPrompt(false);
+  };
+
+  const handleKeepOriginal = () => {
+    setShowOriginalBalanceField(false);
+    setStartingBalance(debt.startingBalance.toString());
+    setShowBalanceCorrectionPrompt(false);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     const balanceNum = parseFloat(balance);
     const rateNum = parseFloat(interestRate);
     const minPaymentNum = parseFloat(minimumPayment);
+    const startingBalanceNum = showOriginalBalanceField
+      ? parseFloat(startingBalance)
+      : debt.startingBalance;
 
     if (isNaN(balanceNum) || isNaN(rateNum) || isNaN(minPaymentNum)) return;
     if (balanceNum < 0 || rateNum < 0 || minPaymentNum < 0) return;
+    if (showOriginalBalanceField && (isNaN(startingBalanceNum) || startingBalanceNum < 0)) return;
 
     let updatedDebt: Debt = {
       ...debt,
       accountName: accountName.trim(),
       category,
       currentBalance: balanceNum,
+      startingBalance: startingBalanceNum,
       interestRate: rateNum,
       minimumPayment: minPaymentNum,
       isPaidOff: balanceNum === 0,
@@ -138,7 +172,7 @@ export default function EditDebtModal({ debt, onClose, onSuccess }: EditDebtModa
               <input
                 type="number"
                 value={balance}
-                onChange={(e) => setBalance(e.target.value)}
+                onChange={(e) => handleBalanceChange(e.target.value)}
                 className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
                 placeholder="0.00"
                 step="0.01"
@@ -146,7 +180,54 @@ export default function EditDebtModal({ debt, onClose, onSuccess }: EditDebtModa
                 required
               />
             </div>
+            {showBalanceCorrectionPrompt && (
+              <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-xs text-amber-800 mb-2">
+                  Looks like you&apos;re correcting a balance — do you also want to update the original starting balance?
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleConfirmUpdateOriginal}
+                    className="text-xs font-semibold px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors"
+                  >
+                    Yes, update it
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleKeepOriginal}
+                    className="text-xs font-semibold px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg transition-colors"
+                  >
+                    No, keep original
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
+
+          {showOriginalBalanceField && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Original Balance
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2 text-gray-500">$</span>
+                <input
+                  type="number"
+                  value={startingBalance}
+                  onChange={(e) => setStartingBalance(e.target.value)}
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                  required
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Used for progress tracking and &quot;Started at&quot; on your debt card.
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
