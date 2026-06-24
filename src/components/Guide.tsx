@@ -90,7 +90,7 @@ function Guide() {
       id: 'dashboard',
       title: '2. Dashboard — Your Command Center',
       icon: Target,
-      color: 'bg-[#1E3A5F]',
+      color: 'bg-brand-navy',
       content: (
         <div className="space-y-6">
           <p className="text-gray-700 leading-relaxed">The Dashboard is the first thing you see each visit. It shows your complete debt picture at a glance.</p>
@@ -108,7 +108,7 @@ function Guide() {
 
             <div className="bg-white border border-blue-200 rounded-xl p-4 shadow-sm">
               <div className="flex items-center gap-2 mb-2">
-                <div className="w-7 h-7 bg-[#1E3A5F] rounded-lg flex items-center justify-center">
+                <div className="w-7 h-7 bg-brand-navy rounded-lg flex items-center justify-center">
                   <TrendingUp className="w-4 h-4 text-white" />
                 </div>
                 <p className="font-bold text-gray-900">Total Debt Progress</p>
@@ -352,9 +352,9 @@ function Guide() {
             <p className="text-gray-600 text-sm mt-3">Missing income in Settings? The page will nudge you to complete your profile so those insights can appear.</p>
           </div>
 
-          <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2D5A8A] text-white rounded-xl p-5">
+          <div className="bg-gradient-to-br from-brand-navy to-[#2D5A8A] text-white rounded-xl p-5">
             <div className="flex items-center gap-2 mb-2">
-              <Phone className="w-5 h-5 text-[#FF6B35]" />
+              <Phone className="w-5 h-5 text-brand-orange" />
               <p className="font-bold text-lg">Talk to Ben</p>
             </div>
             <p className="text-blue-100 text-sm leading-relaxed mb-4">
@@ -552,7 +552,7 @@ function Guide() {
       id: 'contact',
       title: '15. Need More Help?',
       icon: AlertCircle,
-      color: 'bg-[#FF6B35]',
+      color: 'bg-brand-orange',
       content: (
         <div className="space-y-4">
           <div className="grid sm:grid-cols-3 gap-4">
@@ -573,7 +573,7 @@ function Guide() {
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2D5A8A] text-white rounded-xl p-6 text-center">
+          <div className="bg-gradient-to-br from-brand-navy to-[#2D5A8A] text-white rounded-xl p-6 text-center">
             <p className="font-bold text-xl mb-2">About NOVO</p>
             <p className="text-blue-100 text-sm leading-relaxed max-w-lg mx-auto">
               NOVO (from the Latin for "new") helps you create a new financial future. Built by Ben Hulshof — a mortgage professional with 27 years of experience helping families navigate debt and homeownership. NOVO combines proven debt elimination strategies with AI-powered coaching to guide you every step of the way.
@@ -595,7 +595,7 @@ function Guide() {
     <div className="max-w-4xl mx-auto">
       <div className="bg-white rounded-xl shadow-sm p-8 mb-6">
         <div className="flex items-center gap-4 mb-4">
-          <div className="bg-[#FF6B35] text-white p-3 rounded-xl">
+          <div className="bg-brand-orange text-white p-3 rounded-xl">
             <BookOpen className="w-8 h-8" />
           </div>
           <div>
@@ -620,7 +620,7 @@ function Guide() {
             placeholder="Search guide topics..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF6B35] focus:border-transparent"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-orange focus:border-transparent"
           />
         </div>
 
@@ -681,7 +681,7 @@ function Guide() {
       <div className="mt-8 flex justify-center pb-4">
         <button
           onClick={scrollToTop}
-          className="flex items-center gap-2 px-6 py-3 bg-[#FF6B35] hover:bg-[#E55A2B] text-white font-semibold rounded-lg transition-colors shadow-md"
+          className="flex items-center gap-2 px-6 py-3 bg-brand-orange hover:bg-[#E55A2B] text-white font-semibold rounded-lg transition-colors shadow-md"
         >
           <ArrowUp className="w-5 h-5" />
           Back to Top

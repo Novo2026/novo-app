@@ -108,14 +108,14 @@ export default function PaymentStrategies({ onDataUpdate, onNavigateToSmarterPay
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <TrendingUp className="w-16 h-16 text-[#2D9CDB] mx-auto mb-4" />
+        <TrendingUp className="w-16 h-16 text-brand-blue mx-auto mb-4" />
         <h2 className="text-3xl font-bold text-gray-800 mb-3">Create Your Payoff Strategy</h2>
         <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
           Run different scenarios to see how quickly you can become debt-free and how much interest you'll save.
         </p>
         <button
           onClick={() => setShowWizard(true)}
-          className="inline-flex items-center space-x-2 bg-[#FF6B35] hover:bg-[#E55A25] text-white font-bold text-lg py-4 px-8 rounded-lg shadow-lg transition-colors"
+          className="inline-flex items-center space-x-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-bold text-lg py-4 px-8 rounded-lg shadow-lg transition-colors"
         >
           <span>Get Started</span>
           <ArrowRight className="w-5 h-5" />
@@ -176,8 +176,8 @@ export default function PaymentStrategies({ onDataUpdate, onNavigateToSmarterPay
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-md p-6 text-center">
-          <div className="w-12 h-12 bg-[#2D9CDB]/20 rounded-full flex items-center justify-center mx-auto mb-3">
-            <span className="text-2xl font-bold text-[#2D9CDB]">1</span>
+          <div className="w-12 h-12 bg-brand-blue/20 rounded-full flex items-center justify-center mx-auto mb-3">
+            <span className="text-2xl font-bold text-brand-blue">1</span>
           </div>
           <h3 className="font-bold text-gray-800 mb-2">Financial Profile</h3>
           <p className="text-sm text-gray-600">
@@ -186,8 +186,8 @@ export default function PaymentStrategies({ onDataUpdate, onNavigateToSmarterPay
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6 text-center">
-          <div className="w-12 h-12 bg-[#2D9CDB]/20 rounded-full flex items-center justify-center mx-auto mb-3">
-            <span className="text-2xl font-bold text-[#2D9CDB]">2</span>
+          <div className="w-12 h-12 bg-brand-blue/20 rounded-full flex items-center justify-center mx-auto mb-3">
+            <span className="text-2xl font-bold text-brand-blue">2</span>
           </div>
           <h3 className="font-bold text-gray-800 mb-2">
             {featurePreferences.helocEnabled ? 'Home Equity' : 'Review Your Debts'}
@@ -200,8 +200,8 @@ export default function PaymentStrategies({ onDataUpdate, onNavigateToSmarterPay
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6 text-center">
-          <div className="w-12 h-12 bg-[#27AE60]/20 rounded-full flex items-center justify-center mx-auto mb-3">
-            <span className="text-2xl font-bold text-[#27AE60]">3</span>
+          <div className="w-12 h-12 bg-brand-green/20 rounded-full flex items-center justify-center mx-auto mb-3">
+            <span className="text-2xl font-bold text-brand-green">3</span>
           </div>
           <h3 className="font-bold text-gray-800 mb-2">Choose Strategy</h3>
           <p className="text-sm text-gray-600">

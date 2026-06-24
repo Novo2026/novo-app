@@ -189,8 +189,8 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
             onClick={() => selectCheckingAccount(account.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
               selectedAccountId === account.id
-                ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
-                : 'bg-white text-[#1E3A5F] border-[#e8d8c4] hover:border-[#1E3A5F]/40'
+                ? 'bg-brand-navy text-white border-brand-navy'
+                : 'bg-white text-brand-navy border-brand-cream-border hover:border-brand-navy/40'
             }`}
           >
             {account.accountType === 'checking' ? '🏦' : '💰'} {account.name}
@@ -199,7 +199,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
         ))}
         <button
           onClick={() => setShowAddAccount(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-gray-500 border border-dashed border-gray-300 hover:border-[#FF6B35] hover:text-[#FF6B35] transition-all"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-gray-500 border border-dashed border-gray-300 hover:border-brand-orange hover:text-brand-orange transition-all"
         >
           + Add Account
         </button>
@@ -219,7 +219,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
         </div>
       )}
 
-      <div className="bg-gradient-to-br from-[#27AE60] to-[#229954] text-white rounded-lg shadow-lg p-6">
+      <div className="bg-gradient-to-br from-brand-green to-[#229954] text-white rounded-lg shadow-lg p-6">
         <h2 className="text-2xl font-bold mb-6">Checking Account Overview</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -254,28 +254,28 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
         <div className="flex flex-wrap gap-3">
           <button
             onClick={() => openModal('deposit')}
-            className="flex items-center space-x-2 bg-white text-[#27AE60] hover:bg-gray-100 font-semibold py-2 px-4 rounded-lg transition-colors"
+            className="flex items-center space-x-2 bg-white text-brand-green hover:bg-gray-100 font-semibold py-2 px-4 rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>Record Deposit</span>
           </button>
           <button
             onClick={() => openModal('withdrawal')}
-            className="flex items-center space-x-2 bg-[#EB5757] hover:bg-[#C0392B] font-semibold py-2 px-4 rounded-lg transition-colors"
+            className="flex items-center space-x-2 bg-brand-red hover:bg-[#C0392B] font-semibold py-2 px-4 rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>Record Withdrawal</span>
           </button>
           <button
             onClick={() => openModal('debt_payment')}
-            className="flex items-center space-x-2 bg-[#2D9CDB] hover:bg-[#1E6F9E] font-semibold py-2 px-4 rounded-lg transition-colors"
+            className="flex items-center space-x-2 bg-brand-blue hover:bg-[#1E6F9E] font-semibold py-2 px-4 rounded-lg transition-colors"
           >
             <CreditCard className="w-4 h-4" />
             <span>Record Debt Payment</span>
           </button>
           <button
             onClick={() => setShowStatementUpload(true)}
-            className="flex items-center space-x-2 bg-white text-[#1E3A5F] border-2 border-[#1E3A5F] hover:bg-[#1E3A5F] hover:text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+            className="flex items-center space-x-2 bg-white text-brand-navy border-2 border-brand-navy hover:bg-brand-navy hover:text-white font-semibold py-2 px-4 rounded-lg transition-colors"
           >
             <Upload className="w-4 h-4" />
             <span>Import Statement</span>
@@ -1016,7 +1016,7 @@ function TransactionModal({
                     }
                   }
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
               >
                 {debts.map(debt => (
                   <option key={debt.id} value={debt.id}>
@@ -1051,7 +1051,7 @@ function TransactionModal({
                 value={amountInputValue}
                 onChange={(e) => setAmount(e.target.value)}
                 readOnly={isMortgagePayment}
-                className={`w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#27AE60] focus:border-transparent ${
+                className={`w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent ${
                   isMortgagePayment ? 'bg-gray-50 text-gray-700 cursor-default' : ''
                 }`}
                 placeholder="0.00"
@@ -1065,7 +1065,7 @@ function TransactionModal({
 
           {isMortgagePayment && selectedDebtObj && (
             <div className="border border-gray-200 rounded-lg p-4 space-y-3 bg-slate-50/50">
-              <h4 className="text-sm font-bold text-[#1E3A5F]">Mortgage Payment Breakdown</h4>
+              <h4 className="text-sm font-bold text-brand-navy">Mortgage Payment Breakdown</h4>
 
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
@@ -1077,7 +1077,7 @@ function TransactionModal({
                     type="number"
                     value={piPayment}
                     onChange={(e) => setPiPayment(e.target.value)}
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                     placeholder="0.00"
                     step="0.01"
                     min="0"
@@ -1096,7 +1096,7 @@ function TransactionModal({
                     type="number"
                     value={additionalPrincipal}
                     onChange={(e) => setAdditionalPrincipal(e.target.value)}
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                     placeholder="0.00"
                     step="0.01"
                     min="0"
@@ -1115,7 +1115,7 @@ function TransactionModal({
                     type="number"
                     value={escrow}
                     onChange={(e) => setEscrow(e.target.value)}
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                     placeholder="0.00"
                     step="0.01"
                     min="0"
@@ -1135,7 +1135,7 @@ function TransactionModal({
                     type="number"
                     value={pmi}
                     onChange={(e) => setPmi(e.target.value)}
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                     placeholder="0.00"
                     step="0.01"
                     min="0"
@@ -1161,8 +1161,8 @@ function TransactionModal({
                 </div>
               </div>
 
-              <div className="bg-[#FFF8E7] border border-[#1E3A5F]/10 rounded-lg px-3 py-2.5">
-                <p className="text-xs text-[#1E3A5F] leading-relaxed">
+              <div className="bg-[#FFF8E7] border border-brand-navy/10 rounded-lg px-3 py-2.5">
+                <p className="text-xs text-brand-navy leading-relaxed">
                   Only your P&I and any extra principal reduce your mortgage balance. Escrow covers taxes and insurance and is held by your lender.
                 </p>
               </div>
@@ -1197,7 +1197,7 @@ function TransactionModal({
                       value="essential"
                       checked={expenseType === 'essential'}
                       onChange={(e) => setExpenseType(e.target.value as 'essential')}
-                      className="w-4 h-4 text-[#27AE60] focus:ring-[#27AE60]"
+                      className="w-4 h-4 text-brand-green focus:ring-brand-green"
                     />
                     <span className="text-gray-800">Essential Expense</span>
                   </label>
@@ -1207,7 +1207,7 @@ function TransactionModal({
                       value="discretionary"
                       checked={expenseType === 'discretionary'}
                       onChange={(e) => setExpenseType(e.target.value as 'discretionary')}
-                      className="w-4 h-4 text-[#27AE60] focus:ring-[#27AE60]"
+                      className="w-4 h-4 text-brand-green focus:ring-brand-green"
                     />
                     <span className="text-gray-800">Discretionary Expense</span>
                   </label>
@@ -1217,7 +1217,7 @@ function TransactionModal({
                       value="other"
                       checked={expenseType === 'other'}
                       onChange={(e) => setExpenseType(e.target.value as 'other')}
-                      className="w-4 h-4 text-[#27AE60] focus:ring-[#27AE60]"
+                      className="w-4 h-4 text-brand-green focus:ring-brand-green"
                     />
                     <span className="text-gray-800">Other Withdrawal</span>
                   </label>
@@ -1230,7 +1230,7 @@ function TransactionModal({
                   <select
                     value={subcategory}
                     onChange={(e) => setSubcategory(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#27AE60] focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
                   >
                     <option value="">Select category...</option>
                     {ESSENTIAL_CATEGORIES.map(cat => (
@@ -1246,7 +1246,7 @@ function TransactionModal({
                   <select
                     value={subcategory}
                     onChange={(e) => setSubcategory(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#27AE60] focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
                   >
                     <option value="">Select category...</option>
                     {DISCRETIONARY_CATEGORIES.map(cat => (
@@ -1272,7 +1272,7 @@ function TransactionModal({
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#27AE60] focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-green focus:border-transparent"
               placeholder={
                 type === 'deposit' ? 'Extra paycheck, windfalls, etc.' :
                 type === 'debt_payment' ? 'Payment details...' :
@@ -1320,9 +1320,9 @@ function TransactionModal({
           <button
             onClick={handleSubmit}
             className={`flex-1 ${
-              type === 'deposit' ? 'bg-[#27AE60] hover:bg-[#229954]' :
-              type === 'debt_payment' ? 'bg-[#2D9CDB] hover:bg-[#1E6F9E]' :
-              'bg-[#EB5757] hover:bg-[#C0392B]'
+              type === 'deposit' ? 'bg-brand-green hover:bg-[#229954]' :
+              type === 'debt_payment' ? 'bg-brand-blue hover:bg-[#1E6F9E]' :
+              'bg-brand-red hover:bg-[#C0392B]'
             } text-white font-semibold py-3 px-6 rounded-lg transition-colors`}
           >
             {editTransaction ? 'Update' : 'Record'}

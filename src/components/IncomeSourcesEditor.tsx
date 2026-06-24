@@ -115,7 +115,7 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex items-center space-x-2 mb-4">
-        <Wallet className="w-6 h-6 text-[#1E3A5F]" />
+        <Wallet className="w-6 h-6 text-brand-navy" />
         <h3 className="text-xl font-bold text-gray-800">Income Sources</h3>
       </div>
       <p className="text-gray-600 mb-6">
@@ -129,38 +129,38 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
           const Icon = typeInfo.icon;
 
           return (
-            <div key={typeInfo.type} className={`border-2 rounded-xl transition-all ${isActive ? 'border-[#FF6B35] bg-[#FF6B35]/5' : 'border-gray-200 bg-white'}`}>
+            <div key={typeInfo.type} className={`border-2 rounded-xl transition-all ${isActive ? 'border-brand-orange bg-brand-orange/5' : 'border-gray-200 bg-white'}`}>
               <button
                 type="button"
                 onClick={() => toggleSource(typeInfo)}
                 className="w-full flex items-center gap-3 p-3 text-left"
               >
-                <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-[#FF6B35]' : 'text-gray-400'}`} />
+                <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-brand-orange' : 'text-gray-400'}`} />
                 <div className="flex-1">
-                  <p className={`text-sm font-semibold ${isActive ? 'text-[#FF6B35]' : 'text-gray-700'}`}>{typeInfo.label}</p>
+                  <p className={`text-sm font-semibold ${isActive ? 'text-brand-orange' : 'text-gray-700'}`}>{typeInfo.label}</p>
                   <p className="text-xs text-gray-500">{typeInfo.desc}</p>
                 </div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isActive ? 'border-[#FF6B35] bg-[#FF6B35]' : 'border-gray-300'}`}>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isActive ? 'border-brand-orange bg-brand-orange' : 'border-gray-300'}`}>
                   {isActive && <div className="w-2 h-2 rounded-full bg-white" />}
                 </div>
               </button>
 
               {isActive && existing && (
-                <div className="px-4 pb-4 space-y-3 border-t border-[#FF6B35]/20 pt-3">
+                <div className="px-4 pb-4 space-y-3 border-t border-brand-orange/20 pt-3">
                   {typeInfo.type === 'self_employed' && (
                     <div className="flex items-center gap-3 mb-2">
                       <span className="text-xs font-semibold text-gray-600">Enter as:</span>
                       <button
                         type="button"
                         onClick={() => updateSource(typeInfo.type, { useAnnual: false })}
-                        className={`text-xs px-3 py-1 rounded-full border transition-all ${!existing.useAnnual ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-white text-gray-600 border-gray-300'}`}
+                        className={`text-xs px-3 py-1 rounded-full border transition-all ${!existing.useAnnual ? 'bg-brand-navy text-white border-brand-navy' : 'bg-white text-gray-600 border-gray-300'}`}
                       >
                         Monthly
                       </button>
                       <button
                         type="button"
                         onClick={() => updateSource(typeInfo.type, { useAnnual: true })}
-                        className={`text-xs px-3 py-1 rounded-full border transition-all ${existing.useAnnual ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-white text-gray-600 border-gray-300'}`}
+                        className={`text-xs px-3 py-1 rounded-full border transition-all ${existing.useAnnual ? 'bg-brand-navy text-white border-brand-navy' : 'bg-white text-gray-600 border-gray-300'}`}
                       >
                         Annual (we'll average it)
                       </button>
@@ -180,7 +180,7 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
                           value={existing.monthlyAmount}
                           onChange={e => updateSource(typeInfo.type, { monthlyAmount: e.target.value })}
                           placeholder="0"
-                          className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                          className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
                         />
                       </div>
                       {typeInfo.type === 'commission' && (
@@ -199,7 +199,7 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
                           value={existing.annualAmount}
                           onChange={e => updateSource(typeInfo.type, { annualAmount: e.target.value })}
                           placeholder="0"
-                          className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                          className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
                         />
                       </div>
                       {existing.annualAmount && parseFloat(existing.annualAmount.replace(/[^0-9.]/g, '')) > 0 && (
@@ -220,7 +220,7 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
                         value={existing.description}
                         onChange={e => updateSource(typeInfo.type, { description: e.target.value })}
                         placeholder="e.g. Social Security, pension"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
                       />
                     </div>
                   )}

@@ -156,20 +156,20 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
             <div key={i} className="flex items-center flex-1">
               <div
                 className={`flex-1 h-2 rounded-full ${
-                  i <= step ? 'bg-[#2D9CDB]' : 'bg-gray-200'
+                  i <= step ? 'bg-brand-blue' : 'bg-gray-200'
                 }`}
               />
             </div>
           ))}
         </div>
         <div className="flex justify-between mt-2 text-sm">
-          <span className={step === 1 ? 'text-[#2D9CDB] font-semibold' : 'text-gray-500'}>
+          <span className={step === 1 ? 'text-brand-blue font-semibold' : 'text-gray-500'}>
             Financial Profile
           </span>
-          <span className={step === 2 ? 'text-[#2D9CDB] font-semibold' : 'text-gray-500'}>
+          <span className={step === 2 ? 'text-brand-blue font-semibold' : 'text-gray-500'}>
             Home Equity
           </span>
-          <span className={step === 3 ? 'text-[#2D9CDB] font-semibold' : 'text-gray-500'}>
+          <span className={step === 3 ? 'text-brand-blue font-semibold' : 'text-gray-500'}>
             Choose Strategy
           </span>
         </div>
@@ -203,7 +203,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                   onFocus={(e) => {
                     if (e.target.value === '0') e.target.value = '';
                   }}
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                   placeholder="Enter amount"
                   step="0.01"
                 />
@@ -226,7 +226,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                   onFocus={(e) => {
                     if (e.target.value === '0') e.target.value = '';
                   }}
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                   placeholder="Enter amount"
                   step="0.01"
                   required
@@ -255,7 +255,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                   onFocus={(e) => {
                     if (e.target.value === '0') e.target.value = '';
                   }}
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                   placeholder="Enter amount"
                   step="0.01"
                 />
@@ -283,7 +283,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                   onFocus={(e) => {
                     if (e.target.value === '0') e.target.value = '';
                   }}
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                   placeholder="Enter amount"
                   step="0.01"
                 />
@@ -311,7 +311,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                   onFocus={(e) => {
                     if (e.target.value === '0') e.target.value = '';
                   }}
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                   placeholder="0"
                   step="0.01"
                   min="0"
@@ -321,7 +321,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
           </div>
 
           {profile.monthlyNetIncome > 0 && (
-            <div className="bg-[#2D9CDB]/10 rounded-lg p-4 space-y-2 border border-[#2D9CDB]">
+            <div className="bg-brand-blue/10 rounded-lg p-4 space-y-2 border border-brand-blue">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-700">Total Monthly Expenses:</span>
                 <span className="font-semibold">
@@ -334,7 +334,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                   {CalculationService.formatCurrency(totalMinimumPayments)}
                 </span>
               </div>
-              <div className="flex justify-between text-sm pt-2 border-t border-[#2D9CDB]/40">
+              <div className="flex justify-between text-sm pt-2 border-t border-brand-blue/40">
                 <span className="text-gray-700">Gross Monthly Surplus:</span>
                 <span className="font-semibold">
                   {CalculationService.formatCurrency(cashFlowMetrics.grossSurplus)}
@@ -342,13 +342,13 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-700">Savings Carve-Out:</span>
-                <span className="font-semibold text-[#27AE60]">
+                <span className="font-semibold text-brand-green">
                   - {CalculationService.formatCurrency(cashFlowMetrics.savingsCarveOut)}
                 </span>
               </div>
-              <div className="flex justify-between font-bold text-base pt-2 border-t border-[#2D9CDB]">
+              <div className="flex justify-between font-bold text-base pt-2 border-t border-brand-blue">
                 <span className="text-gray-800">Surplus After Savings:</span>
-                <span className="text-[#27AE60]">
+                <span className="text-brand-green">
                   {CalculationService.formatCurrency(cashFlowMetrics.surplusAfterSavings)}
                 </span>
               </div>
@@ -356,7 +356,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                 <span className="text-gray-700">
                   Recommended Extra Payment ({cashFlowMetrics.commitmentPercent}% of remaining surplus):
                 </span>
-                <span className="font-semibold text-[#2D9CDB]">
+                <span className="font-semibold text-brand-blue">
                   {CalculationService.formatCurrency(cashFlowMetrics.recommendedExtraPayment)}
                 </span>
               </div>
@@ -373,7 +373,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
             <button
               onClick={handleNext}
               disabled={profile.monthlyNetIncome <= 0}
-              className="flex-1 bg-[#FF6B35] hover:bg-[#E55A25] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors inline-flex items-center justify-center space-x-2"
+              className="flex-1 bg-brand-orange hover:bg-brand-orange-dark disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors inline-flex items-center justify-center space-x-2"
             >
               <span>Next</span>
               <ArrowRight className="w-4 h-4" />
@@ -402,7 +402,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                   name="ownsHome"
                   checked={homeEquity.ownsHome === true}
                   onChange={() => setHomeEquity({ ...homeEquity, ownsHome: true })}
-                  className="w-4 h-4 text-[#2D9CDB] focus:ring-2 focus:ring-[#2D9CDB]"
+                  className="w-4 h-4 text-brand-blue focus:ring-2 focus:ring-brand-blue"
                 />
                 <span className="text-sm text-gray-700">Yes</span>
               </label>
@@ -412,7 +412,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                   name="ownsHome"
                   checked={homeEquity.ownsHome === false}
                   onChange={() => setHomeEquity({ ...homeEquity, ownsHome: false })}
-                  className="w-4 h-4 text-[#2D9CDB] focus:ring-2 focus:ring-[#2D9CDB]"
+                  className="w-4 h-4 text-brand-blue focus:ring-2 focus:ring-brand-blue"
                 />
                 <span className="text-sm text-gray-700">No</span>
               </label>
@@ -420,7 +420,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
           </div>
 
           {homeEquity.ownsHome && (
-            <div className="space-y-4 pl-6 border-l-4 border-[#2D9CDB]">
+            <div className="space-y-4 pl-6 border-l-4 border-brand-blue">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Current Home Value
@@ -441,7 +441,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                     onFocus={(e) => {
                       if (e.target.value === '0') e.target.value = '';
                     }}
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                     placeholder="Enter amount"
                     step="1000"
                     min="0"
@@ -469,7 +469,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                     onFocus={(e) => {
                       if (e.target.value === '0') e.target.value = '';
                     }}
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                     placeholder="Enter amount"
                     step="1000"
                     min="0"
@@ -478,16 +478,16 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
               </div>
 
               {homeEquity.homeValue && homeEquity.mortgageBalance !== undefined && (
-                <div className="bg-[#27AE60]/10 border border-[#27AE60] rounded-lg p-4 space-y-2">
+                <div className="bg-brand-green/10 border border-brand-green rounded-lg p-4 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-700">Total Equity:</span>
                     <span className="font-semibold">
                       {CalculationService.formatCurrency(homeEquityMetrics.totalEquity)}
                     </span>
                   </div>
-                  <div className="flex justify-between font-bold text-base pt-2 border-t border-[#27AE60]">
+                  <div className="flex justify-between font-bold text-base pt-2 border-t border-brand-green">
                     <span className="text-gray-800">Available for HELOC (90% CLTV):</span>
-                    <span className="text-[#27AE60]">
+                    <span className="text-brand-green">
                       {CalculationService.formatCurrency(homeEquityMetrics.availableHELOC)}
                     </span>
                   </div>
@@ -505,7 +505,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                       name="hasHELOC"
                       checked={homeEquity.hasHELOC === true}
                       onChange={() => setHomeEquity({ ...homeEquity, hasHELOC: true })}
-                      className="w-4 h-4 text-[#2D9CDB] focus:ring-2 focus:ring-[#2D9CDB]"
+                      className="w-4 h-4 text-brand-blue focus:ring-2 focus:ring-brand-blue"
                     />
                     <span className="text-sm text-gray-700">Yes</span>
                   </label>
@@ -515,7 +515,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                       name="hasHELOC"
                       checked={homeEquity.hasHELOC === false}
                       onChange={() => setHomeEquity({ ...homeEquity, hasHELOC: false })}
-                      className="w-4 h-4 text-[#2D9CDB] focus:ring-2 focus:ring-[#2D9CDB]"
+                      className="w-4 h-4 text-brand-blue focus:ring-2 focus:ring-brand-blue"
                     />
                     <span className="text-sm text-gray-700">No</span>
                   </label>
@@ -543,7 +543,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                         onFocus={(e) => {
                           if (e.target.value === '0') e.target.value = '';
                         }}
-                        className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                        className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                         placeholder="Enter amount"
                         step="1000"
                         min="0"
@@ -571,7 +571,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                         onFocus={(e) => {
                           if (e.target.value === '0') e.target.value = '';
                         }}
-                        className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                        className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                         placeholder="Enter amount"
                         step="1000"
                         min="0"
@@ -597,7 +597,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                         onFocus={(e) => {
                           if (e.target.value === '0') e.target.value = '';
                         }}
-                        className="w-full pr-8 pl-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                        className="w-full pr-8 pl-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                         placeholder="8.25"
                         step="0.01"
                         min="0"
@@ -621,7 +621,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
             </button>
             <button
               onClick={handleNext}
-              className="flex-1 bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold py-3 px-4 rounded-lg transition-colors inline-flex items-center justify-center space-x-2"
+              className="flex-1 bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold py-3 px-4 rounded-lg transition-colors inline-flex items-center justify-center space-x-2"
             >
               <span>Next: Choose Strategy</span>
               <ArrowRight className="w-4 h-4" />
@@ -640,8 +640,8 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
           </div>
 
           <div
-            className={`bg-gradient-to-br from-[#1E3A5F] to-[#2D5A8A] text-white rounded-lg p-6 border-4 transition-all cursor-pointer ${
-              selectedStrategy === 'extra-payment' ? 'border-[#27AE60] shadow-lg' : 'border-transparent'
+            className={`bg-gradient-to-br from-brand-navy to-[#2D5A8A] text-white rounded-lg p-6 border-4 transition-all cursor-pointer ${
+              selectedStrategy === 'extra-payment' ? 'border-brand-green shadow-lg' : 'border-transparent'
             }`}
             onClick={() => setSelectedStrategy('extra-payment')}
           >
@@ -664,7 +664,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                     setSelectedStrategy('extra-payment');
                   }}
                   onClick={(e) => e.stopPropagation()}
-                  className="w-full pl-8 pr-4 py-2 bg-white text-gray-800 border-0 rounded-lg focus:ring-2 focus:ring-[#2D9CDB]"
+                  className="w-full pl-8 pr-4 py-2 bg-white text-gray-800 border-0 rounded-lg focus:ring-2 focus:ring-brand-blue"
                   placeholder="0.00"
                   step="0.01"
                   min="0"
@@ -683,7 +683,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                   handleCalculate();
                 }}
                 disabled={loading}
-                className="w-full mt-4 bg-[#27AE60] hover:bg-[#229954] disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-lg transition-colors inline-flex items-center justify-center space-x-2"
+                className="w-full mt-4 bg-brand-green hover:bg-[#229954] disabled:bg-gray-400 text-white font-bold py-3 px-6 rounded-lg transition-colors inline-flex items-center justify-center space-x-2"
               >
                 <Calculator className="w-5 h-5" />
                 <span>{loading ? 'Calculating...' : 'Calculate Results'}</span>
@@ -703,7 +703,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
               </div>
 
               <div
-                className={`bg-gradient-to-br from-[#27AE60] to-[#1E8449] text-white rounded-lg p-6 border-4 transition-all cursor-pointer ${
+                className={`bg-gradient-to-br from-brand-green to-[#1E8449] text-white rounded-lg p-6 border-4 transition-all cursor-pointer ${
                   selectedStrategy === 'heloc-velocity' ? 'border-[#F2C94C] shadow-lg' : 'border-transparent'
                 }`}
                 onClick={handleHELOCStrategyClick}
@@ -812,7 +812,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
                   <h5 className="font-semibold text-sm mb-3">HELOC Suitability Analysis:</h5>
                   <div className="space-y-2">
                     {debtAnalysis.map(({ debt, rateDiff, suitability }) => {
-                      const bgColor = suitability === 'good' ? 'bg-[#27AE60]' : suitability === 'marginal' ? 'bg-[#F2C94C]' : 'bg-[#FF8C42]';
+                      const bgColor = suitability === 'good' ? 'bg-brand-green' : suitability === 'marginal' ? 'bg-[#F2C94C]' : 'bg-[#FF8C42]';
                       const textColor = suitability === 'good' ? 'text-white' : 'text-gray-800';
 
                       return (

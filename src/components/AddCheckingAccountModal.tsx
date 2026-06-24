@@ -33,7 +33,7 @@ export default function AddCheckingAccountModal({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
-        <h3 className="text-xl font-bold text-[#1E3A5F] mb-4">Add Account</h3>
+        <h3 className="text-xl font-bold text-brand-navy mb-4">Add Account</h3>
 
         <div className="space-y-4">
           <div>
@@ -90,7 +90,7 @@ export default function AddCheckingAccountModal({
           <button onClick={onClose} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-3 rounded-xl transition-colors">
             Cancel
           </button>
-          <button onClick={handleSave} className="flex-1 bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold py-3 rounded-xl transition-colors">
+          <button onClick={handleSave} className="flex-1 bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold py-3 rounded-xl transition-colors">
             Add Account
           </button>
         </div>

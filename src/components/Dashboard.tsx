@@ -241,7 +241,7 @@ export default function Dashboard({
           transaction: t,
           icon: '💰',
           amount: t.amount,
-          amountColor: 'text-[#27AE60]',
+          amountColor: 'text-brand-green',
           source: paidWithHELOC ? 'heloc' : 'debt',
         });
       } else if (t.type === 'charge') {
@@ -289,7 +289,7 @@ export default function Dashboard({
           type: 'heloc_payment',
           icon: '💰',
           amount: ht.amount,
-          amountColor: 'text-[#27AE60]',
+          amountColor: 'text-brand-green',
           source: 'heloc',
         });
       } else if (ht.type === 'interest') {
@@ -318,7 +318,7 @@ export default function Dashboard({
           type: 'checking_transfer',
           icon: '🏦',
           amount: ct.amount,
-          amountColor: 'text-[#2D9CDB]',
+          amountColor: 'text-brand-blue',
           source: 'checking',
         });
       } else if (ct.type === 'bill_payment') {
@@ -338,7 +338,7 @@ export default function Dashboard({
           type: 'checking_deposit',
           icon: '💰',
           amount: ct.amount,
-          amountColor: 'text-[#27AE60]',
+          amountColor: 'text-brand-green',
           source: 'checking',
         });
       }
@@ -444,20 +444,20 @@ export default function Dashboard({
       )}
 
       <div className="novo-card p-6 md:p-8">
-        <h2 className="text-xl font-bold text-[#1E3A5F] mb-4">Total Debt Progress</h2>
+        <h2 className="text-xl font-bold text-brand-navy mb-4">Total Debt Progress</h2>
         <div className="mb-4">
-          <div className="flex items-center justify-between text-sm mb-2 text-[#1E3A5F]/70">
+          <div className="flex items-center justify-between text-sm mb-2 text-brand-navy/70">
             <span>{metrics.progressPercentage.toFixed(1)}% paid off</span>
             <span>{CalculationService.formatCurrency(metrics.totalCurrentBalance)} remaining</span>
           </div>
-          <div className="w-full bg-[#e8d8c4]/60 rounded-full h-4 overflow-hidden">
+          <div className="w-full bg-brand-cream-border/60 rounded-full h-4 overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{ width: `${Math.min(metrics.progressPercentage, 100)}%`, background: 'linear-gradient(90deg, #FF6B35, #E55A25)' }}
             />
           </div>
         </div>
-        <p className="text-lg mb-2 text-[#1E3A5F]">
+        <p className="text-lg mb-2 text-brand-navy">
           <span className="font-bold">{CalculationService.formatCurrency(metrics.totalCurrentBalance)}</span> remaining of{' '}
           <span className="font-bold">{CalculationService.formatCurrency(metrics.totalStartingBalance)}</span> starting
         </p>
@@ -479,7 +479,7 @@ export default function Dashboard({
                 </div>
                 <div className="flex justify-between pt-1.5 border-t border-gray-200">
                   <span className="font-semibold">Total:</span>
-                  <span className="font-bold text-[#27AE60]">{CalculationService.formatCurrency(metrics.actualDebtEliminated)}</span>
+                  <span className="font-bold text-brand-green">{CalculationService.formatCurrency(metrics.actualDebtEliminated)}</span>
                 </div>
               </div>
             </div>
@@ -487,7 +487,7 @@ export default function Dashboard({
         </div>
         {optimizedProjection && (
           <div className="mt-4 space-y-2">
-            <p className="text-sm text-[#1E3A5F]/70">
+            <p className="text-sm text-brand-navy/70">
               Projected debt-free date:{' '}
               <span className="font-semibold">
                 {CalculationService.formatMonthYear(optimizedProjection.debtFreeDate)}
@@ -550,7 +550,7 @@ export default function Dashboard({
       <div className="flex justify-center">
         <button
           onClick={() => handleLogPaymentClick()}
-          className="flex items-center justify-center space-x-3 bg-[#FF6B35] hover:bg-[#E55A25] text-white font-bold py-5 px-12 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+          className="flex items-center justify-center space-x-3 bg-brand-orange hover:bg-brand-orange-dark text-white font-bold py-5 px-12 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
         >
           <Plus className="w-6 h-6" />
           <span className="text-lg">Log Payment</span>
@@ -634,7 +634,7 @@ export default function Dashboard({
               onMouseUp={handleCommitmentCommit}
               onTouchEnd={handleCommitmentCommit}
               onKeyUp={handleCommitmentCommit}
-              className="w-full accent-[#27AE60] cursor-pointer"
+              className="w-full accent-brand-green cursor-pointer"
               aria-label="Percent of surplus committed to debt payoff"
             />
             <div className="flex justify-between text-xs text-white/60 mt-1">
@@ -675,7 +675,7 @@ export default function Dashboard({
           </div>
 
           {metrics.paidOffDebts.length > 0 && (
-            <div className="bg-[#27AE60]/20 border border-[#27AE60]/60 rounded-lg p-3 mb-3">
+            <div className="bg-brand-green/20 border border-brand-green/60 rounded-lg p-3 mb-3">
               <div className="flex items-center gap-2">
                 <Zap className="w-4 h-4 text-[#4ADE80] flex-shrink-0" />
                 <p className="text-sm font-semibold">
@@ -690,7 +690,7 @@ export default function Dashboard({
           {targetDebt && extraForDebtPayoff > 0 && (
             <div className="bg-white rounded-xl p-4 mt-2">
               <div className="flex items-center gap-2 mb-3">
-                <Target className="w-5 h-5 text-[#27AE60]" />
+                <Target className="w-5 h-5 text-brand-green" />
                 <span className="font-bold text-gray-800 text-sm uppercase tracking-wide">Focus This Month</span>
               </div>
               <p className="text-gray-700 text-sm mb-3">
@@ -702,23 +702,23 @@ export default function Dashboard({
                   {targetDebt.interestRate}% APR
                 </span>
               </p>
-              <div className="bg-white border border-[#e8d8c4]/60 rounded-2xl p-3 mb-3">
+              <div className="bg-white border border-brand-cream-border/60 rounded-2xl p-3 mb-3">
                 <div className="flex justify-between text-xs text-gray-600 mb-1">
                   <span>Minimum payment</span>
                   <span className="font-semibold text-gray-800">{CalculationService.formatCurrency(targetDebt.minimumPayment)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-gray-600 mb-1">
                   <span>Extra cash flow</span>
-                  <span className="font-semibold text-[#27AE60]">+ {CalculationService.formatCurrency(extraForDebtPayoff)}</span>
+                  <span className="font-semibold text-brand-green">+ {CalculationService.formatCurrency(extraForDebtPayoff)}</span>
                 </div>
                 <div className="flex justify-between text-sm font-bold pt-1.5 border-t border-gray-300 mt-1">
                   <span className="text-gray-800">Total to pay</span>
-                  <span className="text-[#27AE60]">{CalculationService.formatCurrency(targetTotalPayment)}</span>
+                  <span className="text-brand-green">{CalculationService.formatCurrency(targetTotalPayment)}</span>
                 </div>
               </div>
               <button
                 onClick={handleQuickPay}
-                className="w-full flex items-center justify-center gap-2 bg-[#FF6B35] hover:bg-[#E55A25] text-white font-bold py-2.5 px-4 rounded-lg transition-colors text-sm"
+                className="w-full flex items-center justify-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-bold py-2.5 px-4 rounded-lg transition-colors text-sm"
               >
                 <Plus className="w-4 h-4" />
                 Quick Pay {CalculationService.formatCurrency(targetTotalPayment)} to {targetDebt.accountName}
@@ -746,7 +746,7 @@ export default function Dashboard({
       )}
 
       {savingsAccounts.length > 0 && (
-        <div className="bg-gradient-to-br from-[#27AE60] to-[#229954] text-white rounded-2xl shadow-card p-6">
+        <div className="bg-gradient-to-br from-brand-green to-[#229954] text-white rounded-2xl shadow-card p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <PiggyBank className="w-8 h-8 text-white" />
@@ -780,7 +780,7 @@ export default function Dashboard({
       )}
 
       <div>
-        <h3 className="text-xl font-bold text-[#1E3A5F] mb-4">Active Debts</h3>
+        <h3 className="text-xl font-bold text-brand-navy mb-4">Active Debts</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {metrics.activeDebts.filter(debt => debt.category !== 'HELOC').map(debt => {
             const paidOff = debt.startingBalance - debt.currentBalance;
@@ -802,7 +802,7 @@ export default function Dashboard({
                     </span>
                     <button
                       onClick={(e) => handleEditClick(debt, e)}
-                      className="p-1.5 text-gray-500 hover:text-[#2D9CDB] hover:bg-blue-50 rounded transition-colors"
+                      className="p-1.5 text-gray-500 hover:text-brand-blue hover:bg-blue-50 rounded transition-colors"
                       title="Edit debt"
                     >
                       <Pencil className="w-4 h-4" />
@@ -817,7 +817,7 @@ export default function Dashboard({
                   </div>
                 </div>
                 <div className="mb-4">
-                  <p className="text-3xl font-bold text-[#1E3A5F] mb-1">
+                  <p className="text-3xl font-bold text-brand-navy mb-1">
                     {CalculationService.formatCurrency(debt.currentBalance)}
                   </p>
                   <p className="text-sm text-gray-500">
@@ -830,14 +830,14 @@ export default function Dashboard({
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
-                      className="bg-[#2D9CDB] h-full rounded-full"
+                      className="bg-brand-blue h-full rounded-full"
                       style={{ width: `${Math.min(progress, 100)}%` }}
                     />
                   </div>
                 </div>
                 <button
                   onClick={() => handleLogPaymentClick(debt.id)}
-                  className="w-full mt-3 bg-[#FF6B35] hover:bg-[#E55A25] text-white text-sm font-semibold py-2 px-4 rounded transition-colors"
+                  className="w-full mt-3 bg-brand-orange hover:bg-brand-orange-dark text-white text-sm font-semibold py-2 px-4 rounded transition-colors"
                 >
                   Log Payment
                 </button>
@@ -849,7 +849,7 @@ export default function Dashboard({
 
       {metrics.paidOffDebts.length > 0 && (
         <div>
-          <h3 className="text-xl font-bold text-[#1E3A5F] mb-4">Paid Off Debts</h3>
+          <h3 className="text-xl font-bold text-brand-navy mb-4">Paid Off Debts</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {metrics.paidOffDebts.map(debt => (
               <div
@@ -857,7 +857,7 @@ export default function Dashboard({
                 className={`${
                   debt.transferredToHELOC
                     ? 'bg-gradient-to-br from-[#F2994A] to-[#E67E22]'
-                    : 'bg-gradient-to-br from-[#27AE60] to-[#229954]'
+                    : 'bg-gradient-to-br from-brand-green to-[#229954]'
                 } text-white rounded-lg shadow-md p-6`}
               >
                 <div className="flex items-start justify-between mb-2">
@@ -884,7 +884,7 @@ export default function Dashboard({
       {recentActivity.length > 0 && (
         <div>
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold text-[#1E3A5F]">Recent Activity</h3>
+            <h3 className="text-xl font-bold text-brand-navy">Recent Activity</h3>
             <span className="text-xs text-gray-500 uppercase tracking-wide">Last 15 transactions</span>
           </div>
           <div className="bg-white rounded-lg shadow-md p-6">
@@ -894,13 +894,13 @@ export default function Dashboard({
                   <div className="flex items-start space-x-3 flex-1">
                     <span className="text-2xl mt-0.5">{activity.icon}</span>
                     <div className="flex-1">
-                      <p className={`font-medium ${activity.type === 'milestone' ? 'text-[#27AE60]' : 'text-gray-800'}`}>
+                      <p className={`font-medium ${activity.type === 'milestone' ? 'text-brand-green' : 'text-gray-800'}`}>
                         {activity.description}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <p className="text-sm text-gray-500">{CalculationService.formatDate(activity.date)}</p>
-                        <span className="text-[#1E3A5F]/30">•</span>
-                        <span className="text-xs text-[#1E3A5F]/50 capitalize">{activity.source}</span>
+                        <span className="text-brand-navy/30">•</span>
+                        <span className="text-xs text-brand-navy/50 capitalize">{activity.source}</span>
                       </div>
                     </div>
                   </div>
@@ -916,7 +916,7 @@ export default function Dashboard({
                           setEditingTransaction(activity.transaction!);
                           setShowEditPayment(true);
                         }}
-                        className="text-[#2D9CDB] hover:text-[#1E8BBD] transition-colors p-1"
+                        className="text-brand-blue hover:text-[#1E8BBD] transition-colors p-1"
                         title="Edit transaction"
                       >
                         <Edit2 className="w-4 h-4" />

@@ -112,7 +112,7 @@ function ChunkingReadinessQuiz({ onComplete, onClose }: ChunkingReadinessQuizPro
                 <div className="flex space-x-3">
                   <button
                     onClick={handleProceed}
-                    className="flex-1 px-6 py-3 bg-[#FF6B35] hover:bg-[#E55A2B] text-white font-semibold rounded-lg transition-colors"
+                    className="flex-1 px-6 py-3 bg-brand-orange hover:bg-[#E55A2B] text-white font-semibold rounded-lg transition-colors"
                   >
                     View Chunking Recommendations
                   </button>
@@ -224,8 +224,8 @@ function ChunkingReadinessQuiz({ onComplete, onClose }: ChunkingReadinessQuizPro
                     onClick={() => handleAnswer(index, true)}
                     className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
                       answer.answer === true
-                        ? 'bg-[#FF6B35] text-white'
-                        : 'bg-white border-2 border-gray-300 text-gray-700 hover:border-[#FF6B35]'
+                        ? 'bg-brand-orange text-white'
+                        : 'bg-white border-2 border-gray-300 text-gray-700 hover:border-brand-orange'
                     }`}
                   >
                     Yes
@@ -234,8 +234,8 @@ function ChunkingReadinessQuiz({ onComplete, onClose }: ChunkingReadinessQuizPro
                     onClick={() => handleAnswer(index, false)}
                     className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
                       answer.answer === false
-                        ? 'bg-[#FF6B35] text-white'
-                        : 'bg-white border-2 border-gray-300 text-gray-700 hover:border-[#FF6B35]'
+                        ? 'bg-brand-orange text-white'
+                        : 'bg-white border-2 border-gray-300 text-gray-700 hover:border-brand-orange'
                     }`}
                   >
                     No
@@ -251,7 +251,7 @@ function ChunkingReadinessQuiz({ onComplete, onClose }: ChunkingReadinessQuizPro
               disabled={!allQuestionsAnswered}
               className={`flex-1 px-6 py-3 font-semibold rounded-lg transition-colors ${
                 allQuestionsAnswered
-                  ? 'bg-[#FF6B35] hover:bg-[#E55A2B] text-white'
+                  ? 'bg-brand-orange hover:bg-[#E55A2B] text-white'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
             >

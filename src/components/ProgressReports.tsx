@@ -208,7 +208,7 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white rounded-lg shadow-md p-6">
           <p className="text-sm text-gray-600 mb-2">Total Debt Reduced</p>
-          <p className="text-3xl font-bold text-[#27AE60]">
+          <p className="text-3xl font-bold text-brand-green">
             {CalculationService.formatCurrency(metrics.totalPaidOff)}
           </p>
           <p className="text-sm text-gray-500 mt-1">{metrics.progressPercentage.toFixed(1)}% complete</p>
@@ -216,7 +216,7 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
 
         <div className="bg-white rounded-lg shadow-md p-6">
           <p className="text-sm text-gray-600 mb-2">Principal Paid</p>
-          <p className="text-3xl font-bold text-[#27AE60]">
+          <p className="text-3xl font-bold text-brand-green">
             {CalculationService.formatCurrency(totalPrincipal)}
           </p>
           <p className="text-sm text-gray-500 mt-1">Actual debt eliminated</p>
@@ -224,7 +224,7 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
 
         <div className="bg-white rounded-lg shadow-md p-6">
           <p className="text-sm text-gray-600 mb-2">Interest Paid</p>
-          <p className="text-3xl font-bold text-[#EB5757]">
+          <p className="text-3xl font-bold text-brand-red">
             {CalculationService.formatCurrency(totalInterest)}
           </p>
           <p className="text-sm text-gray-500 mt-1">{filteredPayments.length} payment{filteredPayments.length !== 1 ? 's' : ''}</p>
@@ -232,7 +232,7 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
 
         <div className="bg-white rounded-lg shadow-md p-6">
           <p className="text-sm text-gray-600 mb-2">Remaining Debt</p>
-          <p className="text-3xl font-bold text-[#1E3A5F]">
+          <p className="text-3xl font-bold text-brand-navy">
             {CalculationService.formatCurrency(metrics.totalCurrentBalance)}
           </p>
           <p className="text-sm text-gray-500 mt-1">{metrics.activeDebts.length} active debt{metrics.activeDebts.length !== 1 ? 's' : ''}</p>
@@ -246,10 +246,10 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
             {paymentBreakdown.directCount > 0 && (
               <div className="bg-blue-50 rounded-lg p-4">
                 <div className="flex items-center space-x-3 mb-2">
-                  <div className="bg-[#2D9CDB] w-4 h-4 rounded"></div>
+                  <div className="bg-brand-blue w-4 h-4 rounded"></div>
                   <p className="text-sm font-semibold text-gray-700">Direct Payments</p>
                 </div>
-                <p className="text-2xl font-bold text-[#2D9CDB] mb-1">
+                <p className="text-2xl font-bold text-brand-blue mb-1">
                   {CalculationService.formatCurrency(paymentBreakdown.direct)}
                 </p>
                 <p className="text-xs text-gray-600">
@@ -282,10 +282,10 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
             {paymentBreakdown.checkingCount > 0 && (
               <div className="bg-green-50 rounded-lg p-4">
                 <div className="flex items-center space-x-3 mb-2">
-                  <div className="bg-[#27AE60] w-4 h-4 rounded"></div>
+                  <div className="bg-brand-green w-4 h-4 rounded"></div>
                   <p className="text-sm font-semibold text-gray-700">Checking Register</p>
                 </div>
-                <p className="text-2xl font-bold text-[#27AE60] mb-1">
+                <p className="text-2xl font-bold text-brand-green mb-1">
                   {CalculationService.formatCurrency(paymentBreakdown.checking)}
                 </p>
                 <p className="text-xs text-gray-600">
@@ -380,13 +380,13 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
           <div className="grid grid-cols-2 gap-4 mt-4">
             <div className="text-center">
               <p className="text-sm text-gray-600">Interest Paid</p>
-              <p className="text-2xl font-bold text-[#EB5757]">
+              <p className="text-2xl font-bold text-brand-red">
                 {CalculationService.formatCurrency(totalInterest)}
               </p>
             </div>
             <div className="text-center">
               <p className="text-sm text-gray-600">Principal Paid</p>
-              <p className="text-2xl font-bold text-[#27AE60]">
+              <p className="text-2xl font-bold text-brand-green">
                 {CalculationService.formatCurrency(totalPrincipal)}
               </p>
             </div>
@@ -453,7 +453,7 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
               <select
                 value={filterDebtId}
                 onChange={(e) => setFilterDebtId(e.target.value)}
-                className="px-3 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                className="px-3 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-brand-blue focus:border-transparent"
               >
                 <option value="all">All Debts</option>
                 {debts.filter(debt => debt.category !== 'HELOC').map(debt => (
@@ -463,7 +463,7 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
             </div>
             <button
               onClick={handleExportHistory}
-              className="flex items-center space-x-2 text-[#2D9CDB] hover:text-[#1E8BBD] text-sm font-semibold transition-colors"
+              className="flex items-center space-x-2 text-brand-blue hover:text-[#1E8BBD] text-sm font-semibold transition-colors"
             >
               <Download className="w-4 h-4" />
               <span>Export CSV</span>
@@ -501,7 +501,7 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
                   </td>
                   <td className="py-3 px-2">
                     <span className={`text-xs font-semibold px-2 py-1 rounded ${
-                      p.source === 'direct' ? 'bg-[#2D9CDB]/20 text-[#2D9CDB]' :
+                      p.source === 'direct' ? 'bg-brand-blue/20 text-brand-blue' :
                       p.source === 'heloc' ? 'bg-purple-100 text-purple-700' :
                       'bg-green-100 text-green-700'
                     }`}>
@@ -510,7 +510,7 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
                        'Checking'}
                     </span>
                   </td>
-                  <td className="py-3 px-2 text-sm text-right text-[#27AE60] font-mono font-semibold">
+                  <td className="py-3 px-2 text-sm text-right text-brand-green font-mono font-semibold">
                     {CalculationService.formatCurrencyDetailed(p.principalPaid)}
                   </td>
                   <td className="py-3 px-2 text-sm text-right text-red-600 font-mono">
@@ -523,7 +523,7 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={(e) => { e.stopPropagation(); handleOpenEdit(p); }}
-                        className="px-2 py-1 text-xs font-semibold text-[#2D9CDB] hover:bg-blue-50 rounded transition-colors"
+                        className="px-2 py-1 text-xs font-semibold text-brand-blue hover:bg-blue-50 rounded transition-colors"
                         title="Edit payment"
                       >
                         Edit
@@ -621,7 +621,7 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
                 type="date"
                 value={editDate}
                 onChange={(e) => setEditDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
               />
             </div>
 
@@ -633,7 +633,7 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
                 min="0.01"
                 value={editAmount}
                 onChange={(e) => setEditAmount(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
               />
             </div>
 
@@ -643,7 +643,7 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
                 type="text"
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                 placeholder="Optional description"
               />
             </div>
@@ -657,7 +657,7 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
               </button>
               <button
                 onClick={handleSaveEdit}
-                className="px-4 py-2 text-sm font-semibold text-white bg-[#2D9CDB] hover:bg-[#1E8BBD] rounded-lg transition-colors"
+                className="px-4 py-2 text-sm font-semibold text-white bg-brand-blue hover:bg-[#1E8BBD] rounded-lg transition-colors"
               >
                 Save
               </button>

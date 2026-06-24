@@ -32,7 +32,7 @@ function ChunkingScenarioComparison({
 
   return (
     <div className={`space-y-6 ${className}`}>
-      <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2D5F8D] text-white rounded-lg p-6 shadow-lg">
+      <div className="bg-gradient-to-br from-brand-navy to-[#2D5F8D] text-white rounded-lg p-6 shadow-lg">
         <div className="flex items-center space-x-3 mb-4">
           <div className="bg-white/20 p-3 rounded-full">
             <TrendingUp className="w-6 h-6" />
@@ -61,7 +61,7 @@ function ChunkingScenarioComparison({
               </div>
               <div className="flex items-start space-x-2">
                 <span className="text-white/70">•</span>
-                <p>Interest saved over life of loan: <span className="font-bold text-[#27AE60]">~{CalculationService.formatCurrency(estimatedMortgageInterestSaved)}</span></p>
+                <p>Interest saved over life of loan: <span className="font-bold text-brand-green">~{CalculationService.formatCurrency(estimatedMortgageInterestSaved)}</span></p>
               </div>
               <div className="flex items-start space-x-2">
                 <span className="text-white/70">•</span>
@@ -74,7 +74,7 @@ function ChunkingScenarioComparison({
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-[#27AE60] to-[#229954] rounded-lg p-5 border-2 border-[#27AE60] shadow-lg">
+          <div className="bg-gradient-to-br from-brand-green to-[#229954] rounded-lg p-5 border-2 border-brand-green shadow-lg">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-lg font-bold">Option B: HELOC Chunking</h4>
               <Unlock className="w-6 h-6 text-white" />
@@ -114,7 +114,7 @@ function ChunkingScenarioComparison({
         </div>
       </div>
 
-      <div className="bg-gradient-to-r from-[#27AE60] to-[#229954] text-white rounded-lg p-6 shadow-lg">
+      <div className="bg-gradient-to-r from-brand-green to-[#229954] text-white rounded-lg p-6 shadow-lg">
         <div className="flex items-start space-x-4">
           <div className="bg-white/20 p-3 rounded-lg">
             <Zap className="w-8 h-8" />
@@ -130,7 +130,7 @@ function ChunkingScenarioComparison({
                 <span>HELOC interest cost:</span>
                 <span className="font-bold text-orange-200">-{CalculationService.formatCurrency(helocInterestCost)}</span>
               </div>
-              <div className="flex justify-between items-center bg-white text-[#27AE60] rounded-lg p-4 font-bold text-xl border-2 border-white">
+              <div className="flex justify-between items-center bg-white text-brand-green rounded-lg p-4 font-bold text-xl border-2 border-white">
                 <span>Net Savings:</span>
                 <span>{CalculationService.formatCurrency(netSavings)}</span>
               </div>
@@ -154,15 +154,15 @@ function ChunkingScenarioComparison({
         </div>
       </div>
 
-      <div className="bg-blue-50 border-l-4 border-[#2D9CDB] p-5 rounded-r-lg">
+      <div className="bg-blue-50 border-l-4 border-brand-blue p-5 rounded-r-lg">
         <h4 className="font-bold text-gray-900 mb-3 flex items-center space-x-2">
-          <TrendingUp className="w-5 h-5 text-[#2D9CDB]" />
+          <TrendingUp className="w-5 h-5 text-brand-blue" />
           <span>Why It Works</span>
         </h4>
         <p className="text-gray-700 mb-3">
           You "rent" the HELOC for {paybackMonths} months (<span className="font-bold text-orange-600">{CalculationService.formatCurrency(helocInterestCost)} cost</span>)
-          to save <span className="font-bold text-[#27AE60]">{CalculationService.formatCurrency(estimatedMortgageInterestSaved)}</span> in mortgage interest.
-          That's a <span className="font-bold text-[#2D9CDB]">{roi.toFixed(0)}% return</span> on the {CalculationService.formatCurrency(helocInterestCost)} you paid.
+          to save <span className="font-bold text-brand-green">{CalculationService.formatCurrency(estimatedMortgageInterestSaved)}</span> in mortgage interest.
+          That's a <span className="font-bold text-brand-blue">{roi.toFixed(0)}% return</span> on the {CalculationService.formatCurrency(helocInterestCost)} you paid.
         </p>
         <div className="bg-white rounded-lg p-4 border border-blue-200">
           <p className="text-sm text-gray-700 font-semibold mb-2">The key insight:</p>

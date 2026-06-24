@@ -513,11 +513,11 @@ export default function StatementUploadModal({
                 onDrop={handleDrop}
                 onDragOver={e => e.preventDefault()}
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center cursor-pointer hover:border-[#FF6B35] hover:bg-orange-50 transition-colors"
+                className="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center cursor-pointer hover:border-brand-orange hover:bg-orange-50 transition-colors"
               >
                 {loading ? (
                   <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="w-10 h-10 text-[#FF6B35] animate-spin" />
+                    <Loader2 className="w-10 h-10 text-brand-orange animate-spin" />
                     <p className="text-gray-600 font-medium">{loadingMessage || 'Reading your statement...'}</p>
                     <p className="text-xs text-gray-500">PDF files take a few seconds</p>
                   </div>
@@ -809,7 +809,7 @@ export default function StatementUploadModal({
                   </div>
                   <p className="text-sm text-gray-500">Review and uncheck any you don&apos;t want to import</p>
                 </div>
-                <span className="text-sm font-medium text-[#FF6B35]">{approvedCount} selected</span>
+                <span className="text-sm font-medium text-brand-orange">{approvedCount} selected</span>
               </div>
 
               {detectionResult?.type !== 'credit_card' && (
@@ -823,8 +823,8 @@ export default function StatementUploadModal({
                         onClick={() => setSelectedCheckingAccountId(account.id)}
                         className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
                           selectedCheckingAccountId === account.id
-                            ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
-                            : 'bg-white text-[#1E3A5F] border-[#e8d8c4] hover:border-[#1E3A5F]'
+                            ? 'bg-brand-navy text-white border-brand-navy'
+                            : 'bg-white text-brand-navy border-brand-cream-border hover:border-brand-navy'
                         }`}
                       >
                         {account.accountType === 'checking' ? '🏦' : '💰'} {account.name}
@@ -853,7 +853,7 @@ export default function StatementUploadModal({
                             type="checkbox"
                             checked={t.approved}
                             onChange={() => toggleApproved(t.id)}
-                            className="w-4 h-4 rounded text-[#FF6B35]"
+                            className="w-4 h-4 rounded text-brand-orange"
                           />
                         </td>
                         <td className="py-2 px-3 text-gray-700 whitespace-nowrap">
@@ -888,7 +888,7 @@ export default function StatementUploadModal({
                 <button
                   onClick={handleImport}
                   disabled={approvedCount === 0}
-                  className="flex-1 bg-[#FF6B35] hover:bg-[#e55a25] disabled:opacity-50 text-white font-semibold py-3 rounded-lg transition-colors"
+                  className="flex-1 bg-brand-orange hover:bg-brand-orange-dark disabled:opacity-50 text-white font-semibold py-3 rounded-lg transition-colors"
                 >
                   Import {approvedCount} Transactions
                 </button>

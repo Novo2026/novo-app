@@ -270,11 +270,11 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 pt-6 pb-4 rounded-t-xl z-10">
           <div className="flex justify-between items-start">
             <div className="flex items-center space-x-3">
-              <div className="bg-[#2D9CDB]/10 p-2 rounded-lg">
+              <div className="bg-brand-blue/10 p-2 rounded-lg">
                 {isCreditCard ? (
-                  <ArrowRightLeft className="w-5 h-5 text-[#2D9CDB]" />
+                  <ArrowRightLeft className="w-5 h-5 text-brand-blue" />
                 ) : (
-                  <RefreshCw className="w-5 h-5 text-[#2D9CDB]" />
+                  <RefreshCw className="w-5 h-5 text-brand-blue" />
                 )}
               </div>
               <div>
@@ -335,7 +335,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
             <DatePicker
               value={refinanceDate}
               onChange={setRefinanceDate}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
             />
           </div>
 
@@ -355,7 +355,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                     onClick={() => setSubtype(opt.value as RefinanceSubtype)}
                     className={`p-3 rounded-lg border-2 text-left transition-all ${
                       subtype === opt.value
-                        ? 'border-[#2D9CDB] bg-[#2D9CDB]/5'
+                        ? 'border-brand-blue bg-brand-blue/5'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
@@ -381,7 +381,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                     onClick={() => setSubtype(opt.value as RefinanceSubtype)}
                     className={`p-3 rounded-lg border-2 text-left transition-all ${
                       subtype === opt.value
-                        ? 'border-[#2D9CDB] bg-[#2D9CDB]/5'
+                        ? 'border-brand-blue bg-brand-blue/5'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
@@ -407,7 +407,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                     onClick={() => setSubtype(opt.value as RefinanceSubtype)}
                     className={`p-3 rounded-lg border-2 text-left transition-all ${
                       subtype === opt.value
-                        ? 'border-[#2D9CDB] bg-[#2D9CDB]/5'
+                        ? 'border-brand-blue bg-brand-blue/5'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
@@ -434,7 +434,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                 isStudentLoan ? 'e.g., SoFi' :
                 'e.g., LightStream'
               }
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
             />
           </div>
 
@@ -446,7 +446,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
               type="text"
               value={newAccountName}
               onChange={e => setNewAccountName(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
             />
           </div>
 
@@ -462,7 +462,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                   value={newBalance}
                   onChange={e => setNewBalance(e.target.value)}
                   required
-                  className="w-full pl-7 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                  className="w-full pl-7 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                 />
               </div>
               {parsedNewBalance > debt.currentBalance && (
@@ -472,7 +472,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                 </p>
               )}
               {parsedNewBalance < debt.currentBalance && parsedNewBalance > 0 && (
-                <p className="text-xs text-[#27AE60] mt-1">
+                <p className="text-xs text-brand-green mt-1">
                   -{CalculationService.formatCurrency(debt.currentBalance - parsedNewBalance)} from current
                 </p>
               )}
@@ -488,12 +488,12 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                   value={newRate}
                   onChange={e => handleRateChange(e.target.value)}
                   required
-                  className="w-full pl-4 pr-8 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                  className="w-full pl-4 pr-8 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">%</span>
               </div>
               {parsedNewRate < debt.interestRate && parsedNewRate >= 0 && (
-                <p className="text-xs text-[#27AE60] mt-1">
+                <p className="text-xs text-brand-green mt-1">
                   -{(debt.interestRate - parsedNewRate).toFixed(2)}% improvement
                 </p>
               )}
@@ -520,7 +520,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                   <DatePicker
                     value={introEndDate}
                     onChange={setIntroEndDate}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                   />
                 </div>
                 <div>
@@ -533,7 +533,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                       value={rateAfterIntro}
                       onChange={e => setRateAfterIntro(e.target.value)}
                       placeholder="e.g., 24.99"
-                      className="w-full pl-4 pr-8 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                      className="w-full pl-4 pr-8 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold">%</span>
                   </div>
@@ -553,7 +553,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                 value={newPayment}
                 onChange={e => setNewPayment(e.target.value)}
                 required
-                className="w-full pl-7 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                className="w-full pl-7 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
               />
             </div>
           </div>
@@ -570,7 +570,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                 value={newTerm}
                 onChange={e => setNewTerm(e.target.value)}
                 placeholder="e.g., 30"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
               />
             </div>
           )}
@@ -628,7 +628,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                             setConsolidatedDebtIds(consolidatedDebtIds.filter(id => id !== d.id));
                           }
                         }}
-                        className="w-4 h-4 text-[#FF6B35] rounded"
+                        className="w-4 h-4 text-brand-orange rounded"
                       />
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-gray-800">
@@ -658,7 +658,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
             </button>
             <button
               type="submit"
-              className="flex-1 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+              className="flex-1 bg-brand-blue hover:bg-[#1E8BBD] text-white font-semibold py-3 px-4 rounded-lg transition-colors"
             >
               {isCreditCard ? 'Update' : 'Update Loan'}
             </button>

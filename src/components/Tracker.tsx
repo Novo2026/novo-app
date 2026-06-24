@@ -33,7 +33,7 @@ export function Tracker({ onDataUpdate }: TrackerProps) {
           <select
             value={currentView}
             onChange={(e) => setCurrentView(e.target.value as TrackerView)}
-            className="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FF6B35] focus:border-transparent font-semibold"
+            className="w-full md:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-orange focus:border-transparent font-semibold"
           >
             <option value="checking">Checking/Cash Flow Account</option>
             <option value="heloc">HELOC Account</option>

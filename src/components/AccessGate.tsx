@@ -22,8 +22,8 @@ export function ProFeatureGate({ featureName, children }: AccessGateProps) {
           {children}
         </div>
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="bg-white border-2 border-[#FF6B35] rounded-xl p-6 text-center shadow-lg max-w-sm mx-4">
-            <Lock className="w-8 h-8 text-[#FF6B35] mx-auto mb-3" />
+          <div className="bg-white border-2 border-brand-orange rounded-xl p-6 text-center shadow-lg max-w-sm mx-4">
+            <Lock className="w-8 h-8 text-brand-orange mx-auto mb-3" />
             <p className="font-bold text-gray-900 text-lg mb-1">NOVO Pro Feature</p>
             <p className="text-sm text-gray-600 mb-4">
               {featureName} is available on NOVO Pro. Enter an access code or attend a free homebuyer webinar to unlock.
@@ -31,7 +31,7 @@ export function ProFeatureGate({ featureName, children }: AccessGateProps) {
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); setShowUpgrade(true); }}
-              className="bg-[#FF6B35] hover:bg-[#e55a25] text-white font-bold py-2.5 px-6 rounded-lg transition-colors text-sm"
+              className="bg-brand-orange hover:bg-brand-orange-dark text-white font-bold py-2.5 px-6 rounded-lg transition-colors text-sm"
             >
               Enter Access Code
             </button>
@@ -71,7 +71,7 @@ export function UpgradeModal({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
         <div className="text-center mb-6">
-          <div className="w-14 h-14 bg-[#FF6B35] rounded-full flex items-center justify-center mx-auto mb-3">
+          <div className="w-14 h-14 bg-brand-orange rounded-full flex items-center justify-center mx-auto mb-3">
             <Unlock className="w-7 h-7 text-white" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900">Unlock NOVO Pro</h2>
@@ -113,7 +113,7 @@ export function UpgradeModal({ onClose }: { onClose: () => void }) {
               onChange={e => setCode(e.target.value.toUpperCase())}
               onKeyDown={e => e.key === 'Enter' && handleActivate()}
               placeholder="Enter your access code"
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-center text-lg font-mono font-bold tracking-widest focus:border-[#FF6B35] focus:outline-none uppercase"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-center text-lg font-mono font-bold tracking-widest focus:border-brand-orange focus:outline-none uppercase"
               autoFocus
             />
             {result && !result.success && (
@@ -123,7 +123,7 @@ export function UpgradeModal({ onClose }: { onClose: () => void }) {
               type="button"
               onClick={handleActivate}
               disabled={!code.trim() || loading}
-              className="w-full bg-[#FF6B35] hover:bg-[#e55a25] disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-colors text-base"
+              className="w-full bg-brand-orange hover:bg-brand-orange-dark disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-colors text-base"
             >
               {loading ? 'Activating...' : 'Activate Code'}
             </button>
@@ -153,11 +153,11 @@ export function UpgradeModal({ onClose }: { onClose: () => void }) {
               </ul>
             </div>
             <div>
-              <p className="text-xs font-bold text-[#FF6B35] mb-2 uppercase tracking-wide">Pro unlocks</p>
+              <p className="text-xs font-bold text-brand-orange mb-2 uppercase tracking-wide">Pro unlocks</p>
               <ul className="space-y-1">
                 {PRO_FEATURES.map(f => (
                   <li key={f} className="text-xs text-gray-700 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3 h-3 text-[#FF6B35] flex-shrink-0" />
+                    <CheckCircle2 className="w-3 h-3 text-brand-orange flex-shrink-0" />
                     {f}
                   </li>
                 ))}
@@ -186,7 +186,7 @@ export function UpgradeButton() {
       <button
         type="button"
         onClick={() => setShow(true)}
-        className="flex items-center gap-1.5 bg-[#FF6B35] hover:bg-[#e55a25] text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+        className="flex items-center gap-1.5 bg-brand-orange hover:bg-brand-orange-dark text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
       >
         <ArrowRight className="w-3.5 h-3.5" />
         Unlock Pro

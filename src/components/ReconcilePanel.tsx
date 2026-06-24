@@ -103,7 +103,7 @@ export default function ReconcilePanel({
 
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between flex-shrink-0">
           <div>
-            <h3 className="text-lg font-bold text-[#1E3A5F]">Reconcile — {accountName}</h3>
+            <h3 className="text-lg font-bold text-brand-navy">Reconcile — {accountName}</h3>
             <p className="text-sm text-gray-500 mt-0.5">
               {lastReconciledAt
                 ? `Last reconciled ${new Date(lastReconciledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
@@ -119,7 +119,7 @@ export default function ReconcilePanel({
           <div className="flex items-center gap-4 flex-wrap">
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">NOVO Balance</p>
-              <p className="text-xl font-bold text-[#1E3A5F]">{CalculationService.formatCurrency(currentBalance)}</p>
+              <p className="text-xl font-bold text-brand-navy">{CalculationService.formatCurrency(currentBalance)}</p>
             </div>
             <div className="text-gray-300 text-2xl hidden md:block">=</div>
             <div className="flex-1 min-w-[180px]">
@@ -131,7 +131,7 @@ export default function ReconcilePanel({
                   value={statementBalance}
                   onChange={e => setStatementBalance(e.target.value)}
                   placeholder="Enter statement balance"
-                  className="w-full pl-7 pr-4 py-1.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                  className="w-full pl-7 pr-4 py-1.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
                   step="0.01"
                 />
               </div>
@@ -156,13 +156,13 @@ export default function ReconcilePanel({
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setFilterUnchecked(!filterUnchecked)}
-                className="text-xs text-gray-500 hover:text-[#FF6B35] transition-colors"
+                className="text-xs text-gray-500 hover:text-brand-orange transition-colors"
               >
                 {filterUnchecked ? 'Show all' : 'Hide reviewed'}
               </button>
               <button
                 onClick={toggleAll}
-                className="text-xs font-semibold text-[#FF6B35] hover:text-[#E55A25] transition-colors"
+                className="text-xs font-semibold text-brand-orange hover:text-brand-orange-dark transition-colors"
               >
                 {allChecked ? 'Uncheck all' : 'Check all'}
               </button>
@@ -254,7 +254,7 @@ export default function ReconcilePanel({
               {checkedCount > 0 && (
                 <button
                   onClick={handleComplete}
-                  className="flex-1 bg-[#1E3A5F] hover:bg-[#152C47] text-white font-semibold py-3 rounded-xl transition-colors"
+                  className="flex-1 bg-brand-navy hover:bg-brand-navy-dark text-white font-semibold py-3 rounded-xl transition-colors"
                 >
                   Reconcile {checkedCount} Reviewed
                 </button>
@@ -265,7 +265,7 @@ export default function ReconcilePanel({
           {!showQuickConfirm ? (
             <button
               onClick={() => setShowQuickConfirm(true)}
-              className="w-full text-sm font-medium text-gray-500 hover:text-[#1E3A5F] py-2 px-4 rounded-xl border border-gray-200 hover:border-[#1E3A5F]/30 bg-white transition-all flex items-center justify-center gap-2"
+              className="w-full text-sm font-medium text-gray-500 hover:text-brand-navy py-2 px-4 rounded-xl border border-gray-200 hover:border-brand-navy/30 bg-white transition-all flex items-center justify-center gap-2"
             >
               ⚡ Skip review — Quick Reconcile all {totalCount} transactions
             </button>

@@ -119,7 +119,7 @@ export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
           <select
             value={trackingType}
             onChange={(e) => handleTrackingTypeChange(e.target.value as TrackingType)}
-            className="flex-1 max-w-sm px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent bg-white text-gray-800 font-medium"
+            className="flex-1 max-w-sm px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent bg-white text-gray-800 font-medium"
           >
             <option value="heloc">HELOC Account</option>
             <option value="checking">Checking/Cash Flow Account</option>
@@ -127,7 +127,7 @@ export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
           </select>
         </div>
 
-        <div className="bg-blue-50 border-l-4 border-[#2D9CDB] p-4 rounded-r-lg">
+        <div className="bg-blue-50 border-l-4 border-brand-blue p-4 rounded-r-lg">
           <p className="text-sm text-gray-700">
             {trackingType === 'heloc' && 'Track your HELOC draws, payments, and interest for velocity banking.'}
             {trackingType === 'checking' && 'Track your checking account deposits, withdrawals, and cash flow for strategic debt payments.'}
@@ -158,7 +158,7 @@ export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
                     setEditingTransaction(null);
                     setShowPaymentModal(true);
                   }}
-                  className="flex items-center space-x-2 bg-[#27AE60] hover:bg-[#229954] text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+                  className="flex items-center space-x-2 bg-brand-green hover:bg-[#229954] text-white font-semibold py-2 px-4 rounded-lg transition-colors"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Record Another Payment</span>
@@ -207,7 +207,7 @@ export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
           </p>
           <button
             onClick={() => window.location.href = '#payment-strategies'}
-            className="bg-[#2D9CDB] hover:bg-[#1E7BB5] text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            className="bg-brand-blue hover:bg-[#1E7BB5] text-white font-semibold py-3 px-6 rounded-lg transition-colors"
           >
             Go to Payment Strategies
           </button>
@@ -216,7 +216,7 @@ export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
 
       {(trackingType === 'heloc' || trackingType === 'both') && hasHomeEquity && (
         <>
-          <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2D5A8A] text-white rounded-lg shadow-lg p-6">
+          <div className="bg-gradient-to-br from-brand-navy to-[#2D5A8A] text-white rounded-lg shadow-lg p-6">
             <h2 className="text-2xl font-bold mb-6">HELOC Overview</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -230,7 +230,7 @@ export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
               </div>
               <div>
                 <div className="text-sm opacity-90">Available Credit</div>
-                <div className="text-2xl font-bold text-[#27AE60]">{CalculationService.formatCurrency(availableCredit)}</div>
+                <div className="text-2xl font-bold text-brand-green">{CalculationService.formatCurrency(availableCredit)}</div>
               </div>
               <div>
                 <div className="text-sm opacity-90">Interest Rate</div>
@@ -366,7 +366,7 @@ export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
                   setEditingTransaction(null);
                   setShowDrawModal(true);
                 }}
-                className="flex items-center space-x-2 bg-white text-[#1E3A5F] hover:bg-gray-100 font-semibold py-2 px-4 rounded-lg transition-colors"
+                className="flex items-center space-x-2 bg-white text-brand-navy hover:bg-gray-100 font-semibold py-2 px-4 rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 <span>Record Draw</span>
@@ -376,7 +376,7 @@ export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
                   setEditingTransaction(null);
                   setShowPaymentModal(true);
                 }}
-                className="flex items-center space-x-2 bg-[#27AE60] hover:bg-[#229954] font-semibold py-2 px-4 rounded-lg transition-colors"
+                className="flex items-center space-x-2 bg-brand-green hover:bg-[#229954] font-semibold py-2 px-4 rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 <span>Record Payment</span>
@@ -536,9 +536,9 @@ export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
               <div>
                 <h4 className="font-bold text-gray-800 mb-3 text-lg">The 3-Step HELOC Cycle</h4>
                 <div className="space-y-4">
-                  <div className="bg-blue-50 rounded-lg p-4 border-l-4 border-[#2D9CDB]">
+                  <div className="bg-blue-50 rounded-lg p-4 border-l-4 border-brand-blue">
                     <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0 w-8 h-8 bg-[#2D9CDB] text-white rounded-full flex items-center justify-center font-bold">
+                      <div className="flex-shrink-0 w-8 h-8 bg-brand-blue text-white rounded-full flex items-center justify-center font-bold">
                         1
                       </div>
                       <div>
@@ -550,9 +550,9 @@ export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
                     </div>
                   </div>
 
-                  <div className="bg-green-50 rounded-lg p-4 border-l-4 border-[#27AE60]">
+                  <div className="bg-green-50 rounded-lg p-4 border-l-4 border-brand-green">
                     <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0 w-8 h-8 bg-[#27AE60] text-white rounded-full flex items-center justify-center font-bold">
+                      <div className="flex-shrink-0 w-8 h-8 bg-brand-green text-white rounded-full flex items-center justify-center font-bold">
                         2
                       </div>
                       <div>
@@ -633,19 +633,19 @@ export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
                 <div className="bg-gray-50 rounded-lg p-4">
                   <ul className="space-y-2 text-gray-700 text-sm">
                     <li className="flex items-start space-x-2">
-                      <span className="text-[#2D9CDB] font-bold">►</span>
+                      <span className="text-brand-blue font-bold">►</span>
                       <span>Track every HELOC transaction in NOVO - never lose sight of your balance</span>
                     </li>
                     <li className="flex items-start space-x-2">
-                      <span className="text-[#2D9CDB] font-bold">►</span>
+                      <span className="text-brand-blue font-bold">►</span>
                       <span>Set up automatic payments to ensure you're always paying down the HELOC</span>
                     </li>
                     <li className="flex items-start space-x-2">
-                      <span className="text-[#2D9CDB] font-bold">►</span>
+                      <span className="text-brand-blue font-bold">►</span>
                       <span>Keep an emergency fund separate from your HELOC strategy</span>
                     </li>
                     <li className="flex items-start space-x-2">
-                      <span className="text-[#2D9CDB] font-bold">►</span>
+                      <span className="text-brand-blue font-bold">►</span>
                       <span>Review your HELOC balance weekly to ensure you're on track</span>
                     </li>
                   </ul>
@@ -1167,7 +1167,7 @@ function RecordDrawModal({
                   setDescription('Transfer to checking for living expenses');
                 }
               }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
             >
               <option value="Pay Off Debt">Pay Off Debt</option>
               <option value="Transfer to Checking">Living expenses (transfer to checking)</option>
@@ -1184,7 +1184,7 @@ function RecordDrawModal({
                   type="checkbox"
                   checked={autoRecordInChecking}
                   onChange={(e) => setAutoRecordInChecking(e.target.checked)}
-                  className="w-5 h-5 text-[#27AE60] rounded focus:ring-[#27AE60]"
+                  className="w-5 h-5 text-brand-green rounded focus:ring-brand-green"
                 />
                 <div>
                   <div className="font-semibold text-gray-800">Automatically record in Checking Register</div>
@@ -1201,7 +1201,7 @@ function RecordDrawModal({
                 <select
                   value={selectedDebt}
                   onChange={(e) => handleDebtSelection(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent bg-white"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent bg-white"
                 >
                   <option value="">Choose a debt...</option>
                   {debts.map(debt => (
@@ -1268,7 +1268,7 @@ function RecordDrawModal({
                     <div className="mt-5 pt-5 border-t-2 border-gray-200">
                       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 mb-3">
                         <div className="flex items-center gap-2 mb-1">
-                          <Wallet className="w-5 h-5 text-[#2D9CDB]" />
+                          <Wallet className="w-5 h-5 text-brand-blue" />
                           <h3 className="text-lg font-bold text-gray-900">
                             How much do you want to pay on {selectedDebtObj?.accountName}?
                           </h3>
@@ -1281,17 +1281,17 @@ function RecordDrawModal({
                       <div className="space-y-2">
                         {selectedDebtObj && (
                           <>
-                            <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-[#2D9CDB] has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
+                            <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-brand-blue has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
                           <input
                             type="radio"
                             name="paymentType"
                             checked={paymentType === 'minimum'}
                             onChange={() => handlePaymentTypeChange('minimum')}
-                            className="mr-3 h-5 w-5 text-[#2D9CDB] focus:ring-[#2D9CDB] focus:ring-2"
+                            className="mr-3 h-5 w-5 text-brand-blue focus:ring-brand-blue focus:ring-2"
                           />
                           <div className="flex items-center gap-2.5 flex-1">
-                            <div className="flex-shrink-0 w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center group-has-[:checked]:bg-[#2D9CDB]">
-                              <CreditCard className="w-4 h-4 text-[#2D9CDB] group-has-[:checked]:text-white" />
+                            <div className="flex-shrink-0 w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center group-has-[:checked]:bg-brand-blue">
+                              <CreditCard className="w-4 h-4 text-brand-blue group-has-[:checked]:text-white" />
                             </div>
                             <div className="flex-1">
                               <div className="font-bold text-gray-900 text-sm">Pay minimum payment</div>
@@ -1303,7 +1303,7 @@ function RecordDrawModal({
                         </label>
 
                         {guidance && guidance.hasStrategy && guidance.recommendedPayment > guidance.minimumPayment && guidance.recommendedPayment < selectedDebtObj.currentBalance && (
-                          <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-[#2D9CDB] has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
+                          <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-brand-blue has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
                             <input
                               type="radio"
                               name="paymentType"
@@ -1312,7 +1312,7 @@ function RecordDrawModal({
                                 setPaymentType('recommended' as any);
                                 setAmount(guidance.recommendedPayment.toFixed(2));
                               }}
-                              className="mr-3 h-5 w-5 text-[#2D9CDB] focus:ring-[#2D9CDB] focus:ring-2"
+                              className="mr-3 h-5 w-5 text-brand-blue focus:ring-brand-blue focus:ring-2"
                             />
                             <div className="flex items-center gap-2.5 flex-1">
                               <div className="flex-shrink-0 w-9 h-9 bg-purple-100 rounded-lg flex items-center justify-center group-has-[:checked]:bg-purple-600">
@@ -1333,13 +1333,13 @@ function RecordDrawModal({
                           </label>
                         )}
 
-                        <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-[#2D9CDB] has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
+                        <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-brand-blue has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
                           <input
                             type="radio"
                             name="paymentType"
                             checked={paymentType === 'full'}
                             onChange={() => handlePaymentTypeChange('full')}
-                            className="mr-3 h-5 w-5 text-[#2D9CDB] focus:ring-[#2D9CDB] focus:ring-2"
+                            className="mr-3 h-5 w-5 text-brand-blue focus:ring-brand-blue focus:ring-2"
                           />
                           <div className="flex items-center gap-2.5 flex-1">
                             <div className="flex-shrink-0 w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center group-has-[:checked]:bg-green-600">
@@ -1354,13 +1354,13 @@ function RecordDrawModal({
                           </div>
                         </label>
 
-                        <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-[#2D9CDB] has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
+                        <label className="flex items-center cursor-pointer p-3 border-2 rounded-lg transition-all hover:bg-blue-50 hover:border-blue-200 has-[:checked]:border-brand-blue has-[:checked]:border-[3px] has-[:checked]:bg-blue-100 has-[:checked]:shadow-md group">
                           <input
                             type="radio"
                             name="paymentType"
                             checked={paymentType === 'custom'}
                             onChange={() => handlePaymentTypeChange('custom')}
-                            className="mr-3 h-5 w-5 text-[#2D9CDB] focus:ring-[#2D9CDB] focus:ring-2"
+                            className="mr-3 h-5 w-5 text-brand-blue focus:ring-brand-blue focus:ring-2"
                           />
                           <div className="flex items-center gap-2.5 flex-1">
                             <div className="flex-shrink-0 w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center group-has-[:checked]:bg-amber-500">
@@ -1390,7 +1390,7 @@ function RecordDrawModal({
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                 placeholder="0.00"
                 step="0.01"
                 disabled={purpose === 'Pay Off Debt' && selectedDebt && paymentType !== 'custom'}
@@ -1407,7 +1407,7 @@ function RecordDrawModal({
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
               placeholder="Used HELOC to pay off Capital One credit card"
             />
           </div>
@@ -1505,7 +1505,7 @@ function RecordPaymentModal({
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                 placeholder="0.00"
                 step="0.01"
               />
@@ -1525,7 +1525,7 @@ function RecordPaymentModal({
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
               placeholder="Paycheck deposit"
             />
           </div>
@@ -1557,7 +1557,7 @@ function RecordPaymentModal({
           </button>
           <button
             onClick={handleSubmit}
-            className="flex-1 bg-[#27AE60] hover:bg-[#229954] text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            className="flex-1 bg-brand-green hover:bg-[#229954] text-white font-semibold py-3 px-6 rounded-lg transition-colors"
           >
             {editTransaction ? 'Update' : 'Record'} Payment
           </button>
@@ -1649,7 +1649,7 @@ function RecordInterestModal({
               type="month"
               value={month}
               onChange={(e) => setMonth(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
             />
           </div>
 
@@ -1685,7 +1685,7 @@ function RecordInterestModal({
                   type="number"
                   value={manualAmount}
                   onChange={(e) => setManualAmount(e.target.value)}
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                   placeholder="0.00"
                   step="0.01"
                 />

@@ -318,7 +318,7 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 animate-fade-in">
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-[#27AE60] rounded-full mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-green rounded-full mb-4">
               <CheckCircle className="w-10 h-10 text-white" />
             </div>
             <h3 className="text-2xl font-bold text-gray-800">Payment Logged Successfully!</h3>
@@ -339,13 +339,13 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
                 <span>Interest Charged:</span>
                 <span className="font-semibold">+{CalculationService.formatCurrencyDetailed(calculationResult.interestCharged)}</span>
               </div>
-              <div className="flex justify-between text-[#2D9CDB]">
+              <div className="flex justify-between text-brand-blue">
                 <span>Payment Made:</span>
                 <span className="font-semibold">-{CalculationService.formatCurrencyDetailed(calculationResult.paymentAmount)}</span>
               </div>
               <div className="pt-2 border-t-2 border-gray-300 flex justify-between font-bold text-base">
                 <span className="text-gray-800">New Balance:</span>
-                <span className={calculationResult.newBalance === 0 ? 'text-[#27AE60]' : 'text-gray-800'}>
+                <span className={calculationResult.newBalance === 0 ? 'text-brand-green' : 'text-gray-800'}>
                   {CalculationService.formatCurrencyDetailed(calculationResult.newBalance)}
                 </span>
               </div>
@@ -354,17 +354,17 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
             <div className="pt-3 border-t border-gray-200 space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Principal Paid:</span>
-                <span className="font-semibold text-[#27AE60]">{CalculationService.formatCurrencyDetailed(calculationResult.principalPaid)}</span>
+                <span className="font-semibold text-brand-green">{CalculationService.formatCurrencyDetailed(calculationResult.principalPaid)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Progress:</span>
-                <span className="font-semibold text-[#2D9CDB]">{calculationResult.progress.toFixed(1)}% paid off</span>
+                <span className="font-semibold text-brand-blue">{calculationResult.progress.toFixed(1)}% paid off</span>
               </div>
             </div>
           </div>
 
           {calculationResult.newBalance === 0 && (
-            <div className="bg-gradient-to-r from-[#27AE60] to-[#229954] text-white text-center py-3 px-4 rounded-lg mb-6">
+            <div className="bg-gradient-to-r from-brand-green to-[#229954] text-white text-center py-3 px-4 rounded-lg mb-6">
               <p className="font-bold text-lg">DEBT PAID OFF!</p>
               <p className="text-sm">Congratulations on eliminating this debt!</p>
             </div>
@@ -373,7 +373,7 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
           <div className="flex space-x-3">
             <button
               onClick={handleClose}
-              className="flex-1 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+              className="flex-1 bg-brand-blue hover:bg-[#1E8BBD] text-white font-semibold py-3 px-4 rounded-lg transition-colors"
             >
               View Updated Balance
             </button>
@@ -424,7 +424,7 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
             </p>
             <button
               onClick={handleClose}
-              className="bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold py-2 px-6 rounded-lg transition-colors"
+              className="bg-brand-blue hover:bg-[#1E8BBD] text-white font-semibold py-2 px-6 rounded-lg transition-colors"
             >
               Close
             </button>
@@ -462,11 +462,11 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
               <button
                 type="button"
                 onClick={() => setPaymentSource('checking')}
-                className="w-full p-5 border-2 border-gray-300 rounded-lg hover:border-[#27AE60] hover:bg-green-50 transition-all text-left group"
+                className="w-full p-5 border-2 border-gray-300 rounded-lg hover:border-brand-green hover:bg-green-50 transition-all text-left group"
               >
                 <div className="flex items-center gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-[#27AE60] transition-colors">
-                    <CreditCard className="w-6 h-6 text-[#27AE60] group-hover:text-white" />
+                  <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center group-hover:bg-brand-green transition-colors">
+                    <CreditCard className="w-6 h-6 text-brand-green group-hover:text-white" />
                   </div>
                   <div className="flex-1">
                     <div className="font-bold text-gray-900 text-lg">Checking Account</div>
@@ -480,11 +480,11 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
               <button
                 type="button"
                 onClick={() => setPaymentSource('heloc')}
-                className="w-full p-5 border-2 border-gray-300 rounded-lg hover:border-[#2D9CDB] hover:bg-blue-50 transition-all text-left group"
+                className="w-full p-5 border-2 border-gray-300 rounded-lg hover:border-brand-blue hover:bg-blue-50 transition-all text-left group"
               >
                 <div className="flex items-center gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-[#2D9CDB] transition-colors">
-                    <Home className="w-6 h-6 text-[#2D9CDB] group-hover:text-white" />
+                  <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-brand-blue transition-colors">
+                    <Home className="w-6 h-6 text-brand-blue group-hover:text-white" />
                   </div>
                   <div className="flex-1">
                     <div className="font-bold text-gray-900 text-lg">HELOC</div>
@@ -532,13 +532,13 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
               <div className="flex items-center gap-2">
                 {paymentSource === 'checking' && (
                   <>
-                    <CreditCard className="w-4 h-4 text-[#27AE60]" />
+                    <CreditCard className="w-4 h-4 text-brand-green" />
                     <span className="text-sm font-semibold text-gray-700">Paying from: Checking Account</span>
                   </>
                 )}
                 {paymentSource === 'heloc' && (
                   <>
-                    <Home className="w-4 h-4 text-[#2D9CDB]" />
+                    <Home className="w-4 h-4 text-brand-blue" />
                     <span className="text-sm font-semibold text-gray-700">Paying from: HELOC</span>
                   </>
                 )}
@@ -552,7 +552,7 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
               <button
                 type="button"
                 onClick={() => setPaymentSource(null)}
-                className="text-xs text-[#2D9CDB] hover:text-[#1E8BBD] font-medium"
+                className="text-xs text-brand-blue hover:text-[#1E8BBD] font-medium"
               >
                 Change
               </button>
@@ -565,7 +565,7 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
             <select
               value={selectedDebtId}
               onChange={(e) => setSelectedDebtId(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
               required
             >
               <option value="">Select a debt...</option>
@@ -579,7 +579,7 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
               <button
                 type="button"
                 onClick={() => setShowEditModal(true)}
-                className="mt-2 text-sm text-[#2D9CDB] hover:text-[#1E8BBD] font-medium flex items-center gap-1 transition-colors"
+                className="mt-2 text-sm text-brand-blue hover:text-[#1E8BBD] font-medium flex items-center gap-1 transition-colors"
               >
                 <Edit2 className="w-3.5 h-3.5" />
                 Need to update this debt? Edit Debt
@@ -620,10 +620,10 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
                     value="minimum"
                     checked={paymentType === 'minimum'}
                     onChange={(e) => setPaymentType(e.target.value as PaymentType)}
-                    className="mt-1 w-4 h-4 text-[#2D9CDB] border-gray-300 focus:ring-[#2D9CDB]"
+                    className="mt-1 w-4 h-4 text-brand-blue border-gray-300 focus:ring-brand-blue"
                   />
                   <div className="flex-1">
-                    <div className="text-sm font-semibold text-gray-800 group-hover:text-[#2D9CDB]">
+                    <div className="text-sm font-semibold text-gray-800 group-hover:text-brand-blue">
                       Pay minimum only
                     </div>
                     <div className="text-xs text-gray-600 mt-0.5">
@@ -639,10 +639,10 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
                     value="minimum-plus"
                     checked={paymentType === 'minimum-plus'}
                     onChange={(e) => setPaymentType(e.target.value as PaymentType)}
-                    className="mt-1 w-4 h-4 text-[#2D9CDB] border-gray-300 focus:ring-[#2D9CDB]"
+                    className="mt-1 w-4 h-4 text-brand-blue border-gray-300 focus:ring-brand-blue"
                   />
                   <div className="flex-1">
-                    <div className="text-sm font-semibold text-gray-800 group-hover:text-[#2D9CDB]">
+                    <div className="text-sm font-semibold text-gray-800 group-hover:text-brand-blue">
                       Pay minimum + extra
                     </div>
                     {paymentType === 'minimum-plus' && (
@@ -657,14 +657,14 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
                             type="number"
                             value={extraAmount}
                             onChange={(e) => setExtraAmount(e.target.value)}
-                            className="w-full pl-6 pr-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                            className="w-full pl-6 pr-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                             placeholder="0.00"
                             step="0.01"
                             min="0.01"
                           />
                         </div>
                         <span className="text-gray-400">=</span>
-                        <span className="font-semibold text-[#2D9CDB] min-w-[80px]">
+                        <span className="font-semibold text-brand-blue min-w-[80px]">
                           {CalculationService.formatCurrency(getTotalAmount())}
                         </span>
                       </div>
@@ -679,10 +679,10 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
                     value="custom"
                     checked={paymentType === 'custom'}
                     onChange={(e) => setPaymentType(e.target.value as PaymentType)}
-                    className="mt-1 w-4 h-4 text-[#2D9CDB] border-gray-300 focus:ring-[#2D9CDB]"
+                    className="mt-1 w-4 h-4 text-brand-blue border-gray-300 focus:ring-brand-blue"
                   />
                   <div className="flex-1">
-                    <div className="text-sm font-semibold text-gray-800 group-hover:text-[#2D9CDB]">
+                    <div className="text-sm font-semibold text-gray-800 group-hover:text-brand-blue">
                       Custom amount
                     </div>
                     {paymentType === 'custom' && (
@@ -693,7 +693,7 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
                             type="number"
                             value={customAmount}
                             onChange={(e) => setCustomAmount(e.target.value)}
-                            className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                            className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                             placeholder="0.00"
                             step="0.01"
                             min="0.01"
@@ -730,17 +730,17 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent resize-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent resize-none"
               rows={2}
               placeholder="Add any notes about this payment..."
             />
           </div>
 
           {selectedDebt && getTotalAmount() > 0 && (
-            <div className="bg-[#2D9CDB]/10 border-2 border-[#2D9CDB]/30 rounded-lg p-4">
+            <div className="bg-brand-blue/10 border-2 border-brand-blue/30 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-gray-700">Total Payment:</span>
-                <span className="text-2xl font-bold text-[#2D9CDB]">
+                <span className="text-2xl font-bold text-brand-blue">
                   {CalculationService.formatCurrency(getTotalAmount())}
                 </span>
               </div>
@@ -759,7 +759,7 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
             <button
               type="submit"
               disabled={!selectedDebt || getTotalAmount() <= 0}
-              className="flex-1 bg-[#FF6B35] hover:bg-[#E55A25] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+              className="flex-1 bg-brand-orange hover:bg-brand-orange-dark disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors"
             >
               Confirm Payment
             </button>

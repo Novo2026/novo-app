@@ -175,13 +175,13 @@ export default function StartHereRibbon({ onNavigate, onOpenChat, userName }: St
   }
 
   return (
-    <div className="bg-white border-2 border-[#FF6B35] rounded-xl overflow-hidden mb-6 shadow-sm">
+    <div className="bg-white border-2 border-brand-orange rounded-xl overflow-hidden mb-6 shadow-sm">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full px-5 py-4 flex items-center justify-between bg-gradient-to-r from-[#1E3A5F] to-[#2d5a8e] text-white"
+        className="w-full px-5 py-4 flex items-center justify-between bg-gradient-to-r from-brand-navy to-brand-navy-light text-white"
       >
         <div className="flex items-center gap-3">
-          <div className="bg-[#FF6B35] rounded-lg px-2.5 py-1 text-xs font-bold">
+          <div className="bg-brand-orange rounded-lg px-2.5 py-1 text-xs font-bold">
             {completedSteps.length}/{steps.length}
           </div>
           <div className="text-left">
@@ -198,7 +198,7 @@ export default function StartHereRibbon({ onNavigate, onOpenChat, userName }: St
         <div className="flex items-center gap-2">
           <div className="h-1.5 w-24 bg-white/20 rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#FF6B35] rounded-full transition-all duration-500"
+              className="h-full bg-brand-orange rounded-full transition-all duration-500"
               style={{ width: `${(completedSteps.length / steps.length) * 100}%` }}
             />
           </div>
@@ -232,8 +232,8 @@ export default function StartHereRibbon({ onNavigate, onOpenChat, userName }: St
                     {isComplete ? (
                       <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                     ) : isCurrent ? (
-                      <div className="w-5 h-5 rounded-full border-2 border-[#FF6B35] flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-[#FF6B35]" />
+                      <div className="w-5 h-5 rounded-full border-2 border-brand-orange flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-brand-orange" />
                       </div>
                     ) : (
                       <Circle className="w-5 h-5 text-gray-300" />
@@ -241,11 +241,11 @@ export default function StartHereRibbon({ onNavigate, onOpenChat, userName }: St
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold ${isCurrent ? 'text-[#FF6B35]' : isComplete ? 'text-emerald-600' : 'text-gray-400'}`}>
+                      <span className={`text-xs font-bold ${isCurrent ? 'text-brand-orange' : isComplete ? 'text-emerald-600' : 'text-gray-400'}`}>
                         Step {index + 1}
                       </span>
                       {isCurrent && (
-                        <span className="text-xs bg-[#FF6B35] text-white px-2 py-0.5 rounded-full font-bold">
+                        <span className="text-xs bg-brand-orange text-white px-2 py-0.5 rounded-full font-bold">
                           Do this next
                         </span>
                       )}
@@ -268,7 +268,7 @@ export default function StartHereRibbon({ onNavigate, onOpenChat, userName }: St
                   <div className="px-5 pb-4 space-y-3">
                     <div className="bg-white border border-orange-200 rounded-lg p-4">
                       <div className="flex items-start gap-2 mb-2">
-                        <div className="w-6 h-6 rounded-full bg-[#FF6B35] flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <div className="w-6 h-6 rounded-full bg-brand-orange flex items-center justify-center flex-shrink-0 mt-0.5">
                           <span className="text-white text-xs font-bold">N</span>
                         </div>
                         <p className="text-sm text-gray-700 leading-relaxed italic">
@@ -281,7 +281,7 @@ export default function StartHereRibbon({ onNavigate, onOpenChat, userName }: St
                         setActiveStep(null);
                         handleNavigate(step.ctaSection);
                       }}
-                      className="flex items-center gap-2 bg-[#FF6B35] hover:bg-[#e55a25] text-white font-bold text-sm py-2.5 px-5 rounded-lg transition-colors"
+                      className="flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-bold text-sm py-2.5 px-5 rounded-lg transition-colors"
                     >
                       {step.ctaLabel}
                       <ArrowRight className="w-4 h-4" />

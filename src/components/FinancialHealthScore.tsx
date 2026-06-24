@@ -68,7 +68,7 @@ function getLabelAndColors(score: number): {
     return { label: 'Excellent', colorClass: 'text-emerald-600', strokeColor: '#16a34a' };
   }
   if (score >= 66) {
-    return { label: 'On Track', colorClass: 'text-[#2D9CDB]', strokeColor: '#2D9CDB' };
+    return { label: 'On Track', colorClass: 'text-brand-blue', strokeColor: '#2D9CDB' };
   }
   if (score >= 41) {
     return { label: 'Building Momentum', colorClass: 'text-orange-600', strokeColor: '#ea580c' };
@@ -213,8 +213,8 @@ export default function FinancialHealthScore({
   const dashOffset = arcLength * (1 - progress);
 
   return (
-    <div className="bg-white border border-[#e8d8c4]/60 rounded-2xl p-6" style={{ boxShadow: '0 1px 3px rgba(30,58,95,0.06), 0 4px 12px rgba(30,58,95,0.04)' }}>
-      <p className="text-sm font-semibold text-[#1E3A5F]/50 uppercase tracking-wide text-center mb-4">
+    <div className="bg-white border border-brand-cream-border/60 rounded-2xl p-6" style={{ boxShadow: '0 1px 3px rgba(30,58,95,0.06), 0 4px 12px rgba(30,58,95,0.04)' }}>
+      <p className="text-sm font-semibold text-brand-navy/50 uppercase tracking-wide text-center mb-4">
         Monthly Financial Health Score
       </p>
       <div className="flex flex-col items-center">

@@ -389,7 +389,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
     return (
       <div className="flex items-center justify-center py-16">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-[#27AE60] rounded-full mb-6">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-brand-green rounded-full mb-6">
             <CheckCircle className="w-12 h-12 text-white" />
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">All Data Cleared</h2>
@@ -408,7 +408,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
 
       <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
         <div className="flex items-center space-x-2 mb-3">
-          <Shield className="w-6 h-6 text-[#1E3A5F]" />
+          <Shield className="w-6 h-6 text-brand-navy" />
           <h3 className="text-xl font-bold text-gray-800">Data Protection</h3>
         </div>
         <p className="text-gray-600 text-sm mb-4 leading-relaxed">
@@ -431,7 +431,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
           <button
             type="button"
             onClick={handleBackupLocalStorage}
-            className="w-full flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-lg transition-colors shadow-md hover:shadow-lg text-white bg-[#1E3A5F] hover:bg-[#152a45] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1E3A5F]"
+            className="w-full flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-lg transition-colors shadow-md hover:shadow-lg text-white bg-brand-navy hover:bg-[#152a45] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-navy"
           >
             <Download className="w-5 h-5" />
             Backup My Data
@@ -439,7 +439,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
           <button
             type="button"
             onClick={handleRestoreBackupClick}
-            className="w-full flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-lg transition-colors shadow-md hover:shadow-lg text-white bg-[#FF6B35] hover:bg-[#e85d2a] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF6B35]"
+            className="w-full flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-lg transition-colors shadow-md hover:shadow-lg text-white bg-brand-orange hover:bg-[#e85d2a] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange"
           >
             <Upload className="w-5 h-5" />
             Restore From Backup
@@ -455,7 +455,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
         <button
           type="button"
           onClick={handleDownloadNovoReport}
-          className="w-full flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-lg transition-colors shadow-md hover:shadow-lg text-white bg-[#FF6B35] hover:bg-[#e85d2a] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF6B35]"
+          className="w-full flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-lg transition-colors shadow-md hover:shadow-lg text-white bg-brand-orange hover:bg-[#e85d2a] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-orange"
         >
           <Download className="w-5 h-5" />
           Download My NOVO Report
@@ -464,7 +464,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
 
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center space-x-2 mb-4">
-          <User className="w-6 h-6 text-[#1E3A5F]" />
+          <User className="w-6 h-6 text-brand-navy" />
           <h3 className="text-xl font-bold text-gray-800">Edit Profile</h3>
         </div>
         <p className="text-gray-600 mb-6">
@@ -507,7 +507,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
 
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center space-x-2 mb-4">
-          <DollarSign className="w-6 h-6 text-[#1E3A5F]" />
+          <DollarSign className="w-6 h-6 text-brand-navy" />
           <h3 className="text-xl font-bold text-gray-800">Financial Profile</h3>
         </div>
         <p className="text-gray-600 mb-6">
@@ -646,7 +646,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
 
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center space-x-2 mb-4">
-          <SettingsIcon className="w-6 h-6 text-[#1E3A5F]" />
+          <SettingsIcon className="w-6 h-6 text-brand-navy" />
           <h3 className="text-xl font-bold text-gray-800">Account Features</h3>
         </div>
         <p className="text-gray-600 mb-6">
@@ -685,7 +685,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
               <div className="mt-3 pt-3 border-t border-gray-300">
                 <button
                   onClick={() => setShowLearnHELOCModal(true)}
-                  className="text-[#2D9CDB] hover:text-[#1E8BBD] font-semibold text-sm underline transition-colors"
+                  className="text-brand-blue hover:text-[#1E8BBD] font-semibold text-sm underline transition-colors"
                 >
                   Learn About HELOC Strategy →
                 </button>
@@ -902,7 +902,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
 
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex items-center space-x-2 mb-4">
-          <Target className="w-6 h-6 text-[#1E3A5F]" />
+          <Target className="w-6 h-6 text-brand-navy" />
           <h3 className="text-xl font-bold text-gray-800">Strategy Readiness Assessment</h3>
         </div>
         <p className="text-gray-600 mb-6">
@@ -1138,7 +1138,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
         <button
           onClick={handleResetQuiz}
           disabled={quizStatus === 'not-taken'}
-          className="w-full flex items-center justify-center space-x-2 bg-[#2D9CDB] hover:bg-[#1E8BBD] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+          className="w-full flex items-center justify-center space-x-2 bg-brand-blue hover:bg-[#1E8BBD] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors"
         >
           <RefreshCw className="w-5 h-5" />
           <span>Reset Quiz Status</span>
@@ -1255,7 +1255,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
           <button
             type="button"
             onClick={() => setShowUpgradeModal(true)}
-            className="w-full bg-[#FF6B35] hover:bg-[#e55a25] text-white font-bold py-2.5 rounded-lg transition-colors text-sm"
+            className="w-full bg-brand-orange hover:bg-brand-orange-dark text-white font-bold py-2.5 rounded-lg transition-colors text-sm"
           >
             Enter Access Code
           </button>
@@ -1263,7 +1263,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
         {showUpgradeModal && <UpgradeModal onClose={() => setShowUpgradeModal(false)} />}
       </div>
 
-      <div className="bg-[#2D9CDB]/10 border border-[#2D9CDB] rounded-lg p-6">
+      <div className="bg-brand-blue/10 border border-brand-blue rounded-lg p-6">
         <h3 className="font-bold text-gray-800 mb-2">About NOVO</h3>
         <p className="text-sm text-gray-700 mb-4">
           NOVO is a comprehensive debt payoff calculator designed to help mortgage consultants coach clients on accelerated debt elimination strategies.

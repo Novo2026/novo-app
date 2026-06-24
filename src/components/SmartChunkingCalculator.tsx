@@ -112,7 +112,7 @@ function SmartChunkingCalculator({
     return (
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-8 shadow-lg">
         <h2 className="text-3xl font-bold text-gray-800 mb-2 flex items-center space-x-3">
-          <Calculator className="w-8 h-8 text-[#2D9CDB]" />
+          <Calculator className="w-8 h-8 text-brand-blue" />
           <span>Smart Chunking Calculator</span>
         </h2>
         <p className="text-gray-600 mb-6 text-lg">Advanced Strategy - Qualification Required</p>
@@ -189,7 +189,7 @@ function SmartChunkingCalculator({
               </div>
               <button
                 onClick={handleProceed}
-                className="w-full bg-[#2D9CDB] hover:bg-[#2589c4] text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                className="w-full bg-brand-blue hover:bg-[#2589c4] text-white font-bold py-3 px-6 rounded-lg transition-colors"
               >
                 Continue to Calculator
               </button>
@@ -204,7 +204,7 @@ function SmartChunkingCalculator({
     <div className="space-y-6">
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-8 shadow-lg">
         <h2 className="text-3xl font-bold text-gray-800 mb-6 flex items-center space-x-3">
-          <Calculator className="w-8 h-8 text-[#2D9CDB]" />
+          <Calculator className="w-8 h-8 text-brand-blue" />
           <span>Your Chunking Analysis</span>
         </h2>
 
@@ -235,7 +235,7 @@ function SmartChunkingCalculator({
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-[#2D9CDB] to-[#27AE60] text-white rounded-lg p-6 shadow-lg">
+        <div className="bg-gradient-to-r from-brand-blue to-brand-green text-white rounded-lg p-6 shadow-lg">
           <h3 className="text-2xl font-bold mb-4">Recommended Chunk Size</h3>
           <p className="text-4xl font-bold mb-2">
             {CalculationService.formatCurrency(recommendedMinChunk)} - {CalculationService.formatCurrency(recommendedMaxChunk)}
@@ -477,7 +477,7 @@ function QualificationQuestion({
     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
       <div className="flex items-start justify-between">
         <div className="flex items-start space-x-3 flex-1">
-          <div className="flex-shrink-0 w-8 h-8 bg-[#2D9CDB] text-white rounded-full flex items-center justify-center font-bold">
+          <div className="flex-shrink-0 w-8 h-8 bg-brand-blue text-white rounded-full flex items-center justify-center font-bold">
             {number}
           </div>
           <p className="text-gray-800 font-semibold pt-1">{question}</p>

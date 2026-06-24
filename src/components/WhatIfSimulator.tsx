@@ -311,7 +311,7 @@ export default function WhatIfSimulator() {
             <h2 className="text-xl font-bold text-gray-800">Input Scenario</h2>
             <button
               onClick={resetToProfileValues}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-[#2D9CDB] hover:text-[#1E8BBD] transition-colors"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-brand-blue hover:text-[#1E8BBD] transition-colors"
             >
               <RotateCcw className="w-4 h-4" />
               Reset to Profile
@@ -329,7 +329,7 @@ export default function WhatIfSimulator() {
                   step="0.01"
                   value={inputs.monthlyNetIncome || ''}
                   onChange={(e) => setNumberInput('monthlyNetIncome', e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                 />
               </div>
             </div>
@@ -344,7 +344,7 @@ export default function WhatIfSimulator() {
                   step="0.01"
                   value={inputs.monthlyEssentialExpenses || ''}
                   onChange={(e) => setNumberInput('monthlyEssentialExpenses', e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                 />
               </div>
             </div>
@@ -359,7 +359,7 @@ export default function WhatIfSimulator() {
                   step="0.01"
                   value={inputs.monthlyDiscretionaryExpenses || ''}
                   onChange={(e) => setNumberInput('monthlyDiscretionaryExpenses', e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                 />
               </div>
             </div>
@@ -374,7 +374,7 @@ export default function WhatIfSimulator() {
                   step="0.01"
                   value={inputs.monthlySavingsGoal || ''}
                   onChange={(e) => setNumberInput('monthlySavingsGoal', e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                 />
               </div>
             </div>
@@ -382,10 +382,10 @@ export default function WhatIfSimulator() {
             <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <SlidersHorizontal className="w-4 h-4 text-[#1E3A5F]" />
+                  <SlidersHorizontal className="w-4 h-4 text-brand-navy" />
                   <label className="text-sm font-semibold text-gray-700">Surplus Commitment</label>
                 </div>
-                <span className="text-sm font-bold text-[#1E3A5F]">{inputs.surplusCommitmentPercent}%</span>
+                <span className="text-sm font-bold text-brand-navy">{inputs.surplusCommitmentPercent}%</span>
               </div>
               <input
                 type="range"
@@ -399,7 +399,7 @@ export default function WhatIfSimulator() {
                     surplusCommitmentPercent: clampPercentToStep(parseInt(e.target.value, 10)),
                   }))
                 }
-                className="w-full accent-[#27AE60]"
+                className="w-full accent-brand-green"
               />
             </div>
 
@@ -413,7 +413,7 @@ export default function WhatIfSimulator() {
                   step="0.01"
                   value={inputs.oneTimeWindfall || ''}
                   onChange={(e) => setNumberInput('oneTimeWindfall', e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                 />
               </div>
             </div>
@@ -428,7 +428,7 @@ export default function WhatIfSimulator() {
                   step="0.01"
                   value={inputs.extraMonthlyContribution || ''}
                   onChange={(e) => setNumberInput('extraMonthlyContribution', e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                 />
               </div>
             </div>
@@ -444,17 +444,17 @@ export default function WhatIfSimulator() {
             </div>
             <div className="flex justify-between border-b border-gray-100 pb-2">
               <span className="text-gray-600">Amount going to savings</span>
-              <span className="font-bold text-[#27AE60]">{formatCurrency(inputs.monthlySavingsGoal)}</span>
+              <span className="font-bold text-brand-green">{formatCurrency(inputs.monthlySavingsGoal)}</span>
             </div>
             <div className="flex justify-between border-b border-gray-100 pb-2">
               <span className="text-gray-600">Amount going to debt</span>
-              <span className="font-bold text-[#1E3A5F]">
+              <span className="font-bold text-brand-navy">
                 {formatCurrency(baseMonthlySurplus + Math.max(0, inputs.extraMonthlyContribution))}
               </span>
             </div>
             <div className="flex justify-between border-b border-gray-100 pb-2">
               <span className="text-gray-600">Projected debt-free date</span>
-              <span className="font-bold text-[#1E3A5F]">
+              <span className="font-bold text-brand-navy">
                 {scenarioTotalMonths > 0
                   ? formatMonthYearFromMonths(scenarioTotalMonths)
                   : 'No active debt'}
@@ -462,16 +462,16 @@ export default function WhatIfSimulator() {
             </div>
             <div className="flex justify-between border-b border-gray-100 pb-2">
               <span className="text-gray-600">Estimated interest saved</span>
-              <span className={`font-bold ${estimatedInterestSaved >= 0 ? 'text-[#27AE60]' : 'text-red-600'}`}>
+              <span className={`font-bold ${estimatedInterestSaved >= 0 ? 'text-brand-green' : 'text-red-600'}`}>
                 {estimatedInterestSaved >= 0 ? '+' : '-'}{' '}
                 {formatCurrency(Math.abs(estimatedInterestSaved))}
               </span>
             </div>
           </div>
 
-          <div className="mt-6 bg-[#1E3A5F]/5 border border-[#1E3A5F]/20 rounded-lg p-4">
+          <div className="mt-6 bg-brand-navy/5 border border-brand-navy/20 rounded-lg p-4">
             <p className="text-sm font-semibold text-gray-700 mb-1">Difference vs current plan</p>
-            <p className="text-lg font-bold text-[#1E3A5F]">
+            <p className="text-lg font-bold text-brand-navy">
               {monthsDifference > 0 &&
                 `You'd be debt free ${monthsDifference} month${monthsDifference === 1 ? '' : 's'} sooner`}
               {monthsDifference < 0 &&

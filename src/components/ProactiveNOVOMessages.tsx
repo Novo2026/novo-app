@@ -47,20 +47,20 @@ export default function ProactiveNOVOMessages({ onOpenChat: _onOpenChat }: Proac
           key={msg.id}
           className={`rounded-xl shadow-lg border p-4 ${
             msg.type === 'ben'
-              ? 'bg-[#1E3A5F] border-[#1E3A5F] text-white'
+              ? 'bg-brand-navy border-brand-navy text-white'
               : 'bg-white border-gray-200 text-gray-900'
           }`}
         >
           <div className="flex items-start justify-between gap-3 mb-2">
             <div className="flex items-center gap-2">
               {msg.type === 'ben' ? (
-                <div className="w-7 h-7 rounded-full bg-[#FF6B35] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">B</div>
+                <div className="w-7 h-7 rounded-full bg-brand-orange flex items-center justify-center text-white text-xs font-bold flex-shrink-0">B</div>
               ) : (
-                <div className="w-7 h-7 rounded-full bg-[#FF6B35] flex items-center justify-center flex-shrink-0">
+                <div className="w-7 h-7 rounded-full bg-brand-orange flex items-center justify-center flex-shrink-0">
                   <MessageCircle className="w-4 h-4 text-white" />
                 </div>
               )}
-              <span className={`text-xs font-bold ${msg.type === 'ben' ? 'text-orange-300' : 'text-[#FF6B35]'}`}>
+              <span className={`text-xs font-bold ${msg.type === 'ben' ? 'text-orange-300' : 'text-brand-orange'}`}>
                 {msg.type === 'ben' ? 'Message from Ben' : 'NOVO'}
               </span>
             </div>
@@ -83,8 +83,8 @@ export default function ProactiveNOVOMessages({ onOpenChat: _onOpenChat }: Proac
               rel="noopener noreferrer"
               className={`mt-3 flex items-center gap-2 text-xs font-bold py-2 px-3 rounded-lg transition-colors w-fit ${
                 msg.type === 'ben'
-                  ? 'bg-[#FF6B35] hover:bg-[#e55a25] text-white'
-                  : 'bg-[#FF6B35] hover:bg-[#e55a25] text-white'
+                  ? 'bg-brand-orange hover:bg-brand-orange-dark text-white'
+                  : 'bg-brand-orange hover:bg-brand-orange-dark text-white'
               }`}
             >
               <Calendar className="w-3.5 h-3.5" />

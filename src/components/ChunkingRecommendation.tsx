@@ -31,7 +31,7 @@ function ChunkingRecommendation({
 
   return (
     <div className={`space-y-6 ${className}`}>
-      <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2D5F8D] text-white rounded-lg p-6 shadow-lg">
+      <div className="bg-gradient-to-br from-brand-navy to-[#2D5F8D] text-white rounded-lg p-6 shadow-lg">
         <div className="flex items-center space-x-3 mb-4">
           <div className="bg-white/20 p-3 rounded-full">
             <TrendingUp className="w-6 h-6" />
@@ -57,11 +57,11 @@ function ChunkingRecommendation({
 
           <div className="bg-white/10 rounded-lg p-4">
             <p className="text-sm opacity-90 mb-1">Available to Chunk</p>
-            <p className="text-2xl font-bold text-[#27AE60]">{CalculationService.formatCurrency(availableCredit)}</p>
+            <p className="text-2xl font-bold text-brand-green">{CalculationService.formatCurrency(availableCredit)}</p>
           </div>
         </div>
 
-        <div className="bg-[#27AE60] rounded-lg p-5 mb-4">
+        <div className="bg-brand-green rounded-lg p-5 mb-4">
           <div className="flex items-start space-x-3 mb-3">
             <CheckCircle className="w-6 h-6 flex-shrink-0 mt-0.5" />
             <div>

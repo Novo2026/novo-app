@@ -95,7 +95,7 @@ export default function SpendingAnalysisPanel({ onOpenChat }: SpendingAnalysisPa
           </div>
           <button
             onClick={handleAskNOVO}
-            className="flex-shrink-0 bg-[#FF6B35] hover:bg-[#e55a25] text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+            className="flex-shrink-0 bg-brand-orange hover:bg-brand-orange-dark text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
           >
             Ask NOVO
           </button>
@@ -130,7 +130,7 @@ export default function SpendingAnalysisPanel({ onOpenChat }: SpendingAnalysisPa
                     </div>
                     <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-[#FF6B35] rounded-full transition-all"
+                        className="h-full bg-brand-orange rounded-full transition-all"
                         style={{ width: `${barWidth}%` }}
                       />
                     </div>
@@ -189,7 +189,7 @@ export default function SpendingAnalysisPanel({ onOpenChat }: SpendingAnalysisPa
             <div className="px-5 py-3 border-t border-gray-100">
               <button
                 onClick={() => setShowAllRecurring(!showAllRecurring)}
-                className="text-sm text-[#FF6B35] font-medium hover:underline"
+                className="text-sm text-brand-orange font-medium hover:underline"
               >
                 {showAllRecurring ? 'Show less' : `Show all ${analysis.recurringCharges.length} recurring charges`}
               </button>

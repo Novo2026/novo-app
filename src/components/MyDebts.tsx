@@ -399,7 +399,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
           </p>
           <button
             onClick={() => setShowAddDebt(true)}
-            className="inline-flex items-center space-x-2 bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-colors"
+            className="inline-flex items-center space-x-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-colors"
           >
             <Plus className="w-5 h-5" />
             <span>Add Your First Debt</span>
@@ -430,7 +430,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
           key={debt.id}
           className={`bg-white rounded-lg shadow-md border-2 transition-all ${
             debt.homeSold ? 'border-amber-400' :
-            debt.transferredToHELOC ? 'border-[#F2994A]' : 'border-[#27AE60]'
+            debt.transferredToHELOC ? 'border-[#F2994A]' : 'border-brand-green'
           }`}
         >
           <div className="p-6">
@@ -442,7 +442,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
               <div className="flex items-center space-x-2">
                 <span className={`flex items-center space-x-1 text-white text-xs font-bold px-3 py-1 rounded-full ${
                   debt.homeSold ? 'bg-amber-500' :
-                  debt.transferredToHELOC ? 'bg-[#F2994A]' : 'bg-[#27AE60]'
+                  debt.transferredToHELOC ? 'bg-[#F2994A]' : 'bg-brand-green'
                 }`}>
                   {debt.homeSold ? <Home className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
                   <span>
@@ -467,7 +467,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
               </div>
               <div className="bg-emerald-50 rounded-lg p-3">
                 <p className="text-xs text-gray-500 mb-1">Date Paid Off</p>
-                <p className="font-bold text-[#27AE60]">
+                <p className="font-bold text-brand-green">
                   {debt.paidOffDate && !isNaN(new Date(debt.paidOffDate).getTime())
                     ? new Date(debt.paidOffDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                     : debt.homeSaleDate && !isNaN(new Date(debt.homeSaleDate).getTime())
@@ -478,7 +478,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
               {totalPaid > 0 && (
                 <div className="bg-blue-50 rounded-lg p-3">
                   <p className="text-xs text-gray-500 mb-1">Total Paid</p>
-                  <p className="font-bold text-[#2D9CDB]">{CalculationService.formatCurrency(totalPaid)}</p>
+                  <p className="font-bold text-brand-blue">{CalculationService.formatCurrency(totalPaid)}</p>
                 </div>
               )}
               {totalInterest > 0 && (
@@ -491,7 +491,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
 
             <div className="mb-4">
               <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                <div className="h-full rounded-full bg-[#27AE60] w-full" />
+                <div className="h-full rounded-full bg-brand-green w-full" />
               </div>
               <p className="text-xs text-gray-500 mt-1 text-right">100% paid off</p>
             </div>
@@ -521,14 +521,14 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
         key={debt.id}
         className={`bg-white rounded-lg shadow-md border-2 transition-all hover:shadow-lg ${
           isOpenAccount ? 'border-blue-200' :
-          isPaidDownToZero ? 'border-[#27AE60] ring-2 ring-[#27AE60]/20' : 'border-gray-200'
+          isPaidDownToZero ? 'border-brand-green ring-2 ring-brand-green/20' : 'border-gray-200'
         }`}
       >
         <div className="p-6">
           {isPaidDownToZero && (
             <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mb-4">
-              <Trophy className="w-4 h-4 text-[#27AE60] flex-shrink-0" />
-              <p className="text-sm font-semibold text-[#27AE60]">Balance reached $0 — close this account when you&apos;re ready.</p>
+              <Trophy className="w-4 h-4 text-brand-green flex-shrink-0" />
+              <p className="text-sm font-semibold text-brand-green">Balance reached $0 — close this account when you&apos;re ready.</p>
             </div>
           )}
           <div className="flex justify-between items-start mb-4">
@@ -568,7 +568,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
               </span>
               <button
                 onClick={(e) => handleEditClick(debt, e)}
-                className="p-1.5 text-gray-500 hover:text-[#2D9CDB] hover:bg-blue-50 rounded transition-colors"
+                className="p-1.5 text-gray-500 hover:text-brand-blue hover:bg-blue-50 rounded transition-colors"
                 title="Edit debt"
               >
                 <Pencil className="w-4 h-4" />
@@ -585,7 +585,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
 
           <div className="mb-4">
             <p className="text-sm text-gray-600 mb-1">Current Balance</p>
-            <p className={`text-3xl font-bold ${isZeroBalance ? 'text-[#27AE60]' : 'text-[#1E3A5F]'}`}>
+            <p className={`text-3xl font-bold ${isZeroBalance ? 'text-brand-green' : 'text-brand-navy'}`}>
               {CalculationService.formatCurrency(debt.currentBalance)}
             </p>
             <p className="text-sm text-gray-500 mt-1">
@@ -607,7 +607,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
               <div
-                className="h-full rounded-full transition-all bg-[#2D9CDB]"
+                className="h-full rounded-full transition-all bg-brand-blue"
                 style={{ width: `${Math.min(progress, 100)}%` }}
               />
             </div>
@@ -626,7 +626,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                     {CalculationService.formatLocalDateShort(lastPayment.date)}
                   </p>
                   {lastPayment.additionalPrincipal != null && lastPayment.additionalPrincipal > 0 && (
-                    <p className="text-xs text-[#1E3A5F] mt-0.5">
+                    <p className="text-xs text-brand-navy mt-0.5">
                       Includes {CalculationService.formatCurrency(lastPayment.additionalPrincipal)} additional principal
                     </p>
                   )}
@@ -668,7 +668,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                       )}
                     </p>
                     {hasProjectedPayoffMetadata(debt) && formatProjectedPayoffMonthYear(debt) && (
-                      <p className="text-xs text-[#1E3A5F] mt-1.5 font-medium">
+                      <p className="text-xs text-brand-navy mt-1.5 font-medium">
                         Projected payoff: {formatProjectedPayoffMonthYear(debt)}
                         {(() => {
                           const monthsLeft = getMonthsRemainingUntilProjectedPayoff(debt);
@@ -696,7 +696,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
             <div className="flex space-x-2">
               <button
                 onClick={() => handleViewDetail(debt)}
-                className="flex-1 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white text-sm font-semibold py-2 px-4 rounded transition-colors"
+                className="flex-1 bg-brand-blue hover:bg-[#1E8BBD] text-white text-sm font-semibold py-2 px-4 rounded transition-colors"
               >
                 View Details
               </button>
@@ -711,7 +711,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
             </div>
             <button
               onClick={(e) => handleRefinanceClick(debt, e)}
-              className="w-full bg-[#1E3A5F]/5 hover:bg-[#1E3A5F]/10 text-[#1E3A5F] text-sm font-semibold py-2 px-4 rounded transition-colors flex items-center justify-center space-x-2"
+              className="w-full bg-brand-navy/5 hover:bg-brand-navy/10 text-brand-navy text-sm font-semibold py-2 px-4 rounded transition-colors flex items-center justify-center space-x-2"
             >
               {getRefinanceIcon(debt)}
               <span>{getRefinanceButtonLabel(debt)}</span>
@@ -755,7 +755,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
         <h2 className="text-2xl font-bold text-gray-800">My Debts</h2>
         <button
           onClick={() => setShowAddDebt(true)}
-          className="inline-flex items-center space-x-2 bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors"
+          className="inline-flex items-center space-x-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors"
         >
           <Plus className="w-4 h-4" />
           <span>Add Debt</span>
@@ -763,10 +763,10 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
       </div>
 
       {paidDownToZeroDebts.length > 0 && (
-        <div className="bg-emerald-50 border-2 border-[#27AE60] rounded-xl p-4 flex items-start gap-3">
-          <Trophy className="w-5 h-5 text-[#27AE60] flex-shrink-0 mt-0.5" />
+        <div className="bg-emerald-50 border-2 border-brand-green rounded-xl p-4 flex items-start gap-3">
+          <Trophy className="w-5 h-5 text-brand-green flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-bold text-[#27AE60] text-sm">
+            <p className="font-bold text-brand-green text-sm">
               {paidDownToZeroDebts.length === 1
                 ? `${paidDownToZeroDebts[0].accountName} is at $0!`
                 : `${paidDownToZeroDebts.length} debts are at $0!`}
@@ -780,12 +780,12 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
 
       {activeDebts.length === 0 && paidOffDebts.length > 0 ? (
         <div className="text-center py-12 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border-2 border-emerald-200">
-          <Trophy className="w-16 h-16 text-[#27AE60] mx-auto mb-4" />
+          <Trophy className="w-16 h-16 text-brand-green mx-auto mb-4" />
           <h3 className="text-2xl font-bold text-gray-800 mb-2">All Debts Paid Off!</h3>
           <p className="text-gray-600 mb-4">You've eliminated all your tracked debts. Amazing work!</p>
           <button
             onClick={() => setShowAddDebt(true)}
-            className="inline-flex items-center space-x-2 bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors"
+            className="inline-flex items-center space-x-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>Add New Debt</span>
@@ -804,12 +804,12 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
             className="w-full flex items-center justify-between px-6 py-4 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
           >
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-8 h-8 bg-[#27AE60] rounded-full">
+              <div className="flex items-center justify-center w-8 h-8 bg-brand-green rounded-full">
                 <CheckCircle className="w-4 h-4 text-white" />
               </div>
               <div>
                 <span className="font-bold text-gray-800">Paid Off Debts</span>
-                <span className="ml-2 text-sm font-semibold text-[#27AE60] bg-emerald-100 px-2 py-0.5 rounded-full">
+                <span className="ml-2 text-sm font-semibold text-brand-green bg-emerald-100 px-2 py-0.5 rounded-full">
                   {paidOffDebts.length}
                 </span>
               </div>
@@ -934,7 +934,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
             <div className="flex items-center justify-center w-14 h-14 bg-emerald-100 rounded-full mx-auto mb-4">
-              <Trophy className="w-8 h-8 text-[#27AE60]" />
+              <Trophy className="w-8 h-8 text-brand-green" />
             </div>
             <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">Close Account?</h3>
             <p className="text-gray-600 mb-1 text-center">
@@ -955,7 +955,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
               </button>
               <button
                 onClick={handleConfirmMarkPaidOff}
-                className="flex-1 bg-[#27AE60] hover:bg-[#229954] text-white font-bold py-2.5 px-4 rounded-lg transition-colors"
+                className="flex-1 bg-brand-green hover:bg-[#229954] text-white font-bold py-2.5 px-4 rounded-lg transition-colors"
               >
                 Celebrate!
               </button>

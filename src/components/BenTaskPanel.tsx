@@ -37,10 +37,10 @@ export default function BenTaskPanel() {
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <ClipboardList className="w-5 h-5 text-[#1E3A5F]" />
+          <ClipboardList className="w-5 h-5 text-brand-navy" />
           <h3 className="font-bold text-gray-900">Your NOVO Outreach Tasks</h3>
           {pending.length > 0 && (
-            <span className="bg-[#FF6B35] text-white text-xs font-bold px-2 py-0.5 rounded-full">
+            <span className="bg-brand-orange text-white text-xs font-bold px-2 py-0.5 rounded-full">
               {pending.length}
             </span>
           )}
@@ -64,13 +64,13 @@ export default function BenTaskPanel() {
                 >
                   {task.completed
                     ? <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                    : <Circle className="w-5 h-5 text-gray-300 hover:text-[#FF6B35] transition-colors" />
+                    : <Circle className="w-5 h-5 text-gray-300 hover:text-brand-orange transition-colors" />
                   }
                 </button>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <span className="text-xs font-bold text-[#FF6B35]">{milestoneLabel[task.milestoneType] || task.milestoneType}</span>
+                      <span className="text-xs font-bold text-brand-orange">{milestoneLabel[task.milestoneType] || task.milestoneType}</span>
                       <span className="text-xs text-gray-400 ml-2">
                         {new Date(task.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </span>
@@ -92,7 +92,7 @@ export default function BenTaskPanel() {
                         href="https://api.leadconnectorhq.com/widget/booking/Ms28gTzPwpR5BbzeU0Dc"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-[#FF6B35] hover:underline"
+                        className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-brand-orange hover:underline"
                       >
                         View booking calendar →
                       </a>

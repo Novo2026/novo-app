@@ -91,7 +91,7 @@ export default function AuthModal({ onAuthenticated }: AuthModalProps) {
         aria-modal="true"
         aria-labelledby="auth-modal-title"
       >
-        <div className="bg-[#1E3A5F] px-6 py-5 text-white">
+        <div className="bg-brand-navy px-6 py-5 text-white">
           <img src="/novo_primary.png" alt="NOVO" className="h-9 w-auto mb-3" />
           <h1 id="auth-modal-title" className="text-xl font-bold">
             {mode === 'login' ? 'Welcome back' : 'Create your account'}
@@ -112,7 +112,7 @@ export default function AuthModal({ onAuthenticated }: AuthModalProps) {
               autoComplete="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900 focus:ring-2 focus:ring-[#FF6B35] focus:border-[#FF6B35] outline-none"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900 focus:ring-2 focus:ring-brand-orange focus:border-brand-orange outline-none"
               disabled={loading}
             />
           </div>
@@ -126,7 +126,7 @@ export default function AuthModal({ onAuthenticated }: AuthModalProps) {
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900 focus:ring-2 focus:ring-[#FF6B35] focus:border-[#FF6B35] outline-none"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-gray-900 focus:ring-2 focus:ring-brand-orange focus:border-brand-orange outline-none"
               disabled={loading}
             />
           </div>
@@ -140,7 +140,7 @@ export default function AuthModal({ onAuthenticated }: AuthModalProps) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 rounded-lg bg-[#FF6B35] hover:bg-[#e85a28] text-white font-semibold py-3 transition-colors disabled:opacity-60"
+            className="w-full flex items-center justify-center gap-2 rounded-lg bg-brand-orange hover:bg-[#e85a28] text-white font-semibold py-3 transition-colors disabled:opacity-60"
           >
             {loading && <Loader2 className="w-5 h-5 animate-spin" />}
             {mode === 'login' ? 'Log in' : 'Sign up'}
@@ -152,7 +152,7 @@ export default function AuthModal({ onAuthenticated }: AuthModalProps) {
                 Need an account?{' '}
                 <button
                   type="button"
-                  className="text-[#1E3A5F] font-semibold hover:underline"
+                  className="text-brand-navy font-semibold hover:underline"
                   onClick={() => {
                     setMode('signup');
                     setError(null);
@@ -167,7 +167,7 @@ export default function AuthModal({ onAuthenticated }: AuthModalProps) {
                 Already have an account?{' '}
                 <button
                   type="button"
-                  className="text-[#1E3A5F] font-semibold hover:underline"
+                  className="text-brand-navy font-semibold hover:underline"
                   onClick={() => {
                     setMode('login');
                     setError(null);

@@ -155,7 +155,7 @@ export default function SavingsTracker() {
           </p>
           <button
             onClick={handleAddAccountClick}
-            className="inline-flex items-center space-x-2 bg-[#27AE60] hover:bg-[#229954] text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+            className="inline-flex items-center space-x-2 bg-brand-green hover:bg-[#229954] text-white font-semibold py-3 px-6 rounded-lg transition-colors"
           >
             <Plus className="w-5 h-5" />
             <span>Add Savings Account</span>
@@ -175,7 +175,7 @@ export default function SavingsTracker() {
 
   return (
     <div className="space-y-8">
-      <div className="bg-gradient-to-br from-[#27AE60] to-[#229954] text-white rounded-xl shadow-lg p-8">
+      <div className="bg-gradient-to-br from-brand-green to-[#229954] text-white rounded-xl shadow-lg p-8">
         <h2 className="text-2xl font-bold mb-6">Savings Summary</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div>
@@ -200,7 +200,7 @@ export default function SavingsTracker() {
       <div className="flex justify-center">
         <button
           onClick={handleAddAccountClick}
-          className="flex items-center justify-center space-x-3 bg-[#27AE60] hover:bg-[#229954] text-white font-bold py-5 px-12 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+          className="flex items-center justify-center space-x-3 bg-brand-green hover:bg-[#229954] text-white font-bold py-5 px-12 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
         >
           <Plus className="w-6 h-6" />
           <span className="text-lg">Add Savings Account</span>
@@ -221,7 +221,7 @@ export default function SavingsTracker() {
               <div
                 key={`${account.id}-${refreshKey}`}
                 className={`bg-white rounded-lg shadow-md border overflow-hidden ${
-                  isActive ? 'border-[#27AE60] ring-2 ring-[#27AE60]/30' : 'border-gray-200'
+                  isActive ? 'border-brand-green ring-2 ring-brand-green/30' : 'border-gray-200'
                 }`}
               >
                 <div className="p-6">
@@ -233,7 +233,7 @@ export default function SavingsTracker() {
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleEditAccountClick(account)}
-                        className="text-gray-400 hover:text-[#2D9CDB] transition-colors"
+                        className="text-gray-400 hover:text-brand-blue transition-colors"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -247,7 +247,7 @@ export default function SavingsTracker() {
                   </div>
 
                   <div className="mb-4">
-                    <p className="text-3xl font-bold text-[#27AE60] mb-1">
+                    <p className="text-3xl font-bold text-brand-green mb-1">
                       {CalculationService.formatCurrency(account.balance)}
                     </p>
                     {account.interestRate > 0 && (
@@ -265,7 +265,7 @@ export default function SavingsTracker() {
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
-                          className="bg-[#27AE60] h-full rounded-full transition-all"
+                          className="bg-brand-green h-full rounded-full transition-all"
                           style={{ width: `${Math.min(progress, 100)}%` }}
                         />
                       </div>
@@ -279,21 +279,21 @@ export default function SavingsTracker() {
                   <div className="grid grid-cols-3 gap-2">
                     <button
                       onClick={() => handleLogTransactionClick(account.id, 'deposit')}
-                      className="text-xs bg-[#27AE60] hover:bg-[#229954] text-white font-semibold py-2 px-3 rounded transition-colors"
+                      className="text-xs bg-brand-green hover:bg-[#229954] text-white font-semibold py-2 px-3 rounded transition-colors"
                     >
                       <Plus className="w-3 h-3 inline mr-1" />
                       Deposit
                     </button>
                     <button
                       onClick={() => handleLogTransactionClick(account.id, 'withdrawal')}
-                      className="text-xs bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold py-2 px-3 rounded transition-colors"
+                      className="text-xs bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold py-2 px-3 rounded transition-colors"
                     >
                       <TrendingUp className="w-3 h-3 inline mr-1" />
                       Withdraw
                     </button>
                     <button
                       onClick={() => handleLogTransactionClick(account.id, 'interest')}
-                      className="text-xs bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold py-2 px-3 rounded transition-colors"
+                      className="text-xs bg-brand-blue hover:bg-[#1E8BBD] text-white font-semibold py-2 px-3 rounded transition-colors"
                     >
                       <DollarSign className="w-3 h-3 inline mr-1" />
                       Interest
@@ -362,7 +362,7 @@ export default function SavingsTracker() {
                                           selectActiveAccount(account.id);
                                           setEditingTransaction({ account, transaction });
                                         }}
-                                        className="p-2 text-[#2D9CDB] hover:bg-blue-50 rounded-lg transition-colors"
+                                        className="p-2 text-brand-blue hover:bg-blue-50 rounded-lg transition-colors"
                                         title="Edit"
                                       >
                                         <Edit2 className="w-4 h-4" />

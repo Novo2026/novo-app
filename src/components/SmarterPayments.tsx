@@ -120,11 +120,11 @@ export default function SmarterPayments({ onDataUpdate }: SmarterPaymentsProps) 
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-[#1E3A5F]/10 flex items-center justify-center">
-            <CalendarClock className="w-6 h-6 text-[#1E3A5F]" />
+          <div className="w-12 h-12 rounded-xl bg-brand-navy/10 flex items-center justify-center">
+            <CalendarClock className="w-6 h-6 text-brand-navy" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-[#1E3A5F]">Smarter Payments</h1>
+            <h1 className="text-2xl font-bold text-brand-navy">Smarter Payments</h1>
             <p className="text-gray-600 text-sm">Pay off debt faster without spending more</p>
           </div>
         </div>
@@ -141,17 +141,17 @@ export default function SmarterPayments({ onDataUpdate }: SmarterPaymentsProps) 
   return (
     <div className="space-y-6 pb-8">
       <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-xl bg-[#1E3A5F]/10 flex items-center justify-center flex-shrink-0">
-          <CalendarClock className="w-6 h-6 text-[#1E3A5F]" />
+        <div className="w-12 h-12 rounded-xl bg-brand-navy/10 flex items-center justify-center flex-shrink-0">
+          <CalendarClock className="w-6 h-6 text-brand-navy" />
         </div>
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[#1E3A5F]">Smarter Payments</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-brand-navy">Smarter Payments</h1>
           <p className="text-gray-600 text-sm">Same budget. Faster payoff.</p>
         </div>
       </div>
 
       {/* Section 1 */}
-      <section className="bg-gradient-to-br from-[#1E3A5F] to-[#2D5A8A] text-white rounded-2xl p-5 sm:p-6 shadow-lg">
+      <section className="bg-gradient-to-br from-brand-navy to-[#2D5A8A] text-white rounded-2xl p-5 sm:p-6 shadow-lg">
         <h2 className="text-lg sm:text-xl font-bold mb-3">Pay Off Debt Faster — Without Spending More</h2>
         <p className="text-blue-100 text-sm sm:text-base leading-relaxed">
           Making bi-weekly or weekly payments instead of monthly is one of the most powerful debt payoff
@@ -217,7 +217,7 @@ export default function SmarterPayments({ onDataUpdate }: SmarterPaymentsProps) 
                     onClick={() => handleFrequencyChange(debt.id, id)}
                     className={`flex-1 min-w-[5.5rem] px-3 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 active:scale-95 ${
                       freq === id
-                        ? 'bg-[#FF6B35] text-white shadow-md ring-2 ring-[#FF6B35]/40'
+                        ? 'bg-brand-orange text-white shadow-md ring-2 ring-brand-orange/40'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
                     }`}
                   >
@@ -286,7 +286,7 @@ export default function SmarterPayments({ onDataUpdate }: SmarterPaymentsProps) 
                               type="checkbox"
                               checked={isCommitted}
                               onChange={e => handleCommitmentToggle(debt.id, freq, e.target.checked)}
-                              className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[#FF6B35] focus:ring-[#FF6B35]"
+                              className="mt-0.5 w-4 h-4 rounded border-gray-300 text-brand-orange focus:ring-brand-orange"
                             />
                             <span className="text-sm font-medium text-gray-800">
                               I&apos;m committed to this strategy
@@ -339,7 +339,7 @@ export default function SmarterPayments({ onDataUpdate }: SmarterPaymentsProps) 
                   <div
                     className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold transition-colors ${
                       active
-                        ? 'bg-[#FF6B35] text-white ring-4 ring-[#FF6B35]/25'
+                        ? 'bg-brand-orange text-white ring-4 ring-brand-orange/25'
                         : completed
                           ? 'bg-emerald-500 text-white'
                           : 'bg-gray-200 text-gray-500'
@@ -349,7 +349,7 @@ export default function SmarterPayments({ onDataUpdate }: SmarterPaymentsProps) 
                   </div>
                   <p
                     className={`mt-2 text-[10px] sm:text-xs font-semibold text-center leading-tight ${
-                      active ? 'text-[#FF6B35]' : completed ? 'text-emerald-700' : 'text-gray-500'
+                      active ? 'text-brand-orange' : completed ? 'text-emerald-700' : 'text-gray-500'
                     }`}
                   >
                     {label}
@@ -366,7 +366,7 @@ export default function SmarterPayments({ onDataUpdate }: SmarterPaymentsProps) 
           </div>
           <div className="flex mt-2 h-1 rounded-full overflow-hidden bg-gray-200">
             <div
-              className="h-full bg-gradient-to-r from-[#FF6B35] to-emerald-500 transition-all duration-500"
+              className="h-full bg-gradient-to-r from-brand-orange to-emerald-500 transition-all duration-500"
               style={{ width: `${((journeyStep + 1) / 3) * 100}%` }}
             />
           </div>

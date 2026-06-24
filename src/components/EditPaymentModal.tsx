@@ -69,7 +69,7 @@ export default function EditPaymentModal({ transaction, onClose, onSuccess }: Ed
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6 animate-fade-in">
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-[#27AE60] rounded-full mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-green rounded-full mb-4">
               <CheckCircle className="w-10 h-10 text-white" />
             </div>
             <h3 className="text-2xl font-bold text-gray-800">Payment Updated!</h3>
@@ -83,7 +83,7 @@ export default function EditPaymentModal({ transaction, onClose, onSuccess }: Ed
 
           <button
             onClick={handleClose}
-            className="w-full bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+            className="w-full bg-brand-blue hover:bg-[#1E8BBD] text-white font-semibold py-3 px-4 rounded-lg transition-colors"
           >
             Close
           </button>
@@ -111,7 +111,7 @@ export default function EditPaymentModal({ transaction, onClose, onSuccess }: Ed
             <select
               value={selectedDebtId}
               onChange={(e) => setSelectedDebtId(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
               required
             >
               {debts.map(debt => (
@@ -132,7 +132,7 @@ export default function EditPaymentModal({ transaction, onClose, onSuccess }: Ed
                 type="number"
                 value={paymentAmount}
                 onChange={(e) => setPaymentAmount(e.target.value)}
-                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                 placeholder="0.00"
                 step="0.01"
                 min="0.01"
@@ -154,7 +154,7 @@ export default function EditPaymentModal({ transaction, onClose, onSuccess }: Ed
                 type="checkbox"
                 checked={isExtraPayment}
                 onChange={(e) => setIsExtraPayment(e.target.checked)}
-                className="w-4 h-4 text-[#2D9CDB] border-gray-300 rounded focus:ring-[#2D9CDB]"
+                className="w-4 h-4 text-brand-blue border-gray-300 rounded focus:ring-brand-blue"
               />
               <span className="text-sm text-gray-700">This was an extra payment (beyond minimum)</span>
             </label>
@@ -167,7 +167,7 @@ export default function EditPaymentModal({ transaction, onClose, onSuccess }: Ed
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent resize-none"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent resize-none"
               rows={2}
               placeholder="Add any notes about this payment..."
             />
@@ -184,7 +184,7 @@ export default function EditPaymentModal({ transaction, onClose, onSuccess }: Ed
             </button>
             <button
               type="submit"
-              className="flex-1 bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+              className="flex-1 bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold py-3 px-4 rounded-lg transition-colors"
             >
               Update Payment
             </button>

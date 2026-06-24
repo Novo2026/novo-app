@@ -193,7 +193,7 @@ function AdvancedVelocityBanking({
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-[#27AE60] to-[#229954] rounded-lg p-4">
+          <div className="bg-gradient-to-br from-brand-green to-[#229954] rounded-lg p-4">
             <h4 className="font-semibold mb-3 flex items-center space-x-2">
               <Zap className="w-5 h-5" />
               <span>Advanced Method</span>
@@ -215,7 +215,7 @@ function AdvancedVelocityBanking({
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-[#27AE60] to-[#229954] rounded-lg p-4 mb-6">
+        <div className="bg-gradient-to-r from-brand-green to-[#229954] rounded-lg p-4 mb-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <TrendingDown className="w-6 h-6" />
@@ -251,7 +251,7 @@ function AdvancedVelocityBanking({
                   event.type === 'chunk'
                     ? 'bg-[#E74C3C]/20 border-l-4 border-[#E74C3C]'
                     : event.type === 'paycheck'
-                    ? 'bg-[#27AE60]/20 border-l-4 border-[#27AE60]'
+                    ? 'bg-brand-green/20 border-l-4 border-brand-green'
                     : event.type === 'bills'
                     ? 'bg-[#F39C12]/20 border-l-4 border-[#F39C12]'
                     : 'bg-white/10 border-l-4 border-white/30'
@@ -265,14 +265,14 @@ function AdvancedVelocityBanking({
                     <div className="flex-1">
                       <div className="font-semibold flex items-center space-x-2">
                         {event.type === 'chunk' && <ArrowUp className="w-4 h-4 text-[#E74C3C]" />}
-                        {event.type === 'paycheck' && <ArrowDown className="w-4 h-4 text-[#27AE60]" />}
+                        {event.type === 'paycheck' && <ArrowDown className="w-4 h-4 text-brand-green" />}
                         {event.type === 'bills' && <ArrowUp className="w-4 h-4 text-[#F39C12]" />}
                         {event.type === 'interest' && <DollarSign className="w-4 h-4" />}
                         <span>{event.description}</span>
                       </div>
                       <div className="text-sm opacity-75 mt-1">
                         {event.type === 'paycheck' ? (
-                          <span className="text-[#27AE60]">-{CalculationService.formatCurrency(event.amount)} (reduces balance)</span>
+                          <span className="text-brand-green">-{CalculationService.formatCurrency(event.amount)} (reduces balance)</span>
                         ) : (
                           <span className={event.type === 'interest' ? 'text-orange-200' : ''}>
                             +{CalculationService.formatCurrency(event.amount)}
@@ -293,7 +293,7 @@ function AdvancedVelocityBanking({
                     <div className="font-semibold flex items-center space-x-2">
                       <span>{CalculationService.formatCurrency(event.balanceAfter)}</span>
                       {event.balanceAfter < event.balanceBefore && event.type === 'paycheck' && (
-                        <CheckCircle2 className="w-4 h-4 text-[#27AE60]" />
+                        <CheckCircle2 className="w-4 h-4 text-brand-green" />
                       )}
                     </div>
                   </div>
@@ -301,7 +301,7 @@ function AdvancedVelocityBanking({
               </div>
             ))}
 
-            <div className="bg-gradient-to-r from-[#27AE60] to-[#229954] rounded-lg p-4 mt-4">
+            <div className="bg-gradient-to-r from-brand-green to-[#229954] rounded-lg p-4 mt-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-bold">Month-End Result:</span>
                 <span className="text-2xl font-bold">{CalculationService.formatCurrency(finalBalance)}</span>

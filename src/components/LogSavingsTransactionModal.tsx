@@ -230,7 +230,7 @@ export default function LogSavingsTransactionModal({
                 <select
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                 >
                   <option value="">Choose destination...</option>
                   {checkingAccounts.map((checkingAccount) => (
@@ -254,7 +254,7 @@ export default function LogSavingsTransactionModal({
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                   placeholder="0.00"
-                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                 />
               </div>
             </div>
@@ -275,7 +275,7 @@ export default function LogSavingsTransactionModal({
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder={getDefaultDescription()}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
               />
             </div>
 
@@ -308,7 +308,7 @@ export default function LogSavingsTransactionModal({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 px-6 py-3 bg-[#27AE60] hover:bg-[#229954] disabled:opacity-50 text-white font-semibold rounded-lg transition-colors"
+              className="flex-1 px-6 py-3 bg-brand-green hover:bg-[#229954] disabled:opacity-50 text-white font-semibold rounded-lg transition-colors"
             >
               {isSubmitting
                 ? 'Saving...'

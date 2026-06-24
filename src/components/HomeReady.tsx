@@ -200,7 +200,7 @@ function Field({
           type={type}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className={`w-full border border-gray-200 rounded-lg py-2.5 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent transition ${
+          className={`w-full border border-gray-200 rounded-lg py-2.5 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition ${
             prefix ? 'pl-7 pr-3' : suffix ? 'pl-3 pr-8' : 'px-3'
           }`}
         />
@@ -215,7 +215,7 @@ function Field({
 // ── result row ────────────────────────────────────────────────────────────────
 function ResultRow({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className={`flex justify-between items-center py-2 px-3 rounded-lg ${highlight ? 'bg-[#1E3A5F] text-white' : 'bg-gray-50'}`}>
+    <div className={`flex justify-between items-center py-2 px-3 rounded-lg ${highlight ? 'bg-brand-navy text-white' : 'bg-gray-50'}`}>
       <span className={`text-sm ${highlight ? 'font-semibold' : 'text-gray-600'}`}>{label}</span>
       <span className={`font-bold text-sm ${highlight ? 'text-white' : 'text-gray-800'}`}>{value}</span>
     </div>
@@ -270,7 +270,7 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
     <div className="max-w-2xl mx-auto space-y-6 pb-12">
 
       {/* ── header ── */}
-      <div className="bg-[#1E3A5F] rounded-2xl p-6 text-white">
+      <div className="bg-brand-navy rounded-2xl p-6 text-white">
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
             <Home className="w-5 h-5 text-white" />
@@ -320,7 +320,7 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
             <button
               type="button"
               onClick={onNavigateToSettings}
-              className="mt-3 text-sm font-semibold text-[#2D9CDB] hover:underline"
+              className="mt-3 text-sm font-semibold text-brand-blue hover:underline"
             >
               Open Settings
             </button>
@@ -331,7 +331,7 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
       {/* ── calculator card ── */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100 bg-gray-50">
-          <Calculator className="w-4 h-4 text-[#FF6B35]" />
+          <Calculator className="w-4 h-4 text-brand-orange" />
           <h2 className="font-semibold text-gray-800 text-sm">Mortgage Payment Calculator</h2>
         </div>
 
@@ -360,7 +360,7 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
               <select
                 value={term}
                 onChange={(e) => setTerm(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg py-2.5 px-3 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent transition"
+                className="w-full border border-gray-200 rounded-lg py-2.5 px-3 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition"
               >
                 <option value="30">30 years</option>
                 <option value="20">20 years</option>
@@ -376,7 +376,7 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
             <select
               value={creditScoreRange}
               onChange={(e) => setCreditScoreRange(e.target.value as CreditScoreRange)}
-              className="w-full border border-gray-200 rounded-lg py-2.5 px-3 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent transition"
+              className="w-full border border-gray-200 rounded-lg py-2.5 px-3 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue focus:border-transparent transition"
             >
               {CREDIT_SCORE_RANGE_OPTIONS.map((opt) => (
                 <option key={opt} value={opt}>
@@ -389,7 +389,7 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
           {/* advanced toggle */}
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center gap-1.5 text-xs text-[#2D9CDB] font-medium hover:underline"
+            className="flex items-center gap-1.5 text-xs text-brand-blue font-medium hover:underline"
           >
             {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             {showAdvanced ? 'Hide' : 'Add'} taxes & insurance
@@ -410,7 +410,7 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
       {result && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100 bg-gray-50">
-            <TrendingUp className="w-4 h-4 text-[#FF6B35]" />
+            <TrendingUp className="w-4 h-4 text-brand-orange" />
             <h2 className="font-semibold text-gray-800 text-sm">Your Estimated Payment</h2>
           </div>
 
@@ -422,7 +422,7 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
             {/* breakdown toggle */}
             <button
               onClick={() => setShowBreakdown(!showBreakdown)}
-              className="flex items-center gap-1.5 text-xs text-[#2D9CDB] font-medium hover:underline pt-1"
+              className="flex items-center gap-1.5 text-xs text-brand-blue font-medium hover:underline pt-1"
             >
               {showBreakdown ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               {showBreakdown ? 'Hide' : 'Show'} full breakdown
@@ -481,7 +481,7 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
       {result && hasFinancialProfile && grossMonthlyIncome > 0 && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="flex items-center gap-2 px-6 py-4 border-b border-gray-100 bg-gray-50">
-            <CheckCircle className="w-4 h-4 text-[#FF6B35]" />
+            <CheckCircle className="w-4 h-4 text-brand-orange" />
             <h2 className="font-semibold text-gray-800 text-sm">Homebuyer Readiness Score</h2>
           </div>
           <div className="p-6 space-y-4">
@@ -535,8 +535,8 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
       )}
 
       {/* ── CTA ── */}
-      <div className="bg-[#1E3A5F] rounded-2xl p-6 text-white text-center">
-        <Phone className="w-8 h-8 text-[#FF6B35] mx-auto mb-3" />
+      <div className="bg-brand-navy rounded-2xl p-6 text-white text-center">
+        <Phone className="w-8 h-8 text-brand-orange mx-auto mb-3" />
         <h3 className="font-bold text-lg mb-2">Ready to Take the Next Step?</h3>
         <p className="text-blue-200 text-sm mb-4 leading-relaxed">
           Ready to talk through your numbers? Book a free 30-minute NOVO Strategy Call.
@@ -545,7 +545,7 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
           href="https://api.leadconnectorhq.com/widget/booking/Ms28gTzPwpR5BbzeU0Dc"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-block bg-[#FF6B35] hover:bg-[#e85d2a] text-white font-semibold px-6 py-3 rounded-xl transition-colors text-sm shadow-lg"
+          className="inline-block bg-brand-orange hover:bg-[#e85d2a] text-white font-semibold px-6 py-3 rounded-xl transition-colors text-sm shadow-lg"
         >
           Schedule a Strategy Call with Ben
         </a>

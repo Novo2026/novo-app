@@ -189,7 +189,7 @@ export default function StrategyResults({
   return (
     <div className="space-y-8">
       {showAutoUpdateBanner && (
-        <div className="bg-gradient-to-r from-[#27AE60] to-[#229954] text-white rounded-lg shadow-lg p-4 flex items-center space-x-3 animate-fadeIn">
+        <div className="bg-gradient-to-r from-brand-green to-[#229954] text-white rounded-lg shadow-lg p-4 flex items-center space-x-3 animate-fadeIn">
           <CheckCircle className="w-5 h-5 flex-shrink-0" />
           <p className="text-sm font-medium">Strategy updated based on recent activity</p>
         </div>
@@ -208,14 +208,14 @@ export default function StrategyResults({
           <button
             onClick={handleRecalculate}
             disabled={isRecalculating}
-            className="flex items-center space-x-2 text-[#2D9CDB] hover:text-[#1E8BBD] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center space-x-2 text-brand-blue hover:text-[#1E8BBD] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <RefreshCw className={`w-4 h-4 ${isRecalculating ? 'animate-spin' : ''}`} />
             <span>{isRecalculating ? 'Recalculating...' : 'Refresh Strategy'}</span>
           </button>
           <button
             onClick={onRunNew}
-            className="flex items-center space-x-2 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold px-4 py-2 rounded-lg transition-colors"
+            className="flex items-center space-x-2 bg-brand-blue hover:bg-[#1E8BBD] text-white font-semibold px-4 py-2 rounded-lg transition-colors"
           >
             <span>New Strategy</span>
           </button>
@@ -234,7 +234,7 @@ export default function StrategyResults({
       ) : (
         <>
           <div id="strategy-comparison" className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-gradient-to-br from-[#27AE60] to-[#229954] text-white rounded-lg shadow-lg p-6">
+            <div className="bg-gradient-to-br from-brand-green to-[#229954] text-white rounded-lg shadow-lg p-6">
               <h3 className="text-sm font-semibold mb-2 opacity-90">Your Strategy (Optimized)</h3>
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
@@ -302,7 +302,7 @@ export default function StrategyResults({
           )}
 
           {isValidComparison ? (
-            <div className="bg-gradient-to-br from-[#2D9CDB] to-[#1E8BBD] text-white rounded-lg shadow-lg p-6">
+            <div className="bg-gradient-to-br from-brand-blue to-[#1E8BBD] text-white rounded-lg shadow-lg p-6">
               <div className="flex items-start space-x-4">
                 <div className="bg-white/20 p-3 rounded-lg">
                   <TrendingDown className="w-8 h-8" />
@@ -348,9 +348,9 @@ export default function StrategyResults({
         <h3 className="text-xl font-bold text-gray-800 mb-6">How to Execute Your Strategy</h3>
 
         <div className="space-y-6">
-          <div className="bg-gradient-to-r from-[#2D9CDB]/10 to-[#27AE60]/10 rounded-lg p-5 border-l-4 border-[#2D9CDB]">
+          <div className="bg-gradient-to-r from-brand-blue/10 to-brand-green/10 rounded-lg p-5 border-l-4 border-brand-blue">
             <div className="flex items-center space-x-2 mb-3">
-              <DollarSign className="w-6 h-6 text-[#2D9CDB]" />
+              <DollarSign className="w-6 h-6 text-brand-blue" />
               <h4 className="font-bold text-gray-800 text-lg">Your Total Monthly Cash Flow</h4>
             </div>
             {financialProfile ? (
@@ -385,9 +385,9 @@ export default function StrategyResults({
                   {paidOffDebts.length > 0 && (
                     <div className="pt-2 mt-2 border-t border-gray-200">
                       <div className="flex items-start gap-2">
-                        <span className="text-[#27AE60] font-semibold">✓</span>
+                        <span className="text-brand-green font-semibold">✓</span>
                         <p className="text-gray-700 flex-1">
-                          <span className="font-semibold text-[#27AE60]">
+                          <span className="font-semibold text-brand-green">
                             {CalculationService.formatCurrency(paidOffDebts.reduce((sum, d) => sum + d.minimumPayment, 0))}
                           </span> freed from paid-off debts is included in your extra payment!
                         </p>
@@ -428,7 +428,7 @@ export default function StrategyResults({
                     <div
                       key={debt.id}
                       className={`flex items-center justify-between p-3 rounded-lg ${
-                        isTargetDebt ? 'bg-[#27AE60]/10 border-2 border-[#27AE60]' : 'bg-gray-50'
+                        isTargetDebt ? 'bg-brand-green/10 border-2 border-brand-green' : 'bg-gray-50'
                       }`}
                     >
                       <div className="flex-1">
@@ -439,7 +439,7 @@ export default function StrategyResults({
                               <span>
                                 {CalculationService.formatCurrency(0)} (no minimum) +{' '}
                                 {CalculationService.formatCurrency(extraPayment)} extra ={' '}
-                                <span className="font-bold text-[#27AE60]">{CalculationService.formatCurrency(paymentAmount)}</span>
+                                <span className="font-bold text-brand-green">{CalculationService.formatCurrency(paymentAmount)}</span>
                               </span>
                             ) : (
                               <>
@@ -451,12 +451,12 @@ export default function StrategyResults({
                                     </span>
                                   )}
                                   {baseCashFlow > 0 && (
-                                    <span className="text-[#2D9CDB] font-semibold">
+                                    <span className="text-brand-blue font-semibold">
                                       + {CalculationService.formatCurrency(baseCashFlow)} extra
                                     </span>
                                   )}
                                   <span className="text-gray-500">=</span>
-                                  <span className="font-bold text-[#27AE60]">{CalculationService.formatCurrency(paymentAmount)} total</span>
+                                  <span className="font-bold text-brand-green">{CalculationService.formatCurrency(paymentAmount)} total</span>
                                 </div>
                               </>
                             )}
@@ -468,7 +468,7 @@ export default function StrategyResults({
                         )}
                       </div>
                       {isTargetDebt && (
-                        <span className="ml-3 bg-[#27AE60] text-white text-xs font-bold px-3 py-1 rounded-full flex-shrink-0">
+                        <span className="ml-3 bg-brand-green text-white text-xs font-bold px-3 py-1 rounded-full flex-shrink-0">
                           FOCUS HERE
                         </span>
                       )}
@@ -499,7 +499,7 @@ export default function StrategyResults({
 
                 return (
                   <div key={item.debtId} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-shrink-0 w-8 h-8 bg-[#2D9CDB] text-white rounded-full flex items-center justify-center text-sm font-bold">
+                    <div className="flex-shrink-0 w-8 h-8 bg-brand-blue text-white rounded-full flex items-center justify-center text-sm font-bold">
                       {index + 1}
                     </div>
                     <div className="flex-1">
@@ -530,13 +530,13 @@ export default function StrategyResults({
             <h4 className="font-semibold text-gray-800 mb-3">How It Works:</h4>
             <ol className="space-y-2 text-gray-700">
               <li className="flex items-start space-x-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-[#2D9CDB] text-white rounded-full flex items-center justify-center text-xs font-bold">
+                <span className="flex-shrink-0 w-6 h-6 bg-brand-blue text-white rounded-full flex items-center justify-center text-xs font-bold">
                   1
                 </span>
                 <span>Each month, pay the minimum on ALL debts</span>
               </li>
               <li className="flex items-start space-x-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-[#2D9CDB] text-white rounded-full flex items-center justify-center text-xs font-bold">
+                <span className="flex-shrink-0 w-6 h-6 bg-brand-blue text-white rounded-full flex items-center justify-center text-xs font-bold">
                   2
                 </span>
                 <span>
@@ -549,13 +549,13 @@ export default function StrategyResults({
                 </span>
               </li>
               <li className="flex items-start space-x-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-[#2D9CDB] text-white rounded-full flex items-center justify-center text-xs font-bold">
+                <span className="flex-shrink-0 w-6 h-6 bg-brand-blue text-white rounded-full flex items-center justify-center text-xs font-bold">
                   3
                 </span>
                 <span>When a debt is paid off, move that entire payment to the next highest-interest debt</span>
               </li>
               <li className="flex items-start space-x-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-[#2D9CDB] text-white rounded-full flex items-center justify-center text-xs font-bold">
+                <span className="flex-shrink-0 w-6 h-6 bg-brand-blue text-white rounded-full flex items-center justify-center text-xs font-bold">
                   4
                 </span>
                 <span>Repeat until debt-free</span>
@@ -866,7 +866,7 @@ export default function StrategyResults({
         <div className="pt-4 space-y-4">
           {currentResult.payoffTimeline.map((item, index) => (
             <div key={item.debtId} className="flex items-center space-x-4">
-              <div className="flex-shrink-0 w-12 h-12 bg-[#27AE60] text-white rounded-full flex items-center justify-center font-bold">
+              <div className="flex-shrink-0 w-12 h-12 bg-brand-green text-white rounded-full flex items-center justify-center font-bold">
                 {index + 1}
               </div>
               <div className="flex-1">
@@ -877,7 +877,7 @@ export default function StrategyResults({
               </div>
               <div className="text-right">
                 <p className="text-sm text-gray-600">Month</p>
-                <p className="font-bold text-[#2D9CDB]">{item.payoffMonth}</p>
+                <p className="font-bold text-brand-blue">{item.payoffMonth}</p>
               </div>
             </div>
           ))}

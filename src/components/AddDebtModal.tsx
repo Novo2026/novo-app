@@ -108,7 +108,7 @@ export default function AddDebtModal({ onClose, onSuccess }: AddDebtModalProps) 
               type="text"
               value={accountName}
               onChange={(e) => setAccountName(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
               placeholder="e.g., Chase Sapphire"
               required
             />
@@ -121,7 +121,7 @@ export default function AddDebtModal({ onClose, onSuccess }: AddDebtModalProps) 
             <select
               value={category}
               onChange={(e) => handleCategoryChange(e.target.value as DebtCategory)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
               required
             >
               {DEBT_CATEGORIES.map(cat => (
@@ -140,7 +140,7 @@ export default function AddDebtModal({ onClose, onSuccess }: AddDebtModalProps) 
                 type="number"
                 value={balance}
                 onChange={(e) => setBalance(e.target.value)}
-                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                 placeholder="0.00"
                 step="0.01"
                 min="0"
@@ -163,7 +163,7 @@ export default function AddDebtModal({ onClose, onSuccess }: AddDebtModalProps) 
                 type="number"
                 value={interestRate}
                 onChange={(e) => setInterestRate(e.target.value)}
-                className="w-full px-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                className="w-full px-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                 placeholder="0.00"
                 step="0.01"
                 min="0"
@@ -183,7 +183,7 @@ export default function AddDebtModal({ onClose, onSuccess }: AddDebtModalProps) 
                 type="number"
                 value={minimumPayment}
                 onChange={(e) => setMinimumPayment(e.target.value)}
-                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
                 placeholder="0.00"
                 step="0.01"
                 min="0"
@@ -215,7 +215,7 @@ export default function AddDebtModal({ onClose, onSuccess }: AddDebtModalProps) 
             </button>
             <button
               type="submit"
-              className="flex-1 bg-[#FF6B35] hover:bg-[#E55A25] text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+              className="flex-1 bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold py-3 px-4 rounded-lg transition-colors"
             >
               Add Debt
             </button>

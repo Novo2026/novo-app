@@ -109,9 +109,9 @@ export default function MyPlan({
   return (
     <>
       {showSmarterPaymentsSuggestion && (
-        <div className="mb-4 bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-[#2D9CDB]/40 rounded-xl p-4 sm:p-5 shadow-sm">
+        <div className="mb-4 bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-brand-blue/40 rounded-xl p-4 sm:p-5 shadow-sm">
           <div className="flex items-start gap-3">
-            <CalendarClock className="w-6 h-6 text-[#2D9CDB] flex-shrink-0 mt-0.5" />
+            <CalendarClock className="w-6 h-6 text-brand-blue flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
               <p className="text-sm sm:text-base text-gray-800 mb-3 leading-relaxed">
                 Did you know you could pay off your debts faster without spending more? See your Smarter
@@ -120,7 +120,7 @@ export default function MyPlan({
               <button
                 type="button"
                 onClick={onNavigateToSmarterPayments}
-                className="inline-flex items-center gap-2 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 bg-brand-blue hover:bg-[#1E8BBD] text-white font-semibold text-sm px-4 py-2.5 rounded-lg transition-colors"
               >
                 Explore Smarter Payments
                 <ArrowRight className="w-4 h-4" />
@@ -401,15 +401,15 @@ export default function MyPlan({
           </ul>
         </div>
 
-        <div className="bg-white border-2 border-[#1E3A5F]/20 rounded-xl p-4 sm:p-6 mb-6 text-center shadow-sm">
-          <p className="text-base sm:text-lg font-semibold text-[#1E3A5F] mb-4">
+        <div className="bg-white border-2 border-brand-navy/20 rounded-xl p-4 sm:p-6 mb-6 text-center shadow-sm">
+          <p className="text-base sm:text-lg font-semibold text-brand-navy mb-4">
             Want to talk through your numbers with Ben?
           </p>
           <a
             href={BEN_BOOKING_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-block bg-[#FF6B35] hover:bg-[#e85a28] text-white font-semibold px-6 py-3 rounded-xl transition-colors text-sm shadow-md"
+            className="inline-block bg-brand-orange hover:bg-[#e85a28] text-white font-semibold px-6 py-3 rounded-xl transition-colors text-sm shadow-md"
           >
             Schedule a Strategy Call with Ben
           </a>

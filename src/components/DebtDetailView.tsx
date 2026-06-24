@@ -79,7 +79,7 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
     <div className="space-y-6">
       <button
         onClick={onBack}
-        className="flex items-center space-x-2 text-[#2D9CDB] hover:text-[#1E8BBD] font-semibold transition-colors"
+        className="flex items-center space-x-2 text-brand-blue hover:text-[#1E8BBD] font-semibold transition-colors"
       >
         <ArrowLeft className="w-5 h-5" />
         <span>Back to My Debts</span>
@@ -93,7 +93,7 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
           </div>
           {debt.isPaidOff ? (
             <span className={`flex items-center space-x-1.5 text-white text-sm font-bold px-4 py-2 rounded-full ${
-              debt.homeSold ? 'bg-amber-500' : 'bg-[#27AE60]'
+              debt.homeSold ? 'bg-amber-500' : 'bg-brand-green'
             }`}>
               {debt.homeSold && <Home className="w-4 h-4" />}
               <span>{debt.homeSold ? 'Home Sold' : 'PAID OFF'}</span>
@@ -114,19 +114,19 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
           </div>
           <div>
             <p className="text-sm text-gray-600 mb-1">Current Balance</p>
-            <p className={`text-xl font-bold ${debt.isPaidOff ? 'text-[#27AE60]' : 'text-[#1E3A5F]'}`}>
+            <p className={`text-xl font-bold ${debt.isPaidOff ? 'text-brand-green' : 'text-brand-navy'}`}>
               {CalculationService.formatCurrency(debt.currentBalance)}
             </p>
           </div>
           <div>
             <p className="text-sm text-gray-600 mb-1">Amount Paid Off</p>
-            <p className="text-xl font-bold text-[#27AE60]">
+            <p className="text-xl font-bold text-brand-green">
               {CalculationService.formatCurrency(paidOff)}
             </p>
           </div>
           <div>
             <p className="text-sm text-gray-600 mb-1">Progress</p>
-            <p className="text-xl font-bold text-[#2D9CDB]">
+            <p className="text-xl font-bold text-brand-blue">
               {progress.toFixed(1)}%
             </p>
           </div>
@@ -135,7 +135,7 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
         <div className="mb-4">
           <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
             <div
-              className={`h-full rounded-full ${debt.isPaidOff ? 'bg-[#27AE60]' : 'bg-[#2D9CDB]'}`}
+              className={`h-full rounded-full ${debt.isPaidOff ? 'bg-brand-green' : 'bg-brand-blue'}`}
               style={{ width: `${Math.min(progress, 100)}%` }}
             />
           </div>
@@ -189,7 +189,7 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
               Projected Payoff
             </p>
-            <p className="text-lg font-bold text-[#1E3A5F]">
+            <p className="text-lg font-bold text-brand-navy">
               {formatProjectedPayoffMonthYear(debt)}
             </p>
             {(() => {
@@ -277,7 +277,7 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
             <h3 className="text-xl font-bold text-gray-800">Payment History</h3>
             <button
               onClick={handleExport}
-              className="flex items-center space-x-2 text-[#2D9CDB] hover:text-[#1E8BBD] text-sm font-semibold transition-colors"
+              className="flex items-center space-x-2 text-brand-blue hover:text-[#1E8BBD] text-sm font-semibold transition-colors"
             >
               <Download className="w-4 h-4" />
               <span>Export CSV</span>
@@ -309,7 +309,7 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
                       <td className="py-3 px-2">
                         <span className={`inline-flex items-center space-x-1 text-xs font-semibold px-2 py-1 rounded ${
                           isRefinance ? 'bg-blue-100 text-blue-700' :
-                          t.type === 'payment' ? 'bg-[#2D9CDB]/20 text-[#2D9CDB]' : 'bg-[#F2C94C]/20 text-yellow-700'
+                          t.type === 'payment' ? 'bg-brand-blue/20 text-brand-blue' : 'bg-[#F2C94C]/20 text-yellow-700'
                         }`}>
                           {isRefinance && <RefreshCw className="w-3 h-3" />}
                           <span>{isRefinance ? 'refinance' : t.type}</span>
@@ -321,12 +321,12 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
                       <td className="py-3 px-2 text-sm text-right text-red-600 font-mono">
                         {t.type === 'payment' ? CalculationService.formatCurrencyDetailed(t.interestCharged) : '-'}
                       </td>
-                      <td className="py-3 px-2 text-sm text-right text-[#27AE60] font-mono">
+                      <td className="py-3 px-2 text-sm text-right text-brand-green font-mono">
                         {t.type === 'payment' ? CalculationService.formatCurrencyDetailed(t.principalPaid) : '-'}
                       </td>
                       <td className={`py-3 px-2 text-sm text-right font-mono font-semibold ${
                         isRefinance ? 'text-blue-600' :
-                        t.type === 'payment' ? 'text-[#2D9CDB]' : 'text-red-600'
+                        t.type === 'payment' ? 'text-brand-blue' : 'text-red-600'
                       }`}>
                         {isRefinance ? '—' : (t.type === 'payment' ? '-' : '+') + CalculationService.formatCurrencyDetailed(t.amount)}
                       </td>
@@ -428,7 +428,7 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
       {debt.refinanceHistory && debt.refinanceHistory.length > 0 && (
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center space-x-2 mb-4">
-            <RefreshCw className="w-5 h-5 text-[#2D9CDB]" />
+            <RefreshCw className="w-5 h-5 text-brand-blue" />
             <h3 className="text-xl font-bold text-gray-800">Refinance History</h3>
           </div>
           <div className="space-y-3">
@@ -460,7 +460,7 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
                       <p className="font-semibold text-gray-800">
                         {CalculationService.formatCurrency(r.previousBalance)}
                         <span className="text-gray-400 mx-1">→</span>
-                        <span className={balanceChanged ? (r.newBalance > r.previousBalance ? 'text-amber-600' : 'text-[#27AE60]') : ''}>
+                        <span className={balanceChanged ? (r.newBalance > r.previousBalance ? 'text-amber-600' : 'text-brand-green') : ''}>
                           {CalculationService.formatCurrency(r.newBalance)}
                         </span>
                       </p>
@@ -470,11 +470,11 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
                       <p className="font-semibold text-gray-800">
                         {r.previousRate}%
                         <span className="text-gray-400 mx-1">→</span>
-                        <span className={rateImproved ? 'text-[#27AE60]' : r.newRate > r.previousRate ? 'text-amber-600' : ''}>
+                        <span className={rateImproved ? 'text-brand-green' : r.newRate > r.previousRate ? 'text-amber-600' : ''}>
                           {r.newRate}%
                         </span>
                         {rateImproved && (
-                          <span className="ml-1 text-xs text-[#27AE60]">(-{(r.previousRate - r.newRate).toFixed(2)}%)</span>
+                          <span className="ml-1 text-xs text-brand-green">(-{(r.previousRate - r.newRate).toFixed(2)}%)</span>
                         )}
                       </p>
                     </div>

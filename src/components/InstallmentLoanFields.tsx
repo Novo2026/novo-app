@@ -38,7 +38,7 @@ export default function InstallmentLoanFields({
             inputMode="decimal"
             value={originalAmount}
             onChange={(e) => onOriginalAmountChange(e.target.value)}
-            className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+            className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
             placeholder="0.00"
           />
         </div>
@@ -52,7 +52,7 @@ export default function InstallmentLoanFields({
           type="date"
           value={loanStartDate}
           onChange={(e) => onLoanStartDateChange(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
         />
       </div>
 
@@ -65,7 +65,7 @@ export default function InstallmentLoanFields({
             type="number"
             value={loanTerm}
             onChange={(e) => onLoanTermChange(e.target.value)}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
             placeholder={loanTermUnit === 'years' ? '30' : '360'}
             min="1"
             step="1"
@@ -73,7 +73,7 @@ export default function InstallmentLoanFields({
           <select
             value={loanTermUnit}
             onChange={(e) => onLoanTermUnitChange(e.target.value as LoanTermUnit)}
-            className="w-28 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+            className="w-28 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
           >
             <option value="months">Months</option>
             <option value="years">Years</option>

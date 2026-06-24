@@ -185,7 +185,7 @@ export default function EditSavingsTransactionModal({
             <select
               value={type}
               onChange={(e) => setType(e.target.value as SavingsEditType)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
             >
               <option value="deposit">Deposit</option>
               <option value="withdrawal">Withdrawal</option>
@@ -203,7 +203,7 @@ export default function EditSavingsTransactionModal({
                 step="0.01"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
               />
             </div>
           </div>
@@ -221,7 +221,7 @@ export default function EditSavingsTransactionModal({
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
             />
           </div>
 
@@ -262,7 +262,7 @@ export default function EditSavingsTransactionModal({
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="flex-1 px-6 py-3 bg-[#27AE60] hover:bg-[#229954] disabled:opacity-50 text-white font-semibold rounded-lg transition-colors"
+            className="flex-1 px-6 py-3 bg-brand-green hover:bg-[#229954] disabled:opacity-50 text-white font-semibold rounded-lg transition-colors"
           >
             {isSubmitting ? 'Updating...' : 'Update'}
           </button>

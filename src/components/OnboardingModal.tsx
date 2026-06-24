@@ -365,7 +365,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                 onClick={() => setData({ ...data, accountType: option.value as 'solo' | 'couple' | 'family' })}
                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
                   data.accountType === option.value
-                    ? 'border-[#FF6B35] bg-[#FF6B35]/5 text-[#FF6B35]'
+                    ? 'border-brand-orange bg-brand-orange/5 text-brand-orange'
                     : 'border-gray-200 text-gray-600 hover:border-gray-300'
                 }`}
               >
@@ -384,7 +384,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
               value={data.userName}
               onChange={(e) => setData({ ...data, userName: e.target.value })}
               placeholder="First name"
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] transition-all"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all"
               style={{ fontSize: '16px' }}
               autoFocus
               maxLength={30}
@@ -401,7 +401,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                 value={data.userName}
                 onChange={(e) => setData({ ...data, userName: e.target.value })}
                 placeholder="Your first name"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] transition-all"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all"
                 style={{ fontSize: '16px' }}
                 autoFocus
                 maxLength={30}
@@ -416,7 +416,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                 value={data.partnerName || ''}
                 onChange={(e) => setData({ ...data, partnerName: e.target.value })}
                 placeholder="Partner's first name"
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] transition-all"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all"
                 style={{ fontSize: '16px' }}
                 maxLength={30}
               />
@@ -432,7 +432,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
               value={data.userName}
               onChange={(e) => setData({ ...data, userName: e.target.value })}
               placeholder="e.g. Hulshof, Smith Family"
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] transition-all"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all"
               style={{ fontSize: '16px' }}
               autoFocus
               maxLength={50}
@@ -472,7 +472,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
             const existing = (data.incomeSources || []).find(s => s.type === source.type);
             const isActive = !!existing;
             return (
-              <div key={source.type} className={`border-2 rounded-xl transition-all ${isActive ? 'border-[#FF6B35] bg-[#FF6B35]/5' : 'border-gray-200 bg-white'}`}>
+              <div key={source.type} className={`border-2 rounded-xl transition-all ${isActive ? 'border-brand-orange bg-brand-orange/5' : 'border-gray-200 bg-white'}`}>
                 <button
                   type="button"
                   onClick={() => {
@@ -496,16 +496,16 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                 >
                   <span className="text-xl">{source.emoji}</span>
                   <div className="flex-1">
-                    <p className={`text-sm font-semibold ${isActive ? 'text-[#FF6B35]' : 'text-gray-700'}`}>{source.label}</p>
+                    <p className={`text-sm font-semibold ${isActive ? 'text-brand-orange' : 'text-gray-700'}`}>{source.label}</p>
                     <p className="text-xs text-gray-500">{source.desc}</p>
                   </div>
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isActive ? 'border-[#FF6B35] bg-[#FF6B35]' : 'border-gray-300'}`}>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isActive ? 'border-brand-orange bg-brand-orange' : 'border-gray-300'}`}>
                     {isActive && <div className="w-2 h-2 rounded-full bg-white" />}
                   </div>
                 </button>
 
                 {isActive && existing && (
-                  <div className="px-4 pb-4 space-y-3 border-t border-[#FF6B35]/20 pt-3">
+                  <div className="px-4 pb-4 space-y-3 border-t border-brand-orange/20 pt-3">
                     {source.type === 'self_employed' && (
                       <div className="flex items-center gap-3 mb-2">
                         <span className="text-xs font-semibold text-gray-600">Enter as:</span>
@@ -517,7 +517,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                             );
                             setData({ ...data, incomeSources: updated });
                           }}
-                          className={`text-xs px-3 py-1 rounded-full border transition-all ${!existing.useAnnual ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-white text-gray-600 border-gray-300'}`}
+                          className={`text-xs px-3 py-1 rounded-full border transition-all ${!existing.useAnnual ? 'bg-brand-navy text-white border-brand-navy' : 'bg-white text-gray-600 border-gray-300'}`}
                         >
                           Monthly
                         </button>
@@ -529,7 +529,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                             );
                             setData({ ...data, incomeSources: updated });
                           }}
-                          className={`text-xs px-3 py-1 rounded-full border transition-all ${existing.useAnnual ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]' : 'bg-white text-gray-600 border-gray-300'}`}
+                          className={`text-xs px-3 py-1 rounded-full border transition-all ${existing.useAnnual ? 'bg-brand-navy text-white border-brand-navy' : 'bg-white text-gray-600 border-gray-300'}`}
                         >
                           Annual (we'll average it)
                         </button>
@@ -553,7 +553,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                               setData({ ...data, incomeSources: updated });
                             }}
                             placeholder="0"
-                            className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                            className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
                           />
                         </div>
                         {source.type === 'commission' && (
@@ -577,7 +577,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                               setData({ ...data, incomeSources: updated });
                             }}
                             placeholder="0"
-                            className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                            className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
                           />
                         </div>
                         {existing.annualAmount && parseFloat(existing.annualAmount.replace(/[^0-9.]/g, '')) > 0 && (
@@ -603,7 +603,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                             setData({ ...data, incomeSources: updated });
                           }}
                           placeholder="e.g. Social Security, rental income, pension"
-                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
                         />
                       </div>
                     )}
@@ -646,7 +646,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
             value={data.monthlyIncome}
             onChange={(e) => handleCurrencyChange('monthlyIncome', e.target.value)}
             placeholder="5,000"
-            className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] transition-all min-h-[48px]"
+            className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all min-h-[48px]"
             style={{ fontSize: '16px' }}
           />
         </div>
@@ -665,7 +665,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
             value={data.grossIncome}
             onChange={(e) => handleCurrencyChange('grossIncome', e.target.value)}
             placeholder="7,000"
-            className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] transition-all min-h-[48px]"
+            className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all min-h-[48px]"
             style={{ fontSize: '16px' }}
           />
         </div>
@@ -1010,9 +1010,9 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
           </div>
 
           {(data.additionalProperties || []).map((prop, idx) => (
-            <div key={prop.id} className="border-2 border-[#1E3A5F]/20 rounded-xl p-4 space-y-3">
+            <div key={prop.id} className="border-2 border-brand-navy/20 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-[#1E3A5F]">Property {idx + 1}</p>
+                <p className="text-sm font-bold text-brand-navy">Property {idx + 1}</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -1039,7 +1039,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                     setData({ ...data, additionalProperties: updated });
                   }}
                   placeholder="e.g. Rental property — 123 Main St, Investment property"
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
                 />
               </div>
 
@@ -1058,7 +1058,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                         setData({ ...data, additionalProperties: updated });
                       }}
                       placeholder="0"
-                      className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                      className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
                     />
                   </div>
                 </div>
@@ -1076,7 +1076,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                         setData({ ...data, additionalProperties: updated });
                       }}
                       placeholder="0"
-                      className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                      className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
                     />
                   </div>
                 </div>
@@ -1096,7 +1096,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                       setData({ ...data, additionalProperties: updated });
                     }}
                     placeholder="0"
-                    className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#FF6B35]/30 focus:border-[#FF6B35] outline-none"
+                    className="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
                   />
                 </div>
                 {prop.monthlyRentalIncome && parseFloat(prop.monthlyRentalIncome.replace(/[^0-9.]/g, '')) > 0 && (
@@ -1130,7 +1130,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                   additionalProperties: [...(data.additionalProperties || []), newProp]
                 });
               }}
-              className="w-full border-2 border-dashed border-[#1E3A5F]/20 hover:border-[#1E3A5F]/40 rounded-xl p-4 text-sm font-medium text-[#1E3A5F]/60 hover:text-[#1E3A5F] transition-all"
+              className="w-full border-2 border-dashed border-brand-navy/20 hover:border-brand-navy/40 rounded-xl p-4 text-sm font-medium text-brand-navy/60 hover:text-brand-navy transition-all"
             >
               + Add a property
             </button>

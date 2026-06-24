@@ -338,7 +338,7 @@ export default function NovoChat({ open, onClose, context }: NovoChatProps) {
           md:inset-y-0 md:left-auto md:right-0 md:bottom-0 md:w-full md:max-w-md md:h-[100dvh]
           ${open ? 'translate-x-0' : 'translate-x-full'}`}
       >
-        <header className="flex-shrink-0 flex items-center justify-between px-4 py-3 md:py-4 bg-[#1E3A5F] text-white">
+        <header className="flex-shrink-0 flex items-center justify-between px-4 py-3 md:py-4 bg-brand-navy text-white">
           <div className="flex items-center gap-3 min-w-0">
             <img src="/novo_primary.png" alt="NOVO" className="h-8 w-auto flex-shrink-0" />
             <div className="min-w-0">
@@ -377,7 +377,7 @@ export default function NovoChat({ open, onClose, context }: NovoChatProps) {
                 <div
                   className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words ${
                     msg.role === 'user'
-                      ? 'bg-[#FF6B35] text-white rounded-br-md'
+                      ? 'bg-brand-orange text-white rounded-br-md'
                       : 'bg-white text-gray-800 border border-gray-200 shadow-sm rounded-bl-md'
                   }`}
                 >
@@ -422,13 +422,13 @@ export default function NovoChat({ open, onClose, context }: NovoChatProps) {
             placeholder="Type your message…"
             rows={2}
             disabled={isStreaming || !open}
-            className="flex-1 min-w-0 resize-none rounded-xl border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-[#FF6B35] focus:border-[#FF6B35] outline-none disabled:opacity-60"
+            className="flex-1 min-w-0 resize-none rounded-xl border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:ring-2 focus:ring-brand-orange focus:border-brand-orange outline-none disabled:opacity-60"
           />
           <button
             type="button"
             onClick={handleSend}
             disabled={!input.trim() || isStreaming || !open}
-            className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-xl bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex-shrink-0 w-11 h-11 flex items-center justify-center rounded-xl bg-brand-blue hover:bg-[#1E8BBD] text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             aria-label="Send message"
           >
             {isStreaming ? (

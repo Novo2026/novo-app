@@ -73,7 +73,7 @@ function ChunkingPlanCalculator({
 
   return (
     <div className={`space-y-6 ${className}`}>
-      <div className="bg-gradient-to-br from-[#2D9CDB] to-[#3498DB] text-white rounded-lg p-6 shadow-lg">
+      <div className="bg-gradient-to-br from-brand-blue to-[#3498DB] text-white rounded-lg p-6 shadow-lg">
         <div className="flex items-center space-x-3 mb-4">
           <div className="bg-white/20 p-3 rounded-full">
             <Calendar className="w-6 h-6" />
@@ -110,7 +110,7 @@ function ChunkingPlanCalculator({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="bg-white/10 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
-              <DollarSign className="w-5 h-5 text-[#27AE60]" />
+              <DollarSign className="w-5 h-5 text-brand-green" />
               <span className="text-sm opacity-80">Interest Paid</span>
             </div>
             <div className="text-2xl font-bold">{CalculationService.formatCurrency(totalInterest)}</div>
@@ -126,14 +126,14 @@ function ChunkingPlanCalculator({
 
           <div className="bg-white/10 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
-              <TrendingDown className="w-5 h-5 text-[#2D9CDB]" />
+              <TrendingDown className="w-5 h-5 text-brand-blue" />
               <span className="text-sm opacity-80">Mortgage Reduced</span>
             </div>
             <div className="text-2xl font-bold">{CalculationService.formatCurrency(chunkAmount)}</div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-[#27AE60] to-[#229954] rounded-lg p-4 mb-4">
+        <div className="bg-gradient-to-r from-brand-green to-[#229954] rounded-lg p-4 mb-4">
           <div className="flex items-center justify-between">
             <span className="font-semibold">Estimated Mortgage Interest Saved:</span>
             <span className="text-2xl font-bold">{CalculationService.formatCurrency(estimatedMortgageInterestSaved)}</span>
@@ -163,7 +163,7 @@ function ChunkingPlanCalculator({
                   </div>
                 </div>
                 {month.endingBalance < 0.01 && (
-                  <CheckCircle2 className="w-6 h-6 text-[#27AE60] flex-shrink-0" />
+                  <CheckCircle2 className="w-6 h-6 text-brand-green flex-shrink-0" />
                 )}
               </div>
 
@@ -174,7 +174,7 @@ function ChunkingPlanCalculator({
                 </div>
                 <div>
                   <div className="opacity-75 text-xs">Payment</div>
-                  <div className="font-semibold text-[#27AE60]">-{CalculationService.formatCurrency(month.payment)}</div>
+                  <div className="font-semibold text-brand-green">-{CalculationService.formatCurrency(month.payment)}</div>
                 </div>
                 <div>
                   <div className="opacity-75 text-xs">Interest</div>
@@ -184,7 +184,7 @@ function ChunkingPlanCalculator({
                   <div className="opacity-75 text-xs">Ending Balance</div>
                   <div className="font-semibold">
                     {month.endingBalance < 0.01 ? (
-                      <span className="text-[#27AE60] flex items-center space-x-1">
+                      <span className="text-brand-green flex items-center space-x-1">
                         <span>$0</span>
                         <Zap className="w-4 h-4" />
                       </span>
@@ -197,7 +197,7 @@ function ChunkingPlanCalculator({
 
               {month.endingBalance < 0.01 && (
                 <div className="mt-3 pt-3 border-t border-white/20">
-                  <div className="flex items-center space-x-2 text-sm font-semibold text-[#27AE60]">
+                  <div className="flex items-center space-x-2 text-sm font-semibold text-brand-green">
                     <CheckCircle2 className="w-5 h-5" />
                     <span>HELOC back to $0! You're ready to chunk again!</span>
                   </div>
@@ -207,7 +207,7 @@ function ChunkingPlanCalculator({
           ))}
         </div>
 
-        <div className="mt-6 bg-white/10 rounded-lg p-4 border-l-4 border-[#27AE60]">
+        <div className="mt-6 bg-white/10 rounded-lg p-4 border-l-4 border-brand-green">
           <div className="flex items-start space-x-3">
             <Zap className="w-6 h-6 text-[#F2C94C] flex-shrink-0 mt-1" />
             <div className="flex-1">
@@ -215,9 +215,9 @@ function ChunkingPlanCalculator({
               <div className="space-y-1 text-sm">
                 <p>• Total interest paid to HELOC: <span className="font-bold text-orange-200">{CalculationService.formatCurrency(totalInterest)}</span></p>
                 <p>• Total time to pay back: <span className="font-bold text-[#F2C94C]">{totalMonths === 1 ? '1 month' : `${totalMonths} months`}</span></p>
-                <p>• Mortgage principal reduced: <span className="font-bold text-[#27AE60]">{CalculationService.formatCurrency(chunkAmount)}</span></p>
-                <p>• Estimated long-term mortgage interest saved: <span className="font-bold text-[#27AE60]">{CalculationService.formatCurrency(estimatedMortgageInterestSaved)}</span></p>
-                <p className="pt-2 border-t border-white/20 mt-2 font-bold text-[#27AE60]">
+                <p>• Mortgage principal reduced: <span className="font-bold text-brand-green">{CalculationService.formatCurrency(chunkAmount)}</span></p>
+                <p>• Estimated long-term mortgage interest saved: <span className="font-bold text-brand-green">{CalculationService.formatCurrency(estimatedMortgageInterestSaved)}</span></p>
+                <p className="pt-2 border-t border-white/20 mt-2 font-bold text-brand-green">
                   Net benefit: {CalculationService.formatCurrency(estimatedMortgageInterestSaved - totalInterest)} saved!
                 </p>
               </div>

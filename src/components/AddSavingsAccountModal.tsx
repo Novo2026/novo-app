@@ -125,7 +125,7 @@ export default function AddSavingsAccountModal({
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               placeholder="Emergency Fund, Down Payment, etc."
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent ${
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent ${
                 errors.name ? 'border-red-500' : 'border-gray-300'
               }`}
             />
@@ -139,7 +139,7 @@ export default function AddSavingsAccountModal({
             <select
               value={formData.type}
               onChange={(e) => setFormData({ ...formData, type: e.target.value as SavingsAccountType })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
             >
               {accountTypes.map(type => (
                 <option key={type} value={type}>{type}</option>
@@ -159,7 +159,7 @@ export default function AddSavingsAccountModal({
                 value={formData.balance}
                 onChange={(e) => setFormData({ ...formData, balance: e.target.value })}
                 placeholder="0.00"
-                className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent ${
+                className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent ${
                   errors.balance ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
@@ -177,7 +177,7 @@ export default function AddSavingsAccountModal({
               value={formData.interestRate}
               onChange={(e) => setFormData({ ...formData, interestRate: e.target.value })}
               placeholder="0.00"
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent ${
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent ${
                 errors.interestRate ? 'border-red-500' : 'border-gray-300'
               }`}
             />
@@ -196,7 +196,7 @@ export default function AddSavingsAccountModal({
                 value={formData.goalAmount}
                 onChange={(e) => setFormData({ ...formData, goalAmount: e.target.value })}
                 placeholder="0.00"
-                className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent ${
+                className={`w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent ${
                   errors.goalAmount ? 'border-red-500' : 'border-gray-300'
                 }`}
               />
@@ -213,7 +213,7 @@ export default function AddSavingsAccountModal({
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               placeholder="Add any notes about this account..."
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
             />
           </div>
 
@@ -227,7 +227,7 @@ export default function AddSavingsAccountModal({
             </button>
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-[#2D9CDB] hover:bg-[#1E8BBD] text-white font-semibold rounded-lg transition-colors"
+              className="flex-1 px-6 py-3 bg-brand-blue hover:bg-[#1E8BBD] text-white font-semibold rounded-lg transition-colors"
             >
               {existingAccount ? 'Update Account' : 'Add Account'}
             </button>
