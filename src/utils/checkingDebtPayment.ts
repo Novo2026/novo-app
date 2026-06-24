@@ -126,7 +126,7 @@ export function recordDebtPaymentFromChecking(
 
   const isPaidOff = calculation.newBalance === 0;
   const paymentDescription =
-    description?.trim() || `Payment — ${debt.accountName}`;
+    description?.trim() || `Paid ${debt.accountName}`;
 
   const priorCheckingTransactions = StorageService.getCheckingTransactionsForAccount(accountId);
   const priorCheckingSnapshot = JSON.stringify(priorCheckingTransactions);

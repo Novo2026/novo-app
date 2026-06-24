@@ -13,6 +13,8 @@ import {
   getCheckingDeleteConfirmationMessage,
   isLinkedCheckingDeleteType,
 } from '../utils/linkedTransactionDelete';
+import { recordDebtPaymentFromChecking } from '../utils/checkingDebtPayment';
+import { recalculateSavingsTransactions } from '../utils/savingsTransactions';
 import {
   getActiveCheckingAccountId,
   setActiveCheckingAccountId,
