@@ -821,9 +821,9 @@ function TransactionModal({
 
   const [amount, setAmount] = useState(editTransaction?.amount.toString() || '');
   const [piPayment, setPiPayment] = useState('');
-  const [additionalPrincipal, setAdditionalPrincipal] = useState('0');
-  const [escrow, setEscrow] = useState('0');
-  const [pmi, setPmi] = useState('0');
+  const [additionalPrincipal, setAdditionalPrincipal] = useState('');
+  const [escrow, setEscrow] = useState('');
+  const [pmi, setPmi] = useState('');
   const [date, setDate] = useState(
     editTransaction?.date
       ? CalculationService.normalizeDateString(editTransaction.date)
@@ -862,19 +862,18 @@ function TransactionModal({
     : '';
 
   useEffect(() => {
-    if (!isMortgagePayment) return;
-    setAmount(mortgageTotalPayment > 0 ? mortgageTotalPayment.toFixed(2) : '');
-  }, [isMortgagePayment, mortgageTotalPayment]);
+    if (type !== 'debt_payment' || editTransaction) return;
+    const debt = StorageService.getDebts().find((d) => d.id === selectedDebt && !d.isPaidOff);
+    if (!debt || debt.category !== 'Mortgage') return;
+    setPiPayment(debt.minimumPayment.toString());
+    setAdditionalPrincipal('');
+    setEscrow('');
+    setPmi('');
+  }, [selectedDebt, type, editTransaction]);
 
-  useEffect(() => {
-    if (type !== 'debt_payment' || !selectedDebtObj || editTransaction) return;
-    if (selectedDebtObj.category === 'Mortgage') {
-      setPiPayment(selectedDebtObj.minimumPayment.toString());
-      setAdditionalPrincipal('0');
-      setEscrow('0');
-      setPmi('0');
-    }
-  }, [selectedDebt, type, editTransaction, selectedDebtObj]);
+  const amountInputValue = isMortgagePayment
+    ? (mortgageTotalPayment > 0 ? mortgageTotalPayment.toFixed(2) : '')
+    : amount;
 
   const transactionAmount = isMortgagePayment ? mortgageTotalPayment : (parseFloat(amount) || 0);
   const newBalance = type === 'deposit'
@@ -1008,9 +1007,9 @@ function TransactionModal({
                   if (debt) {
                     if (debt.category === 'Mortgage') {
                       setPiPayment(debt.minimumPayment.toString());
-                      setAdditionalPrincipal('0');
-                      setEscrow('0');
-                      setPmi('0');
+                      setAdditionalPrincipal('');
+                      setEscrow('');
+                      setPmi('');
                     } else {
                       setAmount(debt.minimumPayment.toString());
                       setDescription(`Paid ${debt.accountName}`);
@@ -1049,7 +1048,7 @@ function TransactionModal({
               <span className="absolute left-3 top-2 text-gray-600">$</span>
               <input
                 type="number"
-                value={amount}
+                value={amountInputValue}
                 onChange={(e) => setAmount(e.target.value)}
                 readOnly={isMortgagePayment}
                 className={`w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#27AE60] focus:border-transparent ${
@@ -1116,10 +1115,11 @@ function TransactionModal({
                     type="number"
                     value={escrow}
                     onChange={(e) => setEscrow(e.target.value)}
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
                     placeholder="0.00"
                     step="0.01"
                     min="0"
+                    inputMode="decimal"
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">Does not reduce balance — held in escrow</p>
@@ -1135,10 +1135,11 @@ function TransactionModal({
                     type="number"
                     value={pmi}
                     onChange={(e) => setPmi(e.target.value)}
-                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
                     placeholder="0.00"
                     step="0.01"
                     min="0"
+                    inputMode="decimal"
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">Does not reduce balance</p>
@@ -1153,6 +1154,7 @@ function TransactionModal({
                   <input
                     type="text"
                     readOnly
+                    aria-readonly="true"
                     value={mortgageTotalPayment > 0 ? mortgageTotalPayment.toFixed(2) : '0.00'}
                     className="w-full pl-8 pr-4 py-2 border border-gray-200 rounded-lg text-sm bg-gray-100 text-gray-800 font-semibold cursor-default"
                   />
