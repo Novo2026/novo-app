@@ -7,7 +7,12 @@ import { StorageService } from '../services/storage';
 import DatePicker from './DatePicker';
 import PaymentLoggingGuidance from './PaymentLoggingGuidance';
 import type { CheckingAccount, CheckingTransaction } from '../types';
-import { recordDebtPaymentFromChecking } from '../utils/checkingDebtPayment';
+import {
+  deleteCheckingTransactionWithLinkedReversal,
+  deleteSimpleCheckingTransaction,
+  getCheckingDeleteConfirmationMessage,
+  isLinkedCheckingDeleteType,
+} from '../utils/linkedTransactionDelete';
 import {
   getActiveCheckingAccountId,
   setActiveCheckingAccountId,
@@ -334,38 +339,67 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
               'Click OK to delete both transactions, or Cancel to delete only this one.'
             );
 
-            const filtered = transactions.filter(t => t.id !== id);
-            recalculateBalances(filtered, startingBalance);
-            StorageService.saveCheckingTransactionsForAccount(selectedAccountId, filtered);
+            try {
+              if (choice) {
+                const filteredHeloc = JSON.parse(
+                  localStorage.getItem('novo_heloc_transactions') || '[]'
+                ).filter((t: { id: string }) => t.id !== transaction.linkedHelocTransactionId);
 
-            if (choice) {
-              const helocTransactions = JSON.parse(localStorage.getItem('novo_heloc_transactions') || '[]');
-              const filteredHeloc = helocTransactions.filter((t: any) => t.id !== transaction.linkedHelocTransactionId);
+                const homeEquity = JSON.parse(localStorage.getItem('novo_home_equity') || '{}');
+                const helocBalance = homeEquity.helocBalance || 0;
+                let runningBalance = helocBalance;
+                filteredHeloc.forEach((txn: { type: string; amount: number; balance: number }) => {
+                  if (txn.type === 'draw' || txn.type === 'interest') {
+                    runningBalance += txn.amount;
+                  } else {
+                    runningBalance -= txn.amount;
+                  }
+                  runningBalance = Math.max(0, runningBalance);
+                  txn.balance = Math.round(runningBalance * 100) / 100;
+                });
 
-              const homeEquity = JSON.parse(localStorage.getItem('novo_home_equity') || '{}');
-              const helocBalance = homeEquity.helocBalance || 0;
-              let runningBalance = helocBalance;
-              filteredHeloc.forEach((txn: any) => {
-                if (txn.type === 'draw' || txn.type === 'interest') {
-                  runningBalance += txn.amount;
-                } else {
-                  runningBalance -= txn.amount;
-                }
-                runningBalance = Math.max(0, runningBalance);
-                txn.balance = Math.round(runningBalance * 100) / 100;
-              });
+                localStorage.setItem('novo_heloc_transactions', JSON.stringify(filteredHeloc));
+              }
 
-              localStorage.setItem('novo_heloc_transactions', JSON.stringify(filteredHeloc));
-              setSuccessMessage('✓ Both linked transactions deleted. Balances updated.');
-            } else {
-              setSuccessMessage('✓ Checking transaction deleted. HELOC transaction kept.');
+              deleteSimpleCheckingTransaction(selectedAccountId, id);
+              setSuccessMessage(
+                choice
+                  ? '✓ Both linked transactions deleted. Balances updated.'
+                  : '✓ Checking transaction deleted. HELOC transaction kept.'
+              );
+            } catch (err) {
+              setSuccessMessage(
+                err instanceof Error ? err.message : 'Delete failed. Please try again.'
+              );
+            }
+          } else if (isLinkedCheckingDeleteType(transaction.type)) {
+            if (!confirm(getCheckingDeleteConfirmationMessage(transaction))) {
+              return;
+            }
+
+            try {
+              const result = deleteCheckingTransactionWithLinkedReversal(
+                selectedAccountId,
+                id
+              );
+              setSuccessMessage(result.message);
+            } catch (err) {
+              setSuccessMessage(
+                err instanceof Error ? err.message : 'Delete failed. Please try again.'
+              );
             }
           } else {
-            if (confirm('Delete this transaction? All balances will be recalculated from this point forward.')) {
-              const filtered = transactions.filter(t => t.id !== id);
-              recalculateBalances(filtered, startingBalance);
-              StorageService.saveCheckingTransactionsForAccount(selectedAccountId, filtered);
+            if (!confirm(getCheckingDeleteConfirmationMessage(transaction))) {
+              return;
+            }
+
+            try {
+              deleteSimpleCheckingTransaction(selectedAccountId, id);
               setSuccessMessage('✓ Transaction deleted. Balances updated.');
+            } catch (err) {
+              setSuccessMessage(
+                err instanceof Error ? err.message : 'Delete failed. Please try again.'
+              );
             }
           }
 
@@ -1419,6 +1453,7 @@ function TransferToSavingsModal({
         balance: 0,
         isReconciled: false,
         linkedSavingsTransactionId: savingsTxId,
+        linkedSavingsAccountId: selectedAccountId,
       };
       checkingTransactions.push(newCheckingTx);
       checkingTransactions.sort((a, b) => CalculationService.compareDateStrings(a.date, b.date));

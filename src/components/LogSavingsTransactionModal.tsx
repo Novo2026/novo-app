@@ -171,6 +171,7 @@ export default function LogSavingsTransactionModal({
           balance: 0,
           isReconciled: false,
           linkedSavingsTransactionId: savingsTxId,
+          linkedSavingsAccountId: accountId,
         };
 
         checkingTransactions.push(newCheckingTx);

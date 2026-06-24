@@ -254,6 +254,7 @@ export interface CheckingTransaction {
   linkedHelocTransactionId?: string;
   linkedCheckingTransactionId?: string;
   linkedSavingsTransactionId?: string;
+  linkedSavingsAccountId?: string;
   isTransferToHeloc?: boolean;
   isTransferFromHeloc?: boolean;
 }

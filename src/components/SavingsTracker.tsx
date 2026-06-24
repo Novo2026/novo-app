@@ -6,11 +6,15 @@ import { CalculationService } from '../services/calculations';
 import AddSavingsAccountModal from './AddSavingsAccountModal';
 import LogSavingsTransactionModal from './LogSavingsTransactionModal';
 import {
+  deleteSavingsTransactionWithLinkedReversal,
+  getSavingsDeleteConfirmationMessage,
+  isLinkedSavingsDeleteType,
+} from '../utils/linkedTransactionDelete';
+import {
   getSavingsCategory,
   getSavingsTypeLabel,
   isSavingsOutflow,
   recalculateSavingsTransactions,
-  removeLinkedCheckingTransaction,
 } from '../utils/savingsTransactions';
 import EditSavingsTransactionModal from './EditSavingsTransactionModal';
 import {
@@ -100,29 +104,26 @@ export default function SavingsTracker() {
   };
 
   const handleDeleteTransaction = (account: SavingsAccount, transaction: SavingsTransaction) => {
-    if (transaction.linkedCheckingTransactionId && transaction.linkedCheckingAccountId) {
-      const deleteBoth = confirm(
-        'This transaction is linked to a checking account transfer.\n\n' +
-        'Click OK to delete both transactions, or Cancel to delete only the savings transaction.'
-      );
-      if (deleteBoth) {
-        removeLinkedCheckingTransaction(
-          transaction.linkedCheckingAccountId,
-          transaction.linkedCheckingTransactionId
-        );
-      }
-    } else if (!confirm('Delete this transaction? Balances will be recalculated.')) {
+    if (!confirm(getSavingsDeleteConfirmationMessage(transaction))) {
       return;
     }
 
-    const remaining = account.transactions.filter((t) => t.id !== transaction.id);
-    const { transactions, balance } = recalculateSavingsTransactions(remaining);
-    const updatedAccounts = StorageService.getSavingsAccounts().map((acc) =>
-      acc.id === account.id ? { ...acc, transactions, balance } : acc
-    );
-    StorageService.saveSavingsAccounts(updatedAccounts);
-    selectActiveAccount(account.id);
-    setRefreshKey((prev) => prev + 1);
+    try {
+      if (isLinkedSavingsDeleteType(transaction.type)) {
+        deleteSavingsTransactionWithLinkedReversal(account.id, transaction.id);
+      } else {
+        const remaining = account.transactions.filter((t) => t.id !== transaction.id);
+        const { transactions, balance } = recalculateSavingsTransactions(remaining);
+        const updatedAccounts = StorageService.getSavingsAccounts().map((acc) =>
+          acc.id === account.id ? { ...acc, transactions, balance } : acc
+        );
+        StorageService.saveSavingsAccounts(updatedAccounts);
+      }
+      selectActiveAccount(account.id);
+      setRefreshKey((prev) => prev + 1);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Delete failed. Please try again.');
+    }
   };
 
   const getTransactionTypeClass = (transaction: SavingsTransaction) => {
