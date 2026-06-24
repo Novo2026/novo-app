@@ -68,6 +68,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
   const activeDebts = allDebts.filter(d => !d.isPaidOff);
   const paidOffDebts = allDebts.filter(d => d.isPaidOff);
   const zeroBalanceActiveDebts = activeDebts.filter(d => d.currentBalance === 0);
+  const paidDownToZeroDebts = zeroBalanceActiveDebts.filter(d => d.startingBalance > 0);
 
   const handleAddCharge = (debtId: string) => {
     setSelectedDebtId(debtId);
@@ -228,8 +229,12 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
     onDataUpdate();
   };
 
-  const handleMarkPaidOffClick = (debt: Debt, e: React.MouseEvent) => {
+  const handleCloseAccountClick = (debt: Debt, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (debt.startingBalance === 0) {
+      handleMarkPaidOff(debt);
+      return;
+    }
     setMarkingPaidOffDebt(debt);
     setShowMarkPaidOffConfirm(true);
   };
@@ -400,9 +405,11 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
   }
 
   const renderDebtCard = (debt: Debt, isPaidOffCard = false) => {
+    const isOpenAccount = debt.currentBalance === 0 && !debt.isPaidOff && debt.startingBalance === 0;
+    const isPaidDownToZero = debt.currentBalance === 0 && !debt.isPaidOff && debt.startingBalance > 0;
+    const isZeroBalance = isOpenAccount || isPaidDownToZero;
     const paidOff = debt.startingBalance - debt.currentBalance;
-    const progress = (paidOff / debt.startingBalance) * 100;
-    const isZeroBalance = debt.currentBalance === 0 && !debt.isPaidOff;
+    const progress = debt.startingBalance > 0 ? (paidOff / debt.startingBalance) * 100 : 0;
 
     if (isPaidOffCard) {
       const { totalPaid, totalInterest } = getDebtPaymentHistory(debt.id);
@@ -501,14 +508,15 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
       <div
         key={debt.id}
         className={`bg-white rounded-lg shadow-md border-2 transition-all hover:shadow-lg ${
-          isZeroBalance ? 'border-[#27AE60] ring-2 ring-[#27AE60]/20' : 'border-gray-200'
+          isOpenAccount ? 'border-blue-200' :
+          isPaidDownToZero ? 'border-[#27AE60] ring-2 ring-[#27AE60]/20' : 'border-gray-200'
         }`}
       >
         <div className="p-6">
-          {isZeroBalance && (
+          {isPaidDownToZero && (
             <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mb-4">
               <Trophy className="w-4 h-4 text-[#27AE60] flex-shrink-0" />
-              <p className="text-sm font-semibold text-[#27AE60]">Balance reached $0 — ready to mark as paid off!</p>
+              <p className="text-sm font-semibold text-[#27AE60]">Balance reached $0 — close this account when you&apos;re ready.</p>
             </div>
           )}
           <div className="flex justify-between items-start mb-4">
@@ -536,6 +544,11 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                       ) : null;
                     })()}
                   </span>
+                </span>
+              )}
+              {isOpenAccount && (
+                <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-1 rounded-full">
+                  Open
                 </span>
               )}
               <span className="bg-red-100 text-red-700 text-xs font-semibold px-2 py-1 rounded">
@@ -574,6 +587,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
             )}
           </div>
 
+          {!isZeroBalance && (
           <div className="mb-4">
             <div className="flex justify-between text-sm text-gray-600 mb-2">
               <span>Amount Paid Off: {CalculationService.formatCurrency(paidOff)}</span>
@@ -581,11 +595,12 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all ${isZeroBalance ? 'bg-[#27AE60]' : 'bg-[#2D9CDB]'}`}
+                className="h-full rounded-full transition-all bg-[#2D9CDB]"
                 style={{ width: `${Math.min(progress, 100)}%` }}
               />
             </div>
           </div>
+          )}
 
           <div className="text-sm text-gray-600 mb-4">
             <p>Minimum Payment: {CalculationService.formatCurrency(debt.minimumPayment)}</p>
@@ -642,11 +657,11 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
           <div className="flex flex-col space-y-2">
             {isZeroBalance && (
               <button
-                onClick={(e) => handleMarkPaidOffClick(debt, e)}
-                className="w-full bg-[#27AE60] hover:bg-[#229954] text-white text-sm font-bold py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2 shadow-md"
+                onClick={(e) => handleCloseAccountClick(debt, e)}
+                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2 border border-slate-300"
               >
                 <CheckCircle className="w-4 h-4" />
-                <span>Mark as Paid Off</span>
+                <span>Close Account</span>
               </button>
             )}
             <div className="flex space-x-2">
@@ -672,7 +687,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
               {getRefinanceIcon(debt)}
               <span>{getRefinanceButtonLabel(debt)}</span>
             </button>
-            {!debt.isPaidOff && (
+            {!debt.isPaidOff && debt.currentBalance > 0 && (
               <button
                 onClick={(e) => { e.stopPropagation(); handleMarkPaidOff(debt); }}
                 className="w-full text-center py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors border border-emerald-200 mt-1"
@@ -718,17 +733,17 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
         </button>
       </div>
 
-      {zeroBalanceActiveDebts.length > 0 && (
+      {paidDownToZeroDebts.length > 0 && (
         <div className="bg-emerald-50 border-2 border-[#27AE60] rounded-xl p-4 flex items-start gap-3">
           <Trophy className="w-5 h-5 text-[#27AE60] flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-bold text-[#27AE60] text-sm">
-              {zeroBalanceActiveDebts.length === 1
-                ? `${zeroBalanceActiveDebts[0].accountName} is at $0!`
-                : `${zeroBalanceActiveDebts.length} debts are at $0!`}
+              {paidDownToZeroDebts.length === 1
+                ? `${paidDownToZeroDebts[0].accountName} is at $0!`
+                : `${paidDownToZeroDebts.length} debts are at $0!`}
             </p>
             <p className="text-sm text-emerald-700">
-              Click "Mark as Paid Off" on {zeroBalanceActiveDebts.length === 1 ? 'the card below' : 'each card below'} to celebrate and move it to your paid-off history.
+              Click &quot;Close Account&quot; on {paidDownToZeroDebts.length === 1 ? 'the card below' : 'each card below'} to move it to your paid-off history.
             </p>
           </div>
         </div>
@@ -892,9 +907,9 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
             <div className="flex items-center justify-center w-14 h-14 bg-emerald-100 rounded-full mx-auto mb-4">
               <Trophy className="w-8 h-8 text-[#27AE60]" />
             </div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">Mark as Paid Off?</h3>
+            <h3 className="text-xl font-bold text-gray-800 mb-2 text-center">Close Account?</h3>
             <p className="text-gray-600 mb-1 text-center">
-              You're marking <strong>{markingPaidOffDebt.accountName}</strong> as fully paid off.
+              You&apos;re closing <strong>{markingPaidOffDebt.accountName}</strong>.
             </p>
             <p className="text-sm text-gray-500 text-center mb-6">
               This will free up <strong>{CalculationService.formatCurrency(markingPaidOffDebt.minimumPayment)}/month</strong> and move it to your Paid Off Debts section.

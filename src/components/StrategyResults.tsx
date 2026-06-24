@@ -139,7 +139,9 @@ export default function StrategyResults({
     allDebts.some(d => d.interestRate < helocRate && d.id !== 'HELOC_VIRTUAL');
 
   // Calculate cash flow after debt minimums, savings carve-out, and commitment %
-  const totalMinimumPayments = allDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
+  const totalMinimumPayments = allDebts
+    .filter(d => d.currentBalance > 0)
+    .reduce((sum, d) => sum + d.minimumPayment, 0);
   const cashFlowMetricsForResults = financialProfile
     ? CalculationService.calculateCashFlow(
         financialProfile.monthlyNetIncome,

@@ -17,7 +17,7 @@ export interface PaymentCalculation {
 export const CalculationService = {
   calculateCurrentStrategy(): StrategyResult | null {
     const debts = StorageService.getDebts();
-    const activeDebts = debts.filter(d => !d.isPaidOff);
+    const activeDebts = debts.filter(d => !d.isPaidOff && d.currentBalance > 0);
 
     if (activeDebts.length === 0) {
       return null;

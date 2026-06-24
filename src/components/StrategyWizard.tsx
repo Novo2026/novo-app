@@ -70,7 +70,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
     }
   };
 
-  const debts = StorageService.getDebts().filter(d => !d.isPaidOff);
+  const debts = StorageService.getDebts().filter(d => !d.isPaidOff && d.currentBalance > 0);
   const totalMinimumPayments = debts.reduce((sum, d) => sum + d.minimumPayment, 0);
 
   const cashFlowMetrics = CalculationService.calculateCashFlow(

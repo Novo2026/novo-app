@@ -73,7 +73,8 @@ export default function Dashboard({
   const savingsMetrics = CalculationService.calculateSavingsMetrics(savingsAccounts);
 
   const activeDebts = debts.filter(d => !d.isPaidOff);
-  const totalMinimumPayments = activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
+  const planActiveDebts = debts.filter(d => !d.isPaidOff && d.currentBalance > 0);
+  const totalMinimumPayments = planActiveDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
 
   const [commitmentPercent, setCommitmentPercent] = useState<number>(
     financialProfile?.surplusCommitmentPercent ?? 100
@@ -99,8 +100,8 @@ export default function Dashboard({
     : 0;
 
   let optimizedProjection: { debtFreeDate: string; totalMonths: number } | null = null;
-  if (financialProfile && activeDebts.length > 0) {
-    const projection = CalculationService.projectDebtPayoff(activeDebts, extraForDebtPayoff);
+  if (financialProfile && planActiveDebts.length > 0) {
+    const projection = CalculationService.projectDebtPayoff(planActiveDebts, extraForDebtPayoff);
     optimizedProjection = {
       debtFreeDate: projection.debtFreeDate,
       totalMonths: projection.totalMonths,
