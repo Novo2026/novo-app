@@ -1,7 +1,20 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Plus, Download, Upload, CreditCard as Edit2, X, DollarSign, CreditCard, TrendingUp, TrendingDown, Link2, ArrowRightLeft, PiggyBank, CheckCircle2, Building2 } from 'lucide-react';
+import { useState, useMemo, useEffect, type ComponentType } from 'react';
+import {
+  Plus,
+  Upload,
+  CreditCard as Edit2,
+  X,
+  DollarSign,
+  CreditCard,
+  Building2,
+  PlusCircle,
+  MinusCircle,
+  PiggyBank,
+  ArrowLeftRight,
+  Home,
+  SlidersHorizontal,
+} from 'lucide-react';
 import StatementUploadModal from './StatementUploadModal';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CalculationService } from '../services/calculations';
 import { StorageService } from '../services/storage';
 import DatePicker from './DatePicker';
@@ -48,6 +61,105 @@ const DISCRETIONARY_CATEGORIES = [
   'Other Discretionary'
 ];
 
+const ACCOUNT_DOT_COLORS = [
+  'bg-brand-navy',
+  'bg-brand-navy-light',
+  'bg-brand-blue',
+  'bg-brand-navy/70',
+  'bg-brand-blue/70',
+];
+
+type SummaryPeriod = 'month' | 'ytd' | 'annual';
+
+function getCheckingAccountBalance(accountId: string, startingBalance: number): number {
+  const txs = StorageService.getCheckingTransactionsForAccount(accountId);
+  if (txs.length === 0) return startingBalance;
+  return txs[txs.length - 1].balance;
+}
+
+function filterTransactionsByPeriod(
+  transactions: CheckingTransaction[],
+  period: SummaryPeriod
+): CheckingTransaction[] {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+
+  return transactions.filter((t) => {
+    const d = CalculationService.parseLocalDate(t.date);
+    if (period === 'month') {
+      return d.getMonth() === month && d.getFullYear() === year;
+    }
+    if (period === 'ytd') {
+      return d.getFullYear() === year && d <= now;
+    }
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year, 11, 31, 23, 59, 59);
+    return d >= yearStart && d <= yearEnd;
+  });
+}
+
+function computeCashFlowSummary(transactions: CheckingTransaction[]) {
+  const income = transactions
+    .filter((t) => t.type === 'deposit' || t.type === 'transfer_from_checking' || t.type === 'transfer_from_savings' || t.type === 'transfer_from_heloc')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const expenses = transactions
+    .filter((t) => t.type === 'withdrawal')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const debtPayments = transactions
+    .filter((t) => t.type === 'debt_payment')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const toSavings = transactions
+    .filter((t) => t.type === 'transfer_to_savings')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const other = transactions
+    .filter((t) =>
+      t.type === 'transfer_to_heloc' ||
+      t.type === 'transfer_to_checking'
+    )
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const outflows = expenses + debtPayments + toSavings + other;
+  const netChange = income - outflows;
+
+  return { income, expenses, debtPayments, toSavings, other, netChange };
+}
+
+function QuickActionButton({
+  icon: Icon,
+  label,
+  onClick,
+  textClass,
+  borderClass,
+  disabled,
+  title,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  onClick: () => void;
+  textClass: string;
+  borderClass: string;
+  disabled?: boolean;
+  title?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={`flex flex-col items-center justify-center gap-1 text-[10px] leading-tight py-2 px-1 rounded-md border-[0.5px] bg-white transition-colors hover:bg-brand-gray-light disabled:opacity-50 disabled:cursor-not-allowed ${textClass} ${borderClass}`}
+    >
+      <Icon className="w-[18px] h-[18px] shrink-0" />
+      <span className="text-center">{label}</span>
+    </button>
+  );
+}
+
 export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
   const [showModal, setShowModal] = useState(false);
   const [showStatementUpload, setShowStatementUpload] = useState(false);
@@ -64,6 +176,8 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
   );
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [showReconcilePanel, setShowReconcilePanel] = useState(false);
+  const [summaryPeriod, setSummaryPeriod] = useState<SummaryPeriod>('month');
+  const [allAccountsCombined, setAllAccountsCombined] = useState(false);
 
   useEffect(() => {
     const accts = StorageService.getCheckingAccounts();
@@ -115,64 +229,24 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
     ? recentDeposits.reduce((sum, amt) => sum + amt, 0) / recentDeposits.length
     : 0;
 
-  const chartData = useMemo(() => {
-    const data: { month: string; balance: number }[] = [];
-
-    transactions.forEach((t) => {
-      const date = CalculationService.parseLocalDate(t.date);
-      const monthStr = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-
-      if (data.length === 0 || data[data.length - 1].month !== monthStr) {
-        data.push({ month: monthStr, balance: t.balance });
-      } else {
-        data[data.length - 1].balance = t.balance;
-      }
+  const allAccountSummaries = useMemo(() => {
+    return accounts.map((account, index) => {
+      const balance = getCheckingAccountBalance(account.id, account.startingBalance);
+      return { account, balance, dotColor: ACCOUNT_DOT_COLORS[index % ACCOUNT_DOT_COLORS.length] };
     });
+  }, [accounts, refreshTrigger]);
 
-    return data;
-  }, [transactions]);
+  const totalCash = allAccountSummaries.reduce((sum, a) => sum + a.balance, 0);
 
-  const monthlySummary = useMemo(() => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
+  const summaryTransactions = useMemo(() => {
+    const sourceAccounts = allAccountsCombined ? accounts : accounts.filter((a) => a.id === selectedAccountId);
+    return sourceAccounts.flatMap((a) => StorageService.getCheckingTransactionsForAccount(a.id));
+  }, [accounts, selectedAccountId, allAccountsCombined, refreshTrigger]);
 
-    const currentMonthTransactions = transactions.filter(t => {
-      const txDate = CalculationService.parseLocalDate(t.date);
-      return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
-    });
-
-    const income = currentMonthTransactions
-      .filter(t => t.type === 'deposit')
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const essentialExpenses = currentMonthTransactions
-      .filter(t => t.type === 'withdrawal' && t.category === 'Essential Expense')
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const discretionaryExpenses = currentMonthTransactions
-      .filter(t => t.type === 'withdrawal' && t.category === 'Discretionary Expense')
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const debtPayments = currentMonthTransactions
-      .filter(t => t.type === 'debt_payment')
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const otherWithdrawals = currentMonthTransactions
-      .filter(t => t.type === 'withdrawal' && !t.category)
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const netChange = income - essentialExpenses - discretionaryExpenses - debtPayments - otherWithdrawals;
-
-    return {
-      income,
-      essentialExpenses,
-      discretionaryExpenses,
-      debtPayments,
-      otherWithdrawals,
-      netChange
-    };
-  }, [transactions]);
+  const cashFlowSummary = useMemo(() => {
+    const filtered = filterTransactionsByPeriod(summaryTransactions, summaryPeriod);
+    return computeCashFlowSummary(filtered);
+  }, [summaryTransactions, summaryPeriod]);
 
   const openModal = (type: 'deposit' | 'withdrawal' | 'debt_payment', transaction: CheckingTransaction | null = null) => {
     setModalType(type);
@@ -181,35 +255,51 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        {accounts.map(account => (
-          <button
-            key={account.id}
-            onClick={() => selectCheckingAccount(account.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
-              selectedAccountId === account.id
-                ? 'bg-brand-navy text-white border-brand-navy'
-                : 'bg-white text-brand-navy border-brand-cream-border hover:border-brand-navy/40'
-            }`}
-          >
-            {account.accountType === 'checking' ? '🏦' : '💰'} {account.name}
-            {account.bankName && <span className="opacity-60 text-xs">· {account.bankName}</span>}
-          </button>
-        ))}
+    <div className="space-y-5">
+      <div className="flex items-stretch gap-3 flex-wrap sm:flex-nowrap">
+        {accounts.map((account) => {
+          const balance = getCheckingAccountBalance(account.id, account.startingBalance);
+          const isActive = selectedAccountId === account.id;
+          return (
+            <button
+              key={account.id}
+              type="button"
+              onClick={() => selectCheckingAccount(account.id)}
+              className={`flex-1 min-w-[140px] flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
+                isActive
+                  ? 'border-2 border-brand-navy bg-white'
+                  : 'border border-brand-gray-border bg-white hover:border-brand-navy/30'
+              }`}
+            >
+              <div className="w-8 h-8 rounded-full bg-brand-blue-light flex items-center justify-center shrink-0">
+                <Building2 className="w-4 h-4 text-brand-navy" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-bold text-brand-navy truncate">{account.name}</p>
+                <p className="text-[11px] text-brand-gray truncate">{account.bankName || 'Checking account'}</p>
+                <p className="text-sm font-medium text-brand-navy mt-0.5">
+                  {CalculationService.formatCurrency(balance)}
+                </p>
+              </div>
+            </button>
+          );
+        })}
         <button
+          type="button"
           onClick={() => setShowAddAccount(true)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium text-gray-500 border border-dashed border-gray-300 hover:border-brand-orange hover:text-brand-orange transition-all"
+          className="flex-1 min-w-[120px] flex items-center justify-center gap-2 p-3 rounded-lg border border-dashed border-brand-gray-border text-brand-gray text-sm font-medium hover:border-brand-orange hover:text-brand-orange transition-colors bg-white min-h-[72px]"
         >
-          + Add Account
+          <Plus className="w-4 h-4" />
+          Add Account
         </button>
       </div>
 
       {successMessage && (
-        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg shadow-md animate-fade-in">
+        <div className="bg-brand-green-light border border-green-200 text-green-800 p-4 rounded-lg">
           <div className="flex items-center justify-between">
-            <span className="font-semibold">{successMessage}</span>
+            <span className="font-semibold text-sm">{successMessage}</span>
             <button
+              type="button"
               onClick={() => setSuccessMessage(null)}
               className="text-green-700 hover:text-green-900 font-bold"
             >
@@ -219,217 +309,214 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
         </div>
       )}
 
-      <div className="bg-gradient-to-br from-brand-green to-[#229954] text-white rounded-lg shadow-lg p-6">
-        <h2 className="text-2xl font-bold mb-6">Checking Account Overview</h2>
+      <div className="flex flex-col lg:flex-row gap-5 items-start">
+        <div className="flex-1 min-w-0 space-y-5 w-full">
+          <div className="bg-white border border-brand-gray-border rounded-lg p-4">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h2 className="text-base font-semibold text-brand-navy">{selectedAccount?.name}</h2>
+                <p className="text-xs text-brand-gray">{selectedAccount?.bankName || 'Checking account'}</p>
+              </div>
+              {selectedAccount && (
+                <button
+                  type="button"
+                  onClick={() => setShowReconcilePanel(true)}
+                  className="flex items-center gap-1.5 text-xs font-medium text-brand-gray border border-brand-gray-border rounded-md px-2.5 py-1.5 hover:bg-brand-gray-light transition-colors shrink-0"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  Reconcile
+                </button>
+              )}
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          <div>
-            <div className="text-sm opacity-90">Current Balance</div>
-            <div className="text-2xl font-bold">{CalculationService.formatCurrency(currentBalance)}</div>
-          </div>
-          <div>
-            <div className="text-sm opacity-90">Starting Balance</div>
-            <div className="text-2xl font-bold">{CalculationService.formatCurrency(startingBalance)}</div>
-          </div>
-          <div>
-            <div className="text-sm opacity-90">Average Deposit</div>
-            <div className="text-2xl font-bold">{CalculationService.formatCurrency(averageDeposit)}</div>
-          </div>
-        </div>
+            <p className="text-[28px] font-medium text-brand-navy leading-none mb-1">
+              {CalculationService.formatCurrency(currentBalance)}
+            </p>
+            <p className="text-xs text-brand-gray mb-4">
+              Starting {CalculationService.formatCurrency(startingBalance)}
+              {averageDeposit > 0 && (
+                <> · Avg deposit {CalculationService.formatCurrency(averageDeposit)}</>
+              )}
+            </p>
 
-        {selectedAccount && (
-          <div className="mb-4">
-            <button
-              onClick={() => setShowReconcilePanel(true)}
-              className="flex items-center gap-2 text-sm font-semibold py-2 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-all"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              {accounts.find(a => a.id === selectedAccountId)?.lastReconciledAt
-                ? `Reconciled ${new Date(accounts.find(a => a.id === selectedAccountId)!.lastReconciledAt!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — Review Again`
-                : 'Reconcile Account'}
-            </button>
+            <div className="border-t border-brand-gray-border pt-3">
+              <p className="text-[11px] uppercase tracking-wider text-brand-gray font-medium mb-2">
+                Quick actions
+              </p>
+              <div className="grid grid-cols-4 gap-2 mb-2">
+                <QuickActionButton
+                  icon={PlusCircle}
+                  label="Deposit"
+                  onClick={() => openModal('deposit')}
+                  textClass="text-green-700"
+                  borderClass="border-green-200"
+                />
+                <QuickActionButton
+                  icon={MinusCircle}
+                  label="Withdraw"
+                  onClick={() => openModal('withdrawal')}
+                  textClass="text-red-700"
+                  borderClass="border-red-200"
+                />
+                <QuickActionButton
+                  icon={CreditCard}
+                  label="Debt payment"
+                  onClick={() => openModal('debt_payment')}
+                  textClass="text-blue-700"
+                  borderClass="border-blue-200"
+                />
+                <QuickActionButton
+                  icon={Upload}
+                  label="Import statement"
+                  onClick={() => setShowStatementUpload(true)}
+                  textClass="text-brand-gray"
+                  borderClass="border-brand-gray-border"
+                />
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                <QuickActionButton
+                  icon={PiggyBank}
+                  label="To Savings"
+                  onClick={() => setShowSavingsTransferModal(true)}
+                  textClass="text-amber-700"
+                  borderClass="border-amber-200"
+                />
+                <QuickActionButton
+                  icon={ArrowLeftRight}
+                  label="To Checking"
+                  onClick={() => canTransferToChecking && setShowCheckingTransferModal(true)}
+                  disabled={!canTransferToChecking}
+                  title={!canTransferToChecking ? 'Add another checking account to enable transfers' : undefined}
+                  textClass="text-purple-700"
+                  borderClass="border-purple-200"
+                />
+                <QuickActionButton
+                  icon={Home}
+                  label="To HELOC"
+                  onClick={() => setShowTransferModal(true)}
+                  textClass="text-pink-700"
+                  borderClass="border-pink-200"
+                />
+                <QuickActionButton
+                  icon={DollarSign}
+                  label="Set Balance"
+                  onClick={() => {
+                    const balance = prompt('Enter your starting balance:', startingBalance.toString());
+                    if (balance !== null && selectedAccountId) {
+                      const updatedAccounts = StorageService.getCheckingAccounts().map((a) =>
+                        a.id === selectedAccountId
+                          ? { ...a, startingBalance: parseFloat(balance) || 0 }
+                          : a
+                      );
+                      StorageService.saveCheckingAccounts(updatedAccounts);
+                      setAccounts(updatedAccounts);
+                      setSuccessMessage(`✓ Starting balance updated to ${CalculationService.formatCurrency(parseFloat(balance))}`);
+                      setRefreshTrigger((prev) => prev + 1);
+                      setTimeout(() => setSuccessMessage(null), 5000);
+                    }
+                  }}
+                  textClass="text-brand-gray"
+                  borderClass="border-brand-gray-border"
+                />
+              </div>
+            </div>
           </div>
-        )}
 
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => openModal('deposit')}
-            className="flex items-center space-x-2 bg-white text-brand-green hover:bg-gray-100 font-semibold py-2 px-4 rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Record Deposit</span>
-          </button>
-          <button
-            onClick={() => openModal('withdrawal')}
-            className="flex items-center space-x-2 bg-brand-red hover:bg-[#C0392B] font-semibold py-2 px-4 rounded-lg transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Record Withdrawal</span>
-          </button>
-          <button
-            onClick={() => openModal('debt_payment')}
-            className="flex items-center space-x-2 bg-brand-blue hover:bg-[#1E6F9E] font-semibold py-2 px-4 rounded-lg transition-colors"
-          >
-            <CreditCard className="w-4 h-4" />
-            <span>Record Debt Payment</span>
-          </button>
-          <button
-            onClick={() => setShowStatementUpload(true)}
-            className="flex items-center space-x-2 bg-white text-brand-navy border-2 border-brand-navy hover:bg-brand-navy hover:text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-          >
-            <Upload className="w-4 h-4" />
-            <span>Import Statement</span>
-          </button>
-          <button
-            onClick={() => setShowSavingsTransferModal(true)}
-            className="flex items-center space-x-2 bg-[#F59E0B] hover:bg-[#D97706] text-white font-semibold py-2 px-4 rounded-lg transition-colors"
-          >
-            <PiggyBank className="w-4 h-4" />
-            <span>Transfer to Savings</span>
-          </button>
-          <button
-            onClick={() => canTransferToChecking && setShowCheckingTransferModal(true)}
-            disabled={!canTransferToChecking}
-            title={!canTransferToChecking ? 'Add another checking account to enable transfers between accounts' : undefined}
-            className={`flex items-center space-x-2 font-semibold py-2 px-4 rounded-lg transition-colors ${
-              canTransferToChecking
-                ? 'bg-[#F59E0B] hover:bg-[#D97706] text-white'
-                : 'bg-[#F59E0B]/40 text-white/80 cursor-not-allowed'
-            }`}
-          >
-            <Building2 className="w-4 h-4" />
-            <span>Transfer to Checking</span>
-          </button>
-          <button
-            onClick={() => setShowTransferModal(true)}
-            className="flex items-center space-x-2 bg-[#9B59B6] hover:bg-[#8E44AD] font-semibold py-2 px-4 rounded-lg transition-colors"
-          >
-            <ArrowRightLeft className="w-4 h-4" />
-            <span>Transfer to HELOC</span>
-          </button>
-          <button
-            onClick={() => {
-              const balance = prompt('Enter your starting balance:', startingBalance.toString());
-              if (balance !== null && selectedAccountId) {
-                const updatedAccounts = StorageService.getCheckingAccounts().map(a =>
-                  a.id === selectedAccountId
-                    ? { ...a, startingBalance: parseFloat(balance) || 0 }
-                    : a
+          <TransactionLedger
+            transactions={transactions}
+            onEdit={(transaction) => openModal(transaction.type as 'deposit' | 'withdrawal' | 'debt_payment', transaction)}
+            onDelete={(id) => {
+              const transaction = transactions.find((t) => t.id === id);
+              if (!transaction) return;
+
+              if (transaction.linkedHelocTransactionId) {
+                const choice = confirm(
+                  'This transaction is linked to a HELOC transaction.\n\n' +
+                  'Click OK to delete both transactions, or Cancel to delete only this one.'
                 );
-                StorageService.saveCheckingAccounts(updatedAccounts);
-                setAccounts(updatedAccounts);
-                setSuccessMessage(`✓ Starting balance updated to ${CalculationService.formatCurrency(parseFloat(balance))}`);
-                setRefreshTrigger(prev => prev + 1);
-                setTimeout(() => setSuccessMessage(null), 5000);
-              }
-            }}
-            className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 font-semibold py-2 px-4 rounded-lg transition-colors"
-          >
-            <DollarSign className="w-4 h-4" />
-            <span>Set Starting Balance</span>
-          </button>
-        </div>
-      </div>
 
-      <MonthlySummary summary={monthlySummary} />
+                try {
+                  if (choice) {
+                    const filteredHeloc = JSON.parse(
+                      localStorage.getItem('novo_heloc_transactions') || '[]'
+                    ).filter((t: { id: string }) => t.id !== transaction.linkedHelocTransactionId);
 
-      <TransactionLedger
-        transactions={transactions}
-        onEdit={(transaction) => openModal(transaction.type as any, transaction)}
-        onDelete={(id) => {
-          const transaction = transactions.find(t => t.id === id);
-          if (!transaction) return;
+                    const homeEquity = JSON.parse(localStorage.getItem('novo_home_equity') || '{}');
+                    const helocBalance = homeEquity.helocBalance || 0;
+                    let runningBalance = helocBalance;
+                    filteredHeloc.forEach((txn: { type: string; amount: number; balance: number }) => {
+                      if (txn.type === 'draw' || txn.type === 'interest') {
+                        runningBalance += txn.amount;
+                      } else {
+                        runningBalance -= txn.amount;
+                      }
+                      runningBalance = Math.max(0, runningBalance);
+                      txn.balance = Math.round(runningBalance * 100) / 100;
+                    });
 
-          if (transaction.linkedHelocTransactionId) {
-            const choice = confirm(
-              'This transaction is linked to a HELOC transaction.\n\n' +
-              'Click OK to delete both transactions, or Cancel to delete only this one.'
-            );
-
-            try {
-              if (choice) {
-                const filteredHeloc = JSON.parse(
-                  localStorage.getItem('novo_heloc_transactions') || '[]'
-                ).filter((t: { id: string }) => t.id !== transaction.linkedHelocTransactionId);
-
-                const homeEquity = JSON.parse(localStorage.getItem('novo_home_equity') || '{}');
-                const helocBalance = homeEquity.helocBalance || 0;
-                let runningBalance = helocBalance;
-                filteredHeloc.forEach((txn: { type: string; amount: number; balance: number }) => {
-                  if (txn.type === 'draw' || txn.type === 'interest') {
-                    runningBalance += txn.amount;
-                  } else {
-                    runningBalance -= txn.amount;
+                    localStorage.setItem('novo_heloc_transactions', JSON.stringify(filteredHeloc));
                   }
-                  runningBalance = Math.max(0, runningBalance);
-                  txn.balance = Math.round(runningBalance * 100) / 100;
-                });
 
-                localStorage.setItem('novo_heloc_transactions', JSON.stringify(filteredHeloc));
+                  deleteSimpleCheckingTransaction(selectedAccountId, id);
+                  setSuccessMessage(
+                    choice
+                      ? '✓ Both linked transactions deleted. Balances updated.'
+                      : '✓ Checking transaction deleted. HELOC transaction kept.'
+                  );
+                } catch (err) {
+                  setSuccessMessage(
+                    err instanceof Error ? err.message : 'Delete failed. Please try again.'
+                  );
+                }
+              } else if (isLinkedCheckingDeleteType(transaction.type)) {
+                if (!confirm(getCheckingDeleteConfirmationMessage(transaction))) {
+                  return;
+                }
+
+                try {
+                  const result = deleteCheckingTransactionWithLinkedReversal(
+                    selectedAccountId,
+                    id
+                  );
+                  setSuccessMessage(result.message);
+                } catch (err) {
+                  setSuccessMessage(
+                    err instanceof Error ? err.message : 'Delete failed. Please try again.'
+                  );
+                }
+              } else {
+                if (!confirm(getCheckingDeleteConfirmationMessage(transaction))) {
+                  return;
+                }
+
+                try {
+                  deleteSimpleCheckingTransaction(selectedAccountId, id);
+                  setSuccessMessage('✓ Transaction deleted. Balances updated.');
+                } catch (err) {
+                  setSuccessMessage(
+                    err instanceof Error ? err.message : 'Delete failed. Please try again.'
+                  );
+                }
               }
 
-              deleteSimpleCheckingTransaction(selectedAccountId, id);
-              setSuccessMessage(
-                choice
-                  ? '✓ Both linked transactions deleted. Balances updated.'
-                  : '✓ Checking transaction deleted. HELOC transaction kept.'
-              );
-            } catch (err) {
-              setSuccessMessage(
-                err instanceof Error ? err.message : 'Delete failed. Please try again.'
-              );
-            }
-          } else if (isLinkedCheckingDeleteType(transaction.type)) {
-            if (!confirm(getCheckingDeleteConfirmationMessage(transaction))) {
-              return;
-            }
-
-            try {
-              const result = deleteCheckingTransactionWithLinkedReversal(
-                selectedAccountId,
-                id
-              );
-              setSuccessMessage(result.message);
-            } catch (err) {
-              setSuccessMessage(
-                err instanceof Error ? err.message : 'Delete failed. Please try again.'
-              );
-            }
-          } else {
-            if (!confirm(getCheckingDeleteConfirmationMessage(transaction))) {
-              return;
-            }
-
-            try {
-              deleteSimpleCheckingTransaction(selectedAccountId, id);
-              setSuccessMessage('✓ Transaction deleted. Balances updated.');
-            } catch (err) {
-              setSuccessMessage(
-                err instanceof Error ? err.message : 'Delete failed. Please try again.'
-              );
-            }
-          }
-
-          setRefreshTrigger(prev => prev + 1);
-          onDataUpdate?.();
-          setTimeout(() => setSuccessMessage(null), 5000);
-        }}
-      />
-
-      {chartData.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Checking Balance Over Time</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip formatter={(value) => CalculationService.formatCurrency(value as number)} />
-              <Line type="monotone" dataKey="balance" stroke="#27AE60" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
+              setRefreshTrigger((prev) => prev + 1);
+              onDataUpdate?.();
+              setTimeout(() => setSuccessMessage(null), 5000);
+            }}
+          />
         </div>
-      )}
+
+        <aside className="w-full lg:w-[320px] shrink-0 space-y-5">
+          <AllAccountsPanel accounts={allAccountSummaries} totalCash={totalCash} />
+          <MonthlySummarySidebar
+            summary={cashFlowSummary}
+            period={summaryPeriod}
+            onPeriodChange={setSummaryPeriod}
+            allAccountsCombined={allAccountsCombined}
+            onToggleAllAccounts={() => setAllAccountsCombined((v) => !v)}
+          />
+        </aside>
+      </div>
 
       {showModal && (
         <TransactionModal
@@ -563,83 +650,193 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
   );
 }
 
-function MonthlySummary({ summary }: { summary: {
-  income: number;
-  essentialExpenses: number;
-  discretionaryExpenses: number;
-  debtPayments: number;
-  otherWithdrawals: number;
-  netChange: number;
-}}) {
-  const now = new Date();
-  const monthName = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
+function AllAccountsPanel({
+  accounts,
+  totalCash,
+}: {
+  accounts: { account: CheckingAccount; balance: number; dotColor: string }[];
+  totalCash: number;
+}) {
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xl font-bold text-gray-800">This Month's Summary</h3>
-        <span className="text-sm text-gray-600">{monthName}</span>
+    <div className="bg-white border border-brand-gray-border rounded-lg p-4">
+      <h3 className="text-sm font-medium text-brand-navy mb-3">All accounts</h3>
+      <div className="space-y-3">
+        {accounts.map(({ account, balance, dotColor }) => (
+          <div key={account.id} className="flex items-center gap-2.5">
+            <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-medium text-brand-navy truncate">{account.name}</p>
+              <p className="text-[11px] text-brand-gray truncate">{account.bankName || 'Checking'}</p>
+            </div>
+            <span className="text-[13px] font-medium text-brand-navy shrink-0">
+              {CalculationService.formatCurrency(balance)}
+            </span>
+          </div>
+        ))}
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="bg-green-50 border-l-4 border-green-500 rounded-r-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm text-gray-600 mb-1">Income Deposited</div>
-              <div className="text-2xl font-bold text-green-700">
-                {CalculationService.formatCurrency(summary.income)}
-              </div>
-            </div>
-            <TrendingUp className="w-8 h-8 text-green-500" />
-          </div>
-        </div>
-
-        <div className="bg-orange-50 border-l-4 border-orange-500 rounded-r-lg p-4">
-          <div className="text-sm text-gray-600 mb-1">Essential Expenses</div>
-          <div className="text-xl font-bold text-orange-700">
-            {CalculationService.formatCurrency(summary.essentialExpenses)}
-          </div>
-        </div>
-
-        <div className="bg-purple-50 border-l-4 border-purple-500 rounded-r-lg p-4">
-          <div className="text-sm text-gray-600 mb-1">Discretionary Expenses</div>
-          <div className="text-xl font-bold text-purple-700">
-            {CalculationService.formatCurrency(summary.discretionaryExpenses)}
-          </div>
-        </div>
-
-        <div className="bg-blue-50 border-l-4 border-blue-500 rounded-r-lg p-4">
-          <div className="text-sm text-gray-600 mb-1">Debt Payments</div>
-          <div className="text-xl font-bold text-blue-700">
-            {CalculationService.formatCurrency(summary.debtPayments)}
-          </div>
-        </div>
-
-        <div className="bg-gray-50 border-l-4 border-gray-400 rounded-r-lg p-4">
-          <div className="text-sm text-gray-600 mb-1">Other Withdrawals</div>
-          <div className="text-xl font-bold text-gray-700">
-            {CalculationService.formatCurrency(summary.otherWithdrawals)}
-          </div>
-        </div>
-
-        <div className={`${summary.netChange >= 0 ? 'bg-green-50 border-green-600' : 'bg-red-50 border-red-600'} border-l-4 rounded-r-lg p-4`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm text-gray-600 mb-1">Net Change</div>
-              <div className={`text-2xl font-bold ${summary.netChange >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                {summary.netChange >= 0 ? '+' : ''}{CalculationService.formatCurrency(summary.netChange)}
-              </div>
-            </div>
-            {summary.netChange >= 0 ? (
-              <TrendingUp className="w-8 h-8 text-green-600" />
-            ) : (
-              <TrendingDown className="w-8 h-8 text-red-600" />
-            )}
-          </div>
-        </div>
+      <div className="border-t border-brand-gray-border mt-3 pt-3 flex items-center justify-between">
+        <span className="text-[13px] font-medium text-brand-navy">Total cash</span>
+        <span className="text-[13px] font-medium text-brand-navy">
+          {CalculationService.formatCurrency(totalCash)}
+        </span>
       </div>
     </div>
   );
+}
+
+function SummaryCard({
+  label,
+  value,
+  bgClass,
+  textClass,
+}: {
+  label: string;
+  value: number;
+  bgClass: string;
+  textClass: string;
+}) {
+  return (
+    <div className={`rounded-lg p-2.5 ${bgClass}`}>
+      <p className="text-[10px] text-brand-gray mb-0.5">{label}</p>
+      <p className={`text-xs font-semibold ${textClass}`}>
+        {CalculationService.formatCurrency(value)}
+      </p>
+    </div>
+  );
+}
+
+function MonthlySummarySidebar({
+  summary,
+  period,
+  onPeriodChange,
+  allAccountsCombined,
+  onToggleAllAccounts,
+}: {
+  summary: ReturnType<typeof computeCashFlowSummary>;
+  period: SummaryPeriod;
+  onPeriodChange: (p: SummaryPeriod) => void;
+  allAccountsCombined: boolean;
+  onToggleAllAccounts: () => void;
+}) {
+  const periods: { id: SummaryPeriod; label: string }[] = [
+    { id: 'month', label: 'This month' },
+    { id: 'ytd', label: 'YTD' },
+    { id: 'annual', label: 'Annual' },
+  ];
+
+  return (
+    <div className="bg-white border border-brand-gray-border rounded-lg p-4">
+      <h3 className="text-sm font-medium text-brand-navy mb-3">Monthly summary</h3>
+
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <span className="text-xs text-brand-gray">All accounts combined</span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={allAccountsCombined}
+          onClick={onToggleAllAccounts}
+          className={`relative w-10 h-5 rounded-full transition-colors ${
+            allAccountsCombined ? 'bg-brand-navy' : 'bg-brand-gray-border'
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+              allAccountsCombined ? 'translate-x-5' : 'translate-x-0'
+            }`}
+          />
+        </button>
+      </div>
+
+      <div className="flex gap-1 mb-4">
+        {periods.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => onPeriodChange(p.id)}
+            className={`flex-1 text-[11px] py-1.5 px-2 rounded-full border transition-colors ${
+              period === p.id
+                ? 'bg-brand-navy text-white border-brand-navy'
+                : 'bg-white text-brand-gray border-brand-gray-border hover:border-brand-navy/30'
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 mb-2">
+        <SummaryCard label="Income" value={summary.income} bgClass="bg-brand-green-light" textClass="text-green-700" />
+        <SummaryCard label="Expenses" value={summary.expenses} bgClass="bg-brand-red-light" textClass="text-red-700" />
+        <SummaryCard
+          label="Net change"
+          value={summary.netChange}
+          bgClass="bg-brand-blue-light"
+          textClass={summary.netChange >= 0 ? 'text-blue-700' : 'text-red-700'}
+        />
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <SummaryCard label="Debt payments" value={summary.debtPayments} bgClass="bg-purple-50" textClass="text-purple-700" />
+        <SummaryCard label="To savings" value={summary.toSavings} bgClass="bg-amber-50" textClass="text-amber-700" />
+        <SummaryCard label="Other" value={summary.other} bgClass="bg-brand-gray-light" textClass="text-brand-gray" />
+      </div>
+    </div>
+  );
+}
+
+function getTransactionDisplayMeta(transaction: CheckingTransaction) {
+  switch (transaction.type) {
+    case 'deposit':
+    case 'transfer_from_heloc':
+    case 'transfer_from_checking':
+    case 'transfer_from_savings':
+      return {
+        iconBg: 'bg-green-100',
+        iconColor: 'text-green-700',
+        Icon: PlusCircle,
+        isPositive: true,
+        typeLabel: transaction.type === 'deposit' ? 'Deposit' : 'Incoming transfer',
+      };
+    case 'debt_payment':
+      return {
+        iconBg: 'bg-purple-100',
+        iconColor: 'text-purple-700',
+        Icon: CreditCard,
+        isPositive: false,
+        typeLabel: 'Debt payment',
+      };
+    case 'transfer_to_savings':
+      return {
+        iconBg: 'bg-amber-100',
+        iconColor: 'text-amber-700',
+        Icon: PiggyBank,
+        isPositive: false,
+        typeLabel: 'To savings',
+      };
+    case 'transfer_to_checking':
+      return {
+        iconBg: 'bg-brand-blue-light',
+        iconColor: 'text-blue-700',
+        Icon: ArrowLeftRight,
+        isPositive: false,
+        typeLabel: 'To checking',
+      };
+    case 'transfer_to_heloc':
+      return {
+        iconBg: 'bg-pink-100',
+        iconColor: 'text-pink-700',
+        Icon: Home,
+        isPositive: false,
+        typeLabel: 'To HELOC',
+      };
+    default:
+      return {
+        iconBg: 'bg-red-100',
+        iconColor: 'text-red-700',
+        Icon: MinusCircle,
+        isPositive: false,
+        typeLabel: transaction.category || 'Withdrawal',
+      };
+  }
 }
 
 function TransactionLedger({
@@ -651,6 +848,9 @@ function TransactionLedger({
   onEdit: (t: CheckingTransaction) => void;
   onDelete: (id: string) => void;
 }) {
+  const [showAll, setShowAll] = useState(false);
+  const displayLimit = 10;
+
   const exportCSV = () => {
     const headers = ['Date', 'Type', 'Category', 'Subcategory', 'Description', 'Amount', 'Balance'];
     const rows = transactions.map(t => [
@@ -689,112 +889,92 @@ function TransactionLedger({
     CalculationService.compareDateStrings(b.date, a.date)
   );
 
+  const visibleTransactions = showAll
+    ? sortedTransactions
+    : sortedTransactions.slice(0, displayLimit);
+
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-bold text-gray-800">Checking Transaction History</h3>
+    <div className="bg-white border border-brand-gray-border rounded-lg overflow-hidden">
+      <div className="flex justify-between items-center px-4 py-3 border-b border-brand-gray-border">
+        <h3 className="text-sm font-medium text-brand-navy">Transaction history</h3>
         {transactions.length > 0 && (
           <button
+            type="button"
             onClick={exportCSV}
-            className="flex items-center space-x-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors"
+            className="text-xs text-brand-blue hover:underline font-medium"
           >
-            <Download className="w-4 h-4" />
-            <span>Export CSV</span>
+            Export CSV
           </button>
         )}
       </div>
 
       {transactions.length === 0 ? (
-        <p className="text-gray-500 text-center py-8">
-          No checking transactions yet. Record your first deposit or withdrawal above.
+        <p className="text-brand-gray text-sm text-center py-10 px-4">
+          No transactions yet. Use quick actions above to record your first entry.
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b-2 border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Date</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Type</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Category</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Description</th>
-                <th className="text-right py-3 px-4 font-semibold text-gray-700">Amount</th>
-                <th className="text-right py-3 px-4 font-semibold text-gray-700">Balance</th>
-                <th className="text-right py-3 px-4 font-semibold text-gray-700">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedTransactions.map((transaction) => (
-                <tr key={transaction.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-3 px-4 text-gray-800">
-                    {CalculationService.formatLocalDateShort(transaction.date)}
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex items-center space-x-2">
-                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                        transaction.type === 'deposit' ? 'bg-green-100 text-green-800' :
-                        transaction.type === 'debt_payment' ? 'bg-blue-100 text-blue-800' :
-                        transaction.type === 'transfer_to_savings' ? 'bg-yellow-100 text-yellow-800' :
-                        transaction.type === 'transfer_from_savings' ? 'bg-yellow-100 text-yellow-800' :
-                        transaction.type === 'transfer_to_checking' ? 'bg-sky-100 text-sky-800' :
-                        transaction.type === 'transfer_from_checking' ? 'bg-sky-100 text-sky-800' :
-                        transaction.type === 'transfer_from_heloc' ? 'bg-purple-100 text-purple-800' :
-                        transaction.type === 'transfer_to_heloc' ? 'bg-purple-100 text-purple-800' :
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {transaction.type === 'debt_payment' ? 'Debt Payment' :
-                         transaction.type === 'transfer_to_savings' ? 'To Savings' :
-                         transaction.type === 'transfer_from_savings' ? 'From Savings' :
-                         transaction.type === 'transfer_to_checking' ? 'To Checking' :
-                         transaction.type === 'transfer_from_checking' ? 'From Checking' :
-                         transaction.type === 'transfer_from_heloc' ? 'From HELOC' :
-                         transaction.type === 'transfer_to_heloc' ? 'To HELOC' :
-                         transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
-                      </span>
-                      {(transaction.linkedHelocTransactionId) && (
-                        <div className="relative group">
-                          <Link2 className="w-4 h-4 text-purple-600" />
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                            Linked to HELOC transaction
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-sm text-gray-700">
-                    {transaction.subcategory || transaction.category || '—'}
-                  </td>
-                  <td className="py-3 px-4 text-gray-800">{transaction.description}</td>
-                  <td className={`py-3 px-4 text-right font-semibold ${
-                    transaction.type === 'deposit' || transaction.type === 'transfer_from_heloc' || transaction.type === 'transfer_from_checking' || transaction.type === 'transfer_from_savings' ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {transaction.type === 'deposit' || transaction.type === 'transfer_from_heloc' || transaction.type === 'transfer_from_checking' || transaction.type === 'transfer_from_savings' ? '+' : '-'}{CalculationService.formatCurrency(transaction.amount)}
-                  </td>
-                  <td className="py-3 px-4 text-right font-semibold text-gray-800">
-                    {CalculationService.formatCurrency(transaction.balance)}
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <div className="flex justify-end space-x-2">
-                      <button
-                        onClick={() => onEdit(transaction)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Edit"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => onDelete(transaction.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <ul>
+            {visibleTransactions.map((transaction) => {
+              const meta = getTransactionDisplayMeta(transaction);
+              const TxIcon = meta.Icon;
+              return (
+                <li
+                  key={transaction.id}
+                  className="flex items-center gap-3 px-4 py-3 border-b border-brand-gray-border/80 last:border-b-0 hover:bg-brand-gray-light/50 group"
+                >
+                  <div className={`w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 ${meta.iconBg}`}>
+                    <TxIcon className={`w-4 h-4 ${meta.iconColor}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[13px] text-brand-navy truncate">{transaction.description}</p>
+                    <p className="text-[11px] text-brand-gray">
+                      {CalculationService.formatLocalDateShort(transaction.date)} · {meta.typeLabel}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className={`text-[13px] font-medium ${meta.isPositive ? 'text-green-700' : 'text-red-700'}`}>
+                      {meta.isPositive ? '+' : '-'}
+                      {CalculationService.formatCurrency(transaction.amount)}
+                    </p>
+                    <p className="text-[11px] text-brand-gray">
+                      {CalculationService.formatCurrency(transaction.balance)}
+                    </p>
+                  </div>
+                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => onEdit(transaction)}
+                      className="p-1.5 text-brand-blue hover:bg-brand-blue-light rounded"
+                      title="Edit"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDelete(transaction.id)}
+                      className="p-1.5 text-red-600 hover:bg-brand-red-light rounded"
+                      title="Delete"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          {sortedTransactions.length > displayLimit && (
+            <div className="py-3 text-center border-t border-brand-gray-border">
+              <button
+                type="button"
+                onClick={() => setShowAll((v) => !v)}
+                className="text-xs text-brand-blue font-medium hover:underline"
+              >
+                {showAll ? 'Show fewer transactions' : 'View all transactions'}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -1831,8 +2011,8 @@ function TransferToCheckingModal({
 
   const otherCheckingAccounts = checkingAccounts.filter(a => a.id !== sourceAccountId);
   const destinationAccount = otherCheckingAccounts.find(a => a.id === destinationAccountId);
-  const destinationBalance = destinationAccountId
-    ? getCheckingAccountBalance(destinationAccountId, checkingAccounts)
+  const destinationBalance = destinationAccountId && destinationAccount
+    ? getCheckingAccountBalance(destinationAccountId, destinationAccount.startingBalance)
     : 0;
 
   const transferAmount = parseFloat(amount) || 0;
@@ -1943,7 +2123,7 @@ function TransferToCheckingModal({
               <option value="">Choose account...</option>
               {otherCheckingAccounts.map(a => (
                 <option key={a.id} value={a.id}>
-                  {a.name}{a.bankName ? ` · ${a.bankName}` : ''} — Balance: {CalculationService.formatCurrency(getCheckingAccountBalance(a.id, checkingAccounts))}
+                  {a.name}{a.bankName ? ` · ${a.bankName}` : ''} — Balance: {CalculationService.formatCurrency(getCheckingAccountBalance(a.id, a.startingBalance))}
                 </option>
               ))}
             </select>
@@ -2018,13 +2198,6 @@ function TransferToCheckingModal({
       </div>
     </div>
   );
-}
-
-function getCheckingAccountBalance(accountId: string, accounts: CheckingAccount[]): number {
-  const account = accounts.find(a => a.id === accountId);
-  const txs = StorageService.getCheckingTransactionsForAccount(accountId);
-  const starting = account?.startingBalance ?? 0;
-  return txs.length > 0 ? txs[txs.length - 1].balance : starting;
 }
 
 function recalculateBalances(transactions: CheckingTransaction[], startingBalance: number) {

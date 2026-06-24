@@ -387,15 +387,16 @@ function App() {
       case 'tracker':
         return (
           <ProFeatureGate featureName="Tracker & Spending Analysis">
-            <div className="space-y-6">
-              <PageHero page="tracker" title="Trackers" subtitle="Your cash flow command center" />
+            <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 md:-mt-8">
               <Tracker onDataUpdate={handleDataUpdate} />
-              <SpendingAnalysisPanel
-                onOpenChat={(context) => {
-                  setNovoChatContext(context);
-                  setShowNovoChat(true);
-                }}
-              />
+              <div className="bg-brand-gray-light px-4 sm:px-6 lg:px-8 pb-8">
+                <SpendingAnalysisPanel
+                  onOpenChat={(context) => {
+                    setNovoChatContext(context);
+                    setShowNovoChat(true);
+                  }}
+                />
+              </div>
             </div>
           </ProFeatureGate>
         );
@@ -671,7 +672,14 @@ function App() {
         </div>
       </header>
 
-      <nav className="bg-brand-cream border-b border-brand-cream-border sticky top-[64px] z-20 hidden md:block" style={{ boxShadow: '0 1px 0 rgba(232,216,196,0.8)' }}>
+      <nav
+        className={`sticky top-[64px] z-20 hidden md:block border-b ${
+          currentSection === 'tracker'
+            ? 'bg-white border-brand-gray-border'
+            : 'bg-brand-cream border-brand-cream-border'
+        }`}
+        style={currentSection === 'tracker' ? undefined : { boxShadow: '0 1px 0 rgba(232,216,196,0.8)' }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex overflow-x-auto">
             <button
