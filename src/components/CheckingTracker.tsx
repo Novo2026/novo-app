@@ -1335,6 +1335,12 @@ function TransferToSavingsModal({
       setError('Please select a savings account.');
       return;
     }
+    if (!date) {
+      setError('Please select a date.');
+      return;
+    }
+
+    const transferDate = CalculationService.normalizeDateString(date);
 
     setIsSubmitting(true);
 
@@ -1343,7 +1349,7 @@ function TransferToSavingsModal({
       const newCheckingTx: CheckingTransaction = {
         id: `checking_${Date.now()}`,
         accountId,
-        date,
+        date: transferDate,
         type: 'transfer_to_savings',
         amount: transferAmount,
         description: description || `Transfer to ${selectedAccount?.name || 'Savings'}`,
@@ -1365,7 +1371,7 @@ function TransferToSavingsModal({
       const newSavingsBalance = Math.round((account.balance + transferAmount) * 100) / 100;
       const newTransaction = {
         id: `savings_tx_${Date.now()}`,
-        date,
+        date: transferDate,
         type: 'deposit' as const,
         amount: transferAmount,
         description: description || 'Transfer from Checking',
@@ -1436,6 +1442,13 @@ function TransferToSavingsModal({
               </div>
               <p className="text-xs text-gray-500 mt-1">Available: {CalculationService.formatCurrency(currentBalance)}</p>
             </div>
+
+            <DatePicker
+              label="Date"
+              value={date}
+              onChange={setDate}
+              demoMode={JSON.parse(localStorage.getItem('novo_demo_mode') || 'false')}
+            />
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Description (optional)</label>
