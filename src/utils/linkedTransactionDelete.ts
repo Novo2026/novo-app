@@ -117,6 +117,18 @@ function findUnifiedPaymentForDebtTransaction(transaction: CheckingTransaction) 
   return matches[matches.length - 1];
 }
 
+function parseDebtNameFromDescription(description?: string): string | null {
+  if (!description) return null;
+
+  const mortgageMatch = description.match(/^Mortgage Payment\s*[—-]\s*(.+?)\s*\(P&I:/i);
+  if (mortgageMatch?.[1]) {
+    return mortgageMatch[1].trim();
+  }
+
+  const legacyMatch = description.replace(/^Payment\s*[—-]\s*/i, '').trim();
+  return legacyMatch || null;
+}
+
 function resolveDebtForTransaction(transaction: CheckingTransaction) {
   const debts = StorageService.getDebts();
   if (transaction.debtId) {
@@ -124,9 +136,7 @@ function resolveDebtForTransaction(transaction: CheckingTransaction) {
     if (debt) return { debts, debt, debtIndex: debts.indexOf(debt) };
   }
 
-  const parsedName = transaction.description
-    ?.replace(/^Payment\s*[—-]\s*/i, '')
-    .trim();
+  const parsedName = parseDebtNameFromDescription(transaction.description);
   if (parsedName) {
     const debt = debts.find(
       (d) => d.accountName.toLowerCase() === parsedName.toLowerCase()
@@ -148,7 +158,10 @@ function resolveDebtForTransaction(transaction: CheckingTransaction) {
 
 function reverseDebtPayment(transaction: CheckingTransaction): void {
   const { debts, debt, debtIndex } = resolveDebtForTransaction(transaction);
-  const newBalance = Math.round((debt.currentBalance + transaction.amount) * 100) / 100;
+  const unifiedPayment = findUnifiedPaymentForDebtTransaction(transaction);
+  const balanceToRestore =
+    unifiedPayment?.balanceReductionAmount ?? transaction.amount;
+  const newBalance = Math.round((debt.currentBalance + balanceToRestore) * 100) / 100;
 
   debts[debtIndex] = {
     ...debt,
@@ -158,7 +171,6 @@ function reverseDebtPayment(transaction: CheckingTransaction): void {
   };
   StorageService.saveDebts(debts);
 
-  const unifiedPayment = findUnifiedPaymentForDebtTransaction(transaction);
   if (unifiedPayment) {
     const payments = StorageService.getUnifiedPayments().filter((p) => p.id !== unifiedPayment.id);
     StorageService.saveUnifiedPayments(payments);

@@ -1,22 +1,49 @@
 import { CalculationService } from '../services/calculations';
 import { StorageService } from '../services/storage';
-import type { CheckingTransaction, Debt, UnifiedPayment } from '../types';
+import type { CheckingTransaction, MortgagePaymentBreakdown, UnifiedPayment } from '../types';
+
+export type { MortgagePaymentBreakdown };
 
 export interface RecordDebtPaymentParams {
   accountId: string;
   startingBalance: number;
   debtId: string;
+  /** Total cash outflow (checking debit). */
   amount: number;
   date: string;
   description?: string;
   editCheckingTransactionId?: string;
   editUnifiedPaymentId?: string;
+  /** Amount applied to debt balance. Defaults to `amount` for non-mortgage payments. */
+  balanceReductionAmount?: number;
+  mortgageBreakdown?: MortgagePaymentBreakdown;
 }
 
 export interface RecordDebtPaymentResult {
   checkingTransactions: CheckingTransaction[];
   updatedBalance: number;
   unifiedPaymentId: string;
+}
+
+export function calculateMortgageTotalPayment(breakdown: MortgagePaymentBreakdown): number {
+  return (
+    breakdown.piPayment +
+    breakdown.additionalPrincipal +
+    breakdown.escrow +
+    breakdown.pmi
+  );
+}
+
+export function calculateMortgageBalanceReduction(breakdown: MortgagePaymentBreakdown): number {
+  return breakdown.piPayment + breakdown.additionalPrincipal;
+}
+
+export function formatMortgagePaymentDescription(
+  lenderName: string,
+  piPayment: number,
+  escrow: number
+): string {
+  return `Mortgage Payment — ${lenderName} (P&I: ${CalculationService.formatCurrency(piPayment)} | Escrow: ${CalculationService.formatCurrency(escrow)})`;
 }
 
 function buildCheckingDebtPaymentTransaction({
@@ -95,6 +122,7 @@ export function recordDebtPaymentFromChecking(
     description,
     editCheckingTransactionId,
     editUnifiedPaymentId,
+    mortgageBreakdown,
   } = params;
 
   if (!accountId) {
@@ -112,6 +140,14 @@ export function recordDebtPaymentFromChecking(
     throw new Error('Please select a valid payment date.');
   }
 
+  const balanceReduction =
+    params.balanceReductionAmount ??
+    (mortgageBreakdown ? calculateMortgageBalanceReduction(mortgageBreakdown) : amount);
+
+  if (!balanceReduction || balanceReduction <= 0) {
+    throw new Error('P&I and additional principal must total more than $0 to reduce your balance.');
+  }
+
   const allDebts = StorageService.getDebts();
   const debtIndex = allDebts.findIndex((d) => d.id === debtId);
   if (debtIndex === -1) {
@@ -121,12 +157,17 @@ export function recordDebtPaymentFromChecking(
   const debt = allDebts[debtIndex];
   const previousBalance = debt.currentBalance;
   const calculation = debt.isAmortized
-    ? CalculationService.calculateAmortizedPayment(debt, amount)
-    : CalculationService.calculatePayment(debt.currentBalance, debt.interestRate, amount);
+    ? CalculationService.calculateAmortizedPayment(debt, balanceReduction)
+    : CalculationService.calculatePayment(debt.currentBalance, debt.interestRate, balanceReduction);
 
   const isPaidOff = calculation.newBalance === 0;
-  const paymentDescription =
-    description?.trim() || `Paid ${debt.accountName}`;
+  const paymentDescription = mortgageBreakdown
+    ? formatMortgagePaymentDescription(
+        debt.accountName,
+        mortgageBreakdown.piPayment,
+        mortgageBreakdown.escrow
+      )
+    : description?.trim() || `Paid ${debt.accountName}`;
 
   const priorCheckingTransactions = StorageService.getCheckingTransactionsForAccount(accountId);
   const priorCheckingSnapshot = JSON.stringify(priorCheckingTransactions);
@@ -198,6 +239,13 @@ export function recordDebtPaymentFromChecking(
       newBalance: calculation.newBalance,
       description: paymentDescription,
       isPaidOff,
+      balanceReductionAmount: balanceReduction,
+      ...(mortgageBreakdown && {
+        piPayment: mortgageBreakdown.piPayment,
+        additionalPrincipal: mortgageBreakdown.additionalPrincipal,
+        escrowAmount: mortgageBreakdown.escrow,
+        pmiAmount: mortgageBreakdown.pmi,
+      }),
     };
 
     if (editUnifiedPaymentId) {

@@ -13,7 +13,12 @@ import {
   getCheckingDeleteConfirmationMessage,
   isLinkedCheckingDeleteType,
 } from '../utils/linkedTransactionDelete';
-import { recordDebtPaymentFromChecking } from '../utils/checkingDebtPayment';
+import {
+  recordDebtPaymentFromChecking,
+  calculateMortgageTotalPayment,
+  calculateMortgageBalanceReduction,
+  formatMortgagePaymentDescription,
+} from '../utils/checkingDebtPayment';
 import { recalculateSavingsTransactions } from '../utils/savingsTransactions';
 import {
   getActiveCheckingAccountId,
@@ -815,6 +820,10 @@ function TransactionModal({
   const debts = StorageService.getDebts().filter(d => !d.isPaidOff);
 
   const [amount, setAmount] = useState(editTransaction?.amount.toString() || '');
+  const [piPayment, setPiPayment] = useState('');
+  const [additionalPrincipal, setAdditionalPrincipal] = useState('0');
+  const [escrow, setEscrow] = useState('0');
+  const [pmi, setPmi] = useState('0');
   const [date, setDate] = useState(
     editTransaction?.date
       ? CalculationService.normalizeDateString(editTransaction.date)
@@ -830,8 +839,44 @@ function TransactionModal({
   const [error, setError] = useState<string | null>(null);
 
   const selectedDebtObj = debts.find(d => d.id === selectedDebt);
+  const isMortgagePayment = type === 'debt_payment' && selectedDebtObj?.category === 'Mortgage';
 
-  const transactionAmount = parseFloat(amount) || 0;
+  const mortgageBreakdownValues = {
+    piPayment: parseFloat(piPayment) || 0,
+    additionalPrincipal: parseFloat(additionalPrincipal) || 0,
+    escrow: parseFloat(escrow) || 0,
+    pmi: parseFloat(pmi) || 0,
+  };
+  const mortgageTotalPayment = isMortgagePayment
+    ? calculateMortgageTotalPayment(mortgageBreakdownValues)
+    : 0;
+  const mortgageBalanceReduction = isMortgagePayment
+    ? calculateMortgageBalanceReduction(mortgageBreakdownValues)
+    : 0;
+  const autoMortgageDescription = selectedDebtObj
+    ? formatMortgagePaymentDescription(
+        selectedDebtObj.accountName,
+        mortgageBreakdownValues.piPayment,
+        mortgageBreakdownValues.escrow
+      )
+    : '';
+
+  useEffect(() => {
+    if (!isMortgagePayment) return;
+    setAmount(mortgageTotalPayment > 0 ? mortgageTotalPayment.toFixed(2) : '');
+  }, [isMortgagePayment, mortgageTotalPayment]);
+
+  useEffect(() => {
+    if (type !== 'debt_payment' || !selectedDebtObj || editTransaction) return;
+    if (selectedDebtObj.category === 'Mortgage') {
+      setPiPayment(selectedDebtObj.minimumPayment.toString());
+      setAdditionalPrincipal('0');
+      setEscrow('0');
+      setPmi('0');
+    }
+  }, [selectedDebt, type, editTransaction, selectedDebtObj]);
+
+  const transactionAmount = isMortgagePayment ? mortgageTotalPayment : (parseFloat(amount) || 0);
   const newBalance = type === 'deposit'
     ? currentBalance + transactionAmount
     : Math.max(0, currentBalance - transactionAmount);
@@ -856,13 +901,29 @@ function TransactionModal({
 
     if (type === 'debt_payment' && selectedDebtObj) {
       try {
+        const mortgageBreakdown = isMortgagePayment
+          ? {
+              piPayment: mortgageBreakdownValues.piPayment,
+              additionalPrincipal: mortgageBreakdownValues.additionalPrincipal,
+              escrow: mortgageBreakdownValues.escrow,
+              pmi: mortgageBreakdownValues.pmi,
+            }
+          : undefined;
+
+        if (isMortgagePayment && mortgageBalanceReduction <= 0) {
+          setError('P&I and additional principal must total more than $0 to reduce your balance.');
+          return;
+        }
+
         const result = recordDebtPaymentFromChecking({
           accountId,
           startingBalance,
           debtId: selectedDebt,
           amount: transactionAmount,
+          balanceReductionAmount: isMortgagePayment ? mortgageBalanceReduction : undefined,
+          mortgageBreakdown,
           date,
-          description: description.trim() || undefined,
+          description: isMortgagePayment ? autoMortgageDescription : (description.trim() || undefined),
           editCheckingTransactionId: editTransaction?.id,
         });
 
@@ -930,7 +991,7 @@ function TransactionModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+      <div className={`bg-white rounded-lg w-full p-6 max-h-[90vh] overflow-y-auto ${isMortgagePayment ? 'max-w-lg' : 'max-w-md'}`}>
         <h3 className="text-xl font-bold text-gray-800 mb-4">
           {editTransaction ? 'Edit' : 'Record'} {type === 'deposit' ? 'Deposit' : type === 'debt_payment' ? 'Debt Payment' : 'Withdrawal'}
         </h3>
@@ -945,8 +1006,15 @@ function TransactionModal({
                   setSelectedDebt(e.target.value);
                   const debt = debts.find(d => d.id === e.target.value);
                   if (debt) {
-                    setAmount(debt.minimumPayment.toString());
-                    setDescription(`Paid ${debt.accountName}`);
+                    if (debt.category === 'Mortgage') {
+                      setPiPayment(debt.minimumPayment.toString());
+                      setAdditionalPrincipal('0');
+                      setEscrow('0');
+                      setPmi('0');
+                    } else {
+                      setAmount(debt.minimumPayment.toString());
+                      setDescription(`Paid ${debt.accountName}`);
+                    }
                   }
                 }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
@@ -965,7 +1033,7 @@ function TransactionModal({
             </div>
           )}
 
-          {type === 'debt_payment' && selectedDebtObj && (
+          {type === 'debt_payment' && selectedDebtObj && !isMortgagePayment && (
             <PaymentLoggingGuidance
               debtId={selectedDebtObj.id}
               minimumPayment={selectedDebtObj.minimumPayment}
@@ -983,12 +1051,131 @@ function TransactionModal({
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#27AE60] focus:border-transparent"
+                readOnly={isMortgagePayment}
+                className={`w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#27AE60] focus:border-transparent ${
+                  isMortgagePayment ? 'bg-gray-50 text-gray-700 cursor-default' : ''
+                }`}
                 placeholder="0.00"
                 step="0.01"
               />
             </div>
+            {isMortgagePayment && (
+              <p className="text-xs text-gray-500 mt-1">Auto-calculated from payment breakdown below</p>
+            )}
           </div>
+
+          {isMortgagePayment && selectedDebtObj && (
+            <div className="border border-gray-200 rounded-lg p-4 space-y-3 bg-slate-50/50">
+              <h4 className="text-sm font-bold text-[#1E3A5F]">Mortgage Payment Breakdown</h4>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  P&I Payment
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-gray-600 text-sm">$</span>
+                  <input
+                    type="number"
+                    value={piPayment}
+                    onChange={(e) => setPiPayment(e.target.value)}
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">This is what reduces your balance</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Additional Principal
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-gray-600 text-sm">$</span>
+                  <input
+                    type="number"
+                    value={additionalPrincipal}
+                    onChange={(e) => setAdditionalPrincipal(e.target.value)}
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">Extra amount applied directly to balance</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Escrow (Tax & Insurance)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-gray-600 text-sm">$</span>
+                  <input
+                    type="number"
+                    value={escrow}
+                    onChange={(e) => setEscrow(e.target.value)}
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">Does not reduce balance — held in escrow</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  PMI (if applicable)
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-gray-600 text-sm">$</span>
+                  <input
+                    type="number"
+                    value={pmi}
+                    onChange={(e) => setPmi(e.target.value)}
+                    className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#2D9CDB] focus:border-transparent"
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">Does not reduce balance</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Total Payment
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-gray-600 text-sm">$</span>
+                  <input
+                    type="text"
+                    readOnly
+                    value={mortgageTotalPayment > 0 ? mortgageTotalPayment.toFixed(2) : '0.00'}
+                    className="w-full pl-8 pr-4 py-2 border border-gray-200 rounded-lg text-sm bg-gray-100 text-gray-800 font-semibold cursor-default"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-[#FFF8E7] border border-[#1E3A5F]/10 rounded-lg px-3 py-2.5">
+                <p className="text-xs text-[#1E3A5F] leading-relaxed">
+                  Only your P&I and any extra principal reduce your mortgage balance. Escrow covers taxes and insurance and is held by your lender.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {type === 'debt_payment' && selectedDebtObj && isMortgagePayment && (
+            <PaymentLoggingGuidance
+              debtId={selectedDebtObj.id}
+              minimumPayment={selectedDebtObj.minimumPayment}
+              onSelectAmount={(selectedAmount) => {
+                setPiPayment(selectedAmount.toFixed(2));
+              }}
+            />
+          )}
 
           <DatePicker
             label="Date"
@@ -1069,6 +1256,14 @@ function TransactionModal({
             </>
           )}
 
+          {type === 'debt_payment' && isMortgagePayment ? (
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+              <div className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm text-gray-700">
+                {autoMortgageDescription || 'Mortgage payment description will be generated automatically.'}
+              </div>
+            </div>
+          ) : (
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
             <input
@@ -1083,6 +1278,7 @@ function TransactionModal({
               }
             />
           </div>
+          )}
 
           {transactionAmount > 0 && (
             <div className="bg-gray-50 rounded-lg p-4 space-y-2">

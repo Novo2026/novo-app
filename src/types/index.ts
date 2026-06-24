@@ -300,6 +300,13 @@ export interface AppData {
 
 export type UnifiedPaymentSource = 'direct' | 'heloc' | 'checking';
 
+export interface MortgagePaymentBreakdown {
+  piPayment: number;
+  additionalPrincipal: number;
+  escrow: number;
+  pmi: number;
+}
+
 export interface UnifiedPayment {
   id: string;
   date: string;
@@ -314,4 +321,10 @@ export interface UnifiedPayment {
   description?: string;
   isPaidOff?: boolean;
   transferredToHELOC?: boolean;
+  /** Cash applied to debt balance (P&I + extra principal for mortgages). */
+  balanceReductionAmount?: number;
+  piPayment?: number;
+  additionalPrincipal?: number;
+  escrowAmount?: number;
+  pmiAmount?: number;
 }

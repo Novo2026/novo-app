@@ -354,6 +354,13 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
     return { totalPaid, totalInterest };
   };
 
+  const getLastPaymentForDebt = (debtId: string) => {
+    const payments = StorageService.getUnifiedPayments()
+      .filter(p => p.debtId === debtId)
+      .sort((a, b) => CalculationService.compareDateStrings(b.date, a.date));
+    return payments[0] ?? null;
+  };
+
   if (selectedDebt) {
     return (
       <DebtDetailView
@@ -609,6 +616,23 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
 
           <div className="text-sm text-gray-600 mb-4">
             <p>Minimum Payment: {CalculationService.formatCurrency(debt.minimumPayment)}</p>
+            {(() => {
+              const lastPayment = getLastPaymentForDebt(debt.id);
+              if (!lastPayment) return null;
+              return (
+                <div className="mt-2 pt-2 border-t border-gray-100">
+                  <p>
+                    Last payment: {CalculationService.formatCurrency(lastPayment.amount)} on{' '}
+                    {CalculationService.formatLocalDateShort(lastPayment.date)}
+                  </p>
+                  {lastPayment.additionalPrincipal != null && lastPayment.additionalPrincipal > 0 && (
+                    <p className="text-xs text-[#1E3A5F] mt-0.5">
+                      Includes {CalculationService.formatCurrency(lastPayment.additionalPrincipal)} additional principal
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {isInstallmentLoanCategory(debt.category) &&
