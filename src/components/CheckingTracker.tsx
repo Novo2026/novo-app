@@ -135,6 +135,8 @@ function QuickActionButton({
   onClick,
   textClass,
   borderClass,
+  bgClass,
+  hoverBgClass,
   disabled,
   title,
 }: {
@@ -143,6 +145,8 @@ function QuickActionButton({
   onClick: () => void;
   textClass: string;
   borderClass: string;
+  bgClass: string;
+  hoverBgClass: string;
   disabled?: boolean;
   title?: string;
 }) {
@@ -152,9 +156,9 @@ function QuickActionButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`flex flex-col items-center justify-center gap-1 text-[10px] leading-tight py-2 px-1 rounded-md border-[0.5px] bg-white transition-colors hover:bg-brand-gray-light disabled:opacity-50 disabled:cursor-not-allowed ${textClass} ${borderClass}`}
+      className={`flex flex-col items-center justify-center gap-1 text-[11px] font-medium leading-tight py-3 px-2 rounded-md border-[0.5px] transition-all hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${textClass} ${borderClass} ${bgClass} ${hoverBgClass}`}
     >
-      <Icon className="w-[18px] h-[18px] shrink-0" />
+      <Icon className="w-[22px] h-[22px] shrink-0" />
       <span className="text-center">{label}</span>
     </button>
   );
@@ -317,30 +321,20 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
                 <h2 className="text-base font-semibold text-brand-navy">{selectedAccount?.name}</h2>
                 <p className="text-xs text-brand-gray">{selectedAccount?.bankName || 'Checking account'}</p>
               </div>
-              {selectedAccount && (
-                <button
-                  type="button"
-                  onClick={() => setShowReconcilePanel(true)}
-                  className="flex items-center gap-1.5 text-xs font-medium text-brand-gray border border-brand-gray-border rounded-md px-2.5 py-1.5 hover:bg-brand-gray-light transition-colors shrink-0"
-                >
-                  <SlidersHorizontal className="w-3.5 h-3.5" />
-                  Reconcile
-                </button>
-              )}
             </div>
 
             <p className="text-[28px] font-medium text-brand-navy leading-none mb-1">
               {CalculationService.formatCurrency(currentBalance)}
             </p>
-            <p className="text-xs text-brand-gray mb-4">
+            <p className="text-xs text-brand-gray">
               Starting {CalculationService.formatCurrency(startingBalance)}
               {averageDeposit > 0 && (
                 <> · Avg deposit {CalculationService.formatCurrency(averageDeposit)}</>
               )}
             </p>
 
-            <div className="border-t border-brand-gray-border pt-3">
-              <p className="text-[11px] uppercase tracking-wider text-brand-gray font-medium mb-2">
+            <div className="mt-3 pt-3 border-t border-brand-gray-border">
+              <p className="text-[11px] uppercase font-semibold text-brand-navy tracking-[0.5px] mb-2">
                 Quick actions
               </p>
               <div className="grid grid-cols-4 gap-2 mb-2">
@@ -350,6 +344,8 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
                   onClick={() => openModal('deposit')}
                   textClass="text-green-700"
                   borderClass="border-green-200"
+                  bgClass="bg-green-50"
+                  hoverBgClass="hover:bg-green-100"
                 />
                 <QuickActionButton
                   icon={MinusCircle}
@@ -357,6 +353,8 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
                   onClick={() => openModal('withdrawal')}
                   textClass="text-red-700"
                   borderClass="border-red-200"
+                  bgClass="bg-red-50"
+                  hoverBgClass="hover:bg-red-100"
                 />
                 <QuickActionButton
                   icon={CreditCard}
@@ -364,6 +362,8 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
                   onClick={() => openModal('debt_payment')}
                   textClass="text-blue-700"
                   borderClass="border-blue-200"
+                  bgClass="bg-blue-50"
+                  hoverBgClass="hover:bg-blue-100"
                 />
                 <QuickActionButton
                   icon={Upload}
@@ -371,6 +371,8 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
                   onClick={() => setShowStatementUpload(true)}
                   textClass="text-brand-gray"
                   borderClass="border-brand-gray-border"
+                  bgClass="bg-gray-50"
+                  hoverBgClass="hover:bg-gray-100"
                 />
               </div>
               <div className="grid grid-cols-4 gap-2">
@@ -380,6 +382,8 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
                   onClick={() => setShowSavingsTransferModal(true)}
                   textClass="text-amber-700"
                   borderClass="border-amber-200"
+                  bgClass="bg-amber-50"
+                  hoverBgClass="hover:bg-amber-100"
                 />
                 <QuickActionButton
                   icon={ArrowLeftRight}
@@ -389,6 +393,8 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
                   title={!canTransferToChecking ? 'Add another checking account to enable transfers' : undefined}
                   textClass="text-purple-700"
                   borderClass="border-purple-200"
+                  bgClass="bg-purple-50"
+                  hoverBgClass="hover:bg-purple-100"
                 />
                 <QuickActionButton
                   icon={Home}
@@ -396,6 +402,8 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
                   onClick={() => setShowTransferModal(true)}
                   textClass="text-pink-700"
                   borderClass="border-pink-200"
+                  bgClass="bg-pink-50"
+                  hoverBgClass="hover:bg-pink-100"
                 />
                 <QuickActionButton
                   icon={DollarSign}
@@ -417,8 +425,20 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
                   }}
                   textClass="text-brand-gray"
                   borderClass="border-brand-gray-border"
+                  bgClass="bg-gray-50"
+                  hoverBgClass="hover:bg-gray-100"
                 />
               </div>
+              {selectedAccount && (
+                <button
+                  type="button"
+                  onClick={() => setShowReconcilePanel(true)}
+                  className="w-full mt-3 flex items-center justify-center gap-2 bg-brand-navy hover:bg-brand-navy-dark text-white text-[13px] font-medium py-2.5 rounded-md transition-colors"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                  Reconcile account
+                </button>
+              )}
             </div>
           </div>
 
