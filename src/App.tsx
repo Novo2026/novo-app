@@ -403,8 +403,7 @@ function App() {
       case 'savings':
         return (
           <ProFeatureGate featureName="Savings Tracker">
-            <div>
-              <PageHero page="savings" title="Savings" subtitle="Build your financial cushion" />
+            <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 md:-mt-8">
               <SavingsTracker />
             </div>
           </ProFeatureGate>

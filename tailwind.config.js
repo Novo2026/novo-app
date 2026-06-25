@@ -21,6 +21,7 @@ export default {
           gray: '#6B7280',
           'gray-light': '#F9FAFB',
           'gray-border': '#E5E7EB',
+          purple: '#534AB7',
         },
       },
       fontFamily: {

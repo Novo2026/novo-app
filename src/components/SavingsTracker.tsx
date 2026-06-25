@@ -1,6 +1,23 @@
 import { useState } from 'react';
-import { Plus, TrendingUp, DollarSign, Target, ChevronDown, ChevronUp, Edit2, Trash2, PiggyBank } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  Plus,
+  DollarSign,
+  ChevronDown,
+  Edit2,
+  Trash2,
+  PiggyBank,
+  PlusCircle,
+  MinusCircle,
+} from 'lucide-react';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import AddSavingsAccountModal from './AddSavingsAccountModal';
@@ -11,7 +28,6 @@ import {
   isLinkedSavingsDeleteType,
 } from '../utils/linkedTransactionDelete';
 import {
-  getSavingsCategory,
   getSavingsTypeLabel,
   isSavingsOutflow,
   recalculateSavingsTransactions,
@@ -22,6 +38,29 @@ import {
   setActiveSavingsAccountId,
 } from '../utils/activeAccountSession';
 import type { SavingsAccount, SavingsTransaction, SavingsTransactionType } from '../types';
+
+function formatChartMonth(monthKey: string): string {
+  const [year, month] = monthKey.split('-').map(Number);
+  const date = new Date(year, month - 1, 1);
+  return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
+
+function getTransactionDotClass(type: SavingsTransactionType): string {
+  if (type === 'withdrawal' || type === 'transfer_to_checking') {
+    return 'bg-brand-red';
+  }
+  if (type === 'interest') {
+    return 'bg-brand-blue';
+  }
+  return 'bg-brand-green';
+}
+
+function getTransactionDescription(transaction: SavingsTransaction): string {
+  if (transaction.description) {
+    return transaction.description;
+  }
+  return getSavingsTypeLabel(transaction.type);
+}
 
 export default function SavingsTracker() {
   const [showAddAccount, setShowAddAccount] = useState(false);
@@ -126,40 +165,40 @@ export default function SavingsTracker() {
     }
   };
 
-  const getTransactionTypeClass = (transaction: SavingsTransaction) => {
-    if (transaction.type === 'withdrawal' || transaction.type === 'transfer_to_checking') {
-      return 'bg-red-100 text-red-700';
-    }
-    if (transaction.type === 'interest') {
-      return 'bg-blue-100 text-blue-700';
-    }
-    if (transaction.type === 'transfer_from_checking') {
-      return 'bg-yellow-100 text-yellow-700';
-    }
-    return 'bg-green-100 text-green-700';
-  };
-
   const chartData = growthData.map(item => ({
-    month: item.month,
+    month: formatChartMonth(item.month),
     balance: item.balance,
   }));
 
+  const header = (
+    <div className="bg-brand-navy py-3 px-5">
+      <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-white text-lg font-medium leading-tight">Savings</h1>
+          <p className="text-white/65 text-xs mt-0.5">Build your financial cushion</p>
+        </div>
+        <button
+          type="button"
+          onClick={handleAddAccountClick}
+          className="inline-flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white text-[13px] font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Add Savings Account</span>
+        </button>
+      </div>
+    </div>
+  );
+
   if (accounts.length === 0) {
     return (
-      <>
-        <div className="text-center py-16">
-          <PiggyBank className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Start Building Your Savings</h2>
-          <p className="text-gray-600 mb-6">
+      <div className="bg-brand-gray-light min-h-screen">
+        {header}
+        <div className="max-w-4xl mx-auto px-5 py-16 text-center">
+          <PiggyBank className="w-16 h-16 text-brand-gray mx-auto mb-4" />
+          <h2 className="text-xl font-medium text-brand-navy mb-2">Start Building Your Savings</h2>
+          <p className="text-sm text-brand-gray">
             Track your savings accounts, monitor growth, and achieve your financial goals.
           </p>
-          <button
-            onClick={handleAddAccountClick}
-            className="inline-flex items-center space-x-2 bg-brand-green hover:bg-[#229954] text-white font-semibold py-3 px-6 rounded-lg transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Add Savings Account</span>
-          </button>
         </div>
 
         {showAddAccount && (
@@ -169,252 +208,274 @@ export default function SavingsTracker() {
             existingAccount={editingAccount}
           />
         )}
-      </>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div className="bg-gradient-to-br from-brand-green to-[#229954] text-white rounded-xl shadow-lg p-8">
-        <h2 className="text-2xl font-bold mb-6">Savings Summary</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div>
-            <p className="text-sm opacity-90 mb-1">Total Savings</p>
-            <p className="text-3xl font-bold">{CalculationService.formatCurrency(metrics.totalSavings)}</p>
+    <div className="bg-brand-gray-light min-h-screen">
+      {header}
+
+      <div className="max-w-4xl mx-auto px-5 py-6 space-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-green">
+            <p className="text-[11px] uppercase text-brand-gray tracking-wide">Total savings</p>
+            <p className="text-[22px] font-medium text-brand-navy mt-1">
+              {CalculationService.formatCurrency(metrics.totalSavings)}
+            </p>
           </div>
-          <div>
-            <p className="text-sm opacity-90 mb-1">Number of Accounts</p>
-            <p className="text-3xl font-bold">{metrics.numberOfAccounts}</p>
+          <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-blue">
+            <p className="text-[11px] uppercase text-brand-gray tracking-wide">Accounts</p>
+            <p className="text-[22px] font-medium text-brand-navy mt-1">{metrics.numberOfAccounts}</p>
           </div>
-          <div>
-            <p className="text-sm opacity-90 mb-1">Interest Earned (YTD)</p>
-            <p className="text-3xl font-bold">{CalculationService.formatCurrency(metrics.totalInterestEarnedYTD)}</p>
+          <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-orange">
+            <p className="text-[11px] uppercase text-brand-gray tracking-wide">Interest earned YTD</p>
+            <p className="text-[22px] font-medium text-brand-navy mt-1">
+              {CalculationService.formatCurrency(metrics.totalInterestEarnedYTD)}
+            </p>
           </div>
-          <div>
-            <p className="text-sm opacity-90 mb-1">Monthly Savings Rate</p>
-            <p className="text-3xl font-bold">{CalculationService.formatCurrency(metrics.monthlySavingsRate)}</p>
+          <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-purple">
+            <p className="text-[11px] uppercase text-brand-gray tracking-wide">Monthly savings rate</p>
+            <p className="text-[22px] font-medium text-brand-navy mt-1">
+              {CalculationService.formatCurrency(metrics.monthlySavingsRate)}
+            </p>
           </div>
         </div>
-      </div>
 
-      <div className="flex justify-center">
-        <button
-          onClick={handleAddAccountClick}
-          className="flex items-center justify-center space-x-3 bg-brand-green hover:bg-[#229954] text-white font-bold py-5 px-12 rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
-        >
-          <Plus className="w-6 h-6" />
-          <span className="text-lg">Add Savings Account</span>
-        </button>
-      </div>
+        <div>
+          <h3 className="text-base font-medium text-brand-navy mt-5 mb-3">Savings accounts</h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {accounts.map(account => {
+              const progress = account.goalAmount
+                ? (account.balance / account.goalAmount) * 100
+                : 0;
+              const isExpanded = expandedAccounts.has(account.id);
 
-      <div>
-        <h3 className="text-xl font-bold text-gray-800 mb-4">Savings Accounts</h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {accounts.map(account => {
-            const progress = account.goalAmount
-              ? (account.balance / account.goalAmount) * 100
-              : 0;
-            const isExpanded = expandedAccounts.has(account.id);
-            const isActive = activeAccountId === account.id;
-
-            return (
-              <div
-                key={`${account.id}-${refreshKey}`}
-                className={`bg-white rounded-lg shadow-md border overflow-hidden ${
-                  isActive ? 'border-brand-green ring-2 ring-brand-green/30' : 'border-gray-200'
-                }`}
-              >
-                <div className="p-6">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h4 className="font-bold text-lg text-gray-800">{account.name}</h4>
-                      <p className="text-sm text-gray-500">{account.type}</p>
+              return (
+                <div
+                  key={`${account.id}-${refreshKey}`}
+                  className="bg-white border border-brand-gray-border rounded-lg border-t-[3px] border-t-brand-green shadow-[0_2px_8px_rgba(0,0,0,0.08)] overflow-hidden"
+                >
+                  <div className="p-5">
+                    <div className="flex justify-between items-start gap-3 mb-4">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-[15px] font-medium text-brand-navy">{account.name}</h4>
+                          <span className="inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-green-50 text-brand-green border border-brand-green">
+                            {account.type}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleEditAccountClick(account)}
+                          className="p-1.5 text-brand-gray hover:text-brand-navy transition-colors"
+                          title="Edit account"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAccount(account.id)}
+                          className="p-1.5 text-brand-gray hover:text-brand-red transition-colors"
+                          title="Delete account"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEditAccountClick(account)}
-                        className="text-gray-400 hover:text-brand-blue transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteAccount(account.id)}
-                        className="text-gray-400 hover:text-red-500 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
 
-                  <div className="mb-4">
-                    <p className="text-3xl font-bold text-brand-green mb-1">
-                      {CalculationService.formatCurrency(account.balance)}
-                    </p>
-                    {account.interestRate > 0 && (
-                      <p className="text-sm text-gray-500">
-                        {account.interestRate}% APY
-                      </p>
-                    )}
-                  </div>
-
-                  {account.goalAmount && (
                     <div className="mb-4">
-                      <div className="flex justify-between text-xs text-gray-600 mb-1">
-                        <span>Goal Progress</span>
-                        <span>{Math.min(progress, 100).toFixed(1)}% of {CalculationService.formatCurrency(account.goalAmount)}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-brand-green h-full rounded-full transition-all"
-                          style={{ width: `${Math.min(progress, 100)}%` }}
-                        />
+                      <p className="text-[10px] uppercase text-brand-gray tracking-wide">Current Balance</p>
+                      <div className="flex items-center gap-2 flex-wrap mt-1">
+                        <p className="text-[22px] font-medium text-brand-navy">
+                          {CalculationService.formatCurrency(account.balance)}
+                        </p>
+                        {account.interestRate > 0 && (
+                          <span className="inline-flex text-[11px] font-medium px-2 py-0.5 rounded-full bg-green-50 text-brand-green border border-brand-green">
+                            {account.interestRate}% APY
+                          </span>
+                        )}
                       </div>
                     </div>
-                  )}
 
-                  {account.notes && (
-                    <p className="text-sm text-gray-600 mb-4 italic">{account.notes}</p>
-                  )}
-
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      onClick={() => handleLogTransactionClick(account.id, 'deposit')}
-                      className="text-xs bg-brand-green hover:bg-[#229954] text-white font-semibold py-2 px-3 rounded transition-colors"
-                    >
-                      <Plus className="w-3 h-3 inline mr-1" />
-                      Deposit
-                    </button>
-                    <button
-                      onClick={() => handleLogTransactionClick(account.id, 'withdrawal')}
-                      className="text-xs bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold py-2 px-3 rounded transition-colors"
-                    >
-                      <TrendingUp className="w-3 h-3 inline mr-1" />
-                      Withdraw
-                    </button>
-                    <button
-                      onClick={() => handleLogTransactionClick(account.id, 'interest')}
-                      className="text-xs bg-brand-blue hover:bg-[#1E8BBD] text-white font-semibold py-2 px-3 rounded transition-colors"
-                    >
-                      <DollarSign className="w-3 h-3 inline mr-1" />
-                      Interest
-                    </button>
-                  </div>
-                </div>
-
-                {account.transactions.length > 0 && (
-                  <div className="border-t border-gray-200">
-                    <button
-                      onClick={() => toggleAccountExpansion(account.id)}
-                      className="w-full px-6 py-3 flex items-center justify-between text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      <span>Transaction History ({account.transactions.length})</span>
-                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
-
-                    {isExpanded && (
-                      <div className="px-6 pb-4 max-h-64 overflow-y-auto">
-                        <table className="w-full text-sm">
-                          <thead className="border-b border-gray-200">
-                            <tr className="text-left text-gray-600">
-                              <th className="pb-2">Date</th>
-                              <th className="pb-2">Type</th>
-                              <th className="pb-2">Category</th>
-                              <th className="pb-2">Description</th>
-                              <th className="pb-2 text-right">Amount</th>
-                              <th className="pb-2 text-right">Balance</th>
-                              <th className="pb-2 text-right">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {[...account.transactions]
-                              .sort((a, b) => CalculationService.compareDateStrings(b.date, a.date))
-                              .map(transaction => (
-                                <tr key={transaction.id} className="border-b border-gray-100 hover:bg-gray-50">
-                                  <td className="py-2 text-gray-700">
-                                    {CalculationService.formatLocalDateShort(transaction.date)}
-                                  </td>
-                                  <td className="py-2">
-                                    <span
-                                      className={`inline-block px-2 py-1 rounded text-xs font-medium ${getTransactionTypeClass(transaction)}`}
-                                    >
-                                      {getSavingsTypeLabel(transaction.type)}
-                                    </span>
-                                  </td>
-                                  <td className="py-2 text-gray-600">
-                                    {getSavingsCategory(transaction)}
-                                  </td>
-                                  <td className="py-2 text-gray-700">
-                                    {transaction.description || '—'}
-                                  </td>
-                                  <td className="py-2 text-right font-medium">
-                                    <span className={isSavingsOutflow(transaction.type) ? 'text-red-600' : 'text-green-600'}>
-                                      {isSavingsOutflow(transaction.type) ? '-' : '+'}
-                                      {CalculationService.formatCurrency(transaction.amount)}
-                                    </span>
-                                  </td>
-                                  <td className="py-2 text-right text-gray-700">
-                                    {CalculationService.formatCurrency(transaction.balanceAfter)}
-                                  </td>
-                                  <td className="py-2 text-right">
-                                    <div className="flex items-center justify-end gap-1">
-                                      <button
-                                        onClick={() => {
-                                          selectActiveAccount(account.id);
-                                          setEditingTransaction({ account, transaction });
-                                        }}
-                                        className="p-2 text-brand-blue hover:bg-blue-50 rounded-lg transition-colors"
-                                        title="Edit"
-                                      >
-                                        <Edit2 className="w-4 h-4" />
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          selectActiveAccount(account.id);
-                                          handleDeleteTransaction(account, transaction);
-                                        }}
-                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                        title="Delete"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </button>
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))}
-                          </tbody>
-                        </table>
+                    {account.goalAmount && (
+                      <div className="mb-4">
+                        <div className="flex justify-between text-[11px] text-brand-gray mb-1.5">
+                          <span>Goal Progress</span>
+                          <span>
+                            {Math.min(progress, 100).toFixed(1)}% of{' '}
+                            {CalculationService.formatCurrency(account.goalAmount)}
+                          </span>
+                        </div>
+                        <div className="w-full bg-brand-gray-border rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="bg-brand-green h-full rounded-full transition-all"
+                            style={{ width: `${Math.min(progress, 100)}%` }}
+                          />
+                        </div>
                       </div>
                     )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
-      {chartData.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Savings Growth</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip
-                formatter={(value: number) => CalculationService.formatCurrency(value)}
-              />
-              <Line
-                type="monotone"
-                dataKey="balance"
-                stroke="#27AE60"
-                strokeWidth={2}
-                dot={{ fill: '#27AE60' }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+                    {account.notes && (
+                      <p className="text-xs text-brand-gray mb-4 italic">{account.notes}</p>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleLogTransactionClick(account.id, 'deposit')}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 border border-brand-green text-brand-green bg-white hover:bg-green-50 text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+                      >
+                        <PlusCircle className="w-3.5 h-3.5" />
+                        Deposit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleLogTransactionClick(account.id, 'withdrawal')}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 border border-brand-red text-brand-red bg-white hover:bg-red-50 text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+                      >
+                        <MinusCircle className="w-3.5 h-3.5" />
+                        Withdraw
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleLogTransactionClick(account.id, 'interest')}
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 border border-brand-blue text-brand-blue bg-white hover:bg-blue-50 text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+                      >
+                        <DollarSign className="w-3.5 h-3.5" />
+                        Interest
+                      </button>
+                    </div>
+                  </div>
+
+                  {account.transactions.length > 0 && (
+                    <div className="border-t border-brand-gray-border">
+                      <button
+                        type="button"
+                        onClick={() => toggleAccountExpansion(account.id)}
+                        className="w-full px-5 py-3 flex items-center justify-between text-[13px] font-medium text-brand-navy hover:bg-brand-gray-light transition-colors"
+                      >
+                        <span>Transaction History ({account.transactions.length})</span>
+                        <ChevronDown
+                          className={`w-4 h-4 text-brand-gray transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                        />
+                      </button>
+
+                      {isExpanded && (
+                        <div className="max-h-64 overflow-y-auto">
+                          {[...account.transactions]
+                            .sort((a, b) => CalculationService.compareDateStrings(b.date, a.date))
+                            .map((transaction, index) => (
+                              <div
+                                key={transaction.id}
+                                className={`flex items-center gap-3 px-5 py-2.5 border-b border-brand-gray-border last:border-b-0 ${
+                                  index % 2 === 0 ? 'bg-white' : 'bg-brand-gray-light'
+                                }`}
+                              >
+                                <span className="text-[11px] text-brand-gray w-16 shrink-0">
+                                  {CalculationService.formatLocalDateShort(transaction.date)}
+                                </span>
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <span
+                                    className={`w-2 h-2 rounded-full shrink-0 ${getTransactionDotClass(transaction.type)}`}
+                                  />
+                                  <span className="text-[13px] text-brand-navy truncate">
+                                    {getTransactionDescription(transaction)}
+                                  </span>
+                                </div>
+                                <span
+                                  className={`text-[13px] font-medium shrink-0 ${
+                                    isSavingsOutflow(transaction.type) ? 'text-brand-red' : 'text-brand-green'
+                                  }`}
+                                >
+                                  {isSavingsOutflow(transaction.type) ? '-' : '+'}
+                                  {CalculationService.formatCurrency(transaction.amount)}
+                                </span>
+                                <span className="text-[11px] text-brand-gray w-20 text-right shrink-0 hidden sm:block">
+                                  {CalculationService.formatCurrency(transaction.balanceAfter)}
+                                </span>
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      selectActiveAccount(account.id);
+                                      setEditingTransaction({ account, transaction });
+                                    }}
+                                    className="p-1.5 text-brand-gray hover:text-brand-navy transition-colors"
+                                    title="Edit"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      selectActiveAccount(account.id);
+                                      handleDeleteTransaction(account, transaction);
+                                    }}
+                                    className="p-1.5 text-brand-gray hover:text-brand-red transition-colors"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      )}
+
+        {chartData.length > 0 && (
+          <div className="bg-white border border-brand-gray-border rounded-lg p-5">
+            <h3 className="text-sm font-medium text-brand-navy mb-4">Savings growth</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="savingsGrowthGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="rgba(39,174,96,0.15)" />
+                    <stop offset="100%" stopColor="rgba(39,174,96,0)" />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="#E5E7EB" strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 11, fill: '#6B7280' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: '#6B7280' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  formatter={(value: number) => CalculationService.formatCurrency(value)}
+                  contentStyle={{
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="balance"
+                  stroke="#27AE60"
+                  strokeWidth={2}
+                  fill="url(#savingsGrowthGradient)"
+                  dot={{ fill: '#27AE60', r: 3 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
 
       {showAddAccount && (
         <AddSavingsAccountModal
