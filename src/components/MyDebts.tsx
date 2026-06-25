@@ -55,19 +55,37 @@ function getDebtAccentBorder(debt: Debt, isOpenAccount: boolean): string {
   }
 }
 
-function getDebtHeaderTintBg(debt: Debt, isOpenAccount: boolean): string {
-  if (isOpenAccount) return 'bg-gray-50';
+function getDebtTopAccentBorder(debt: Debt, isOpenAccount: boolean): string {
+  if (isOpenAccount) return 'border-t-brand-gray';
   switch (debt.category) {
     case 'Mortgage':
-      return 'bg-blue-50';
+      return 'border-t-brand-blue';
     case 'Auto Loan':
-      return 'bg-orange-50';
+      return 'border-t-brand-orange';
     case 'Credit Card':
-      return 'bg-red-50';
+      return 'border-t-brand-red';
     case 'Personal Loan':
-      return 'bg-green-50';
+      return 'border-t-brand-green';
     default:
-      return 'bg-gray-50';
+      return 'border-t-brand-gray';
+  }
+}
+
+function getDebtTypePillClasses(debt: Debt, isOpenAccount: boolean): string {
+  if (isOpenAccount) {
+    return 'inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-50 text-brand-gray border border-brand-gray';
+  }
+  switch (debt.category) {
+    case 'Mortgage':
+      return 'inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-brand-blue border border-brand-blue';
+    case 'Auto Loan':
+      return 'inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-50 text-brand-orange-dark border border-brand-orange';
+    case 'Credit Card':
+      return 'inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-50 text-brand-red border border-brand-red';
+    case 'Personal Loan':
+      return 'inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-green-50 text-brand-green border border-brand-green';
+    default:
+      return 'inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-50 text-brand-gray border border-brand-gray';
   }
 }
 
@@ -515,16 +533,18 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
     return (
       <div
         key={debt.id}
-        className={`bg-white border border-brand-gray-border rounded-lg border-l-4 overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] ${getDebtAccentBorder(debt, isOpenAccount)}`}
+        className={`bg-white border border-brand-gray-border rounded-[10px] border-l-4 border-t-[3px] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.10),0_1px_3px_rgba(0,0,0,0.06)] ${getDebtAccentBorder(debt, isOpenAccount)} ${getDebtTopAccentBorder(debt, isOpenAccount)}`}
       >
-        <div className={`${getDebtHeaderTintBg(debt, isOpenAccount)} -mx-px -mt-px rounded-t-lg px-4 py-3`}>
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
+        <div className="p-5">
+          <div className="flex items-start justify-between gap-2 mb-3">
+            <div className="min-w-0 flex flex-col items-start gap-1">
               <h3 className="text-[15px] font-medium text-brand-navy">{debt.accountName}</h3>
-              <p className="text-[11px] text-brand-gray mt-0.5">{debt.category}</p>
+              <span className={getDebtTypePillClasses(debt, isOpenAccount)}>
+                {debt.category}
+              </span>
               {debt.refinanceHistory && debt.refinanceHistory.length > 0 && (
                 <span
-                  className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full mt-1 ${
+                  className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full ${
                     didRateImprove(debt) ? 'bg-green-50 text-brand-green' : 'bg-brand-blue-light text-brand-blue'
                   }`}
                 >
@@ -560,9 +580,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
               </button>
             </div>
           </div>
-        </div>
 
-        <div className="p-4">
           {isPaidDownToZero && (
             <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-3">
               <Trophy className="w-4 h-4 text-brand-green shrink-0" />
@@ -642,7 +660,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
               </div>
             )}
 
-          <div className="flex items-center justify-between gap-3 pt-3 border-t border-brand-gray-border">
+          <div className="flex items-center justify-between gap-3 mt-4 pt-4 border-t border-brand-gray-border">
             <button
               type="button"
               onClick={() => handleViewDetail(debt)}
@@ -863,7 +881,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                 ))}
               </select>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {sortedActiveDebts.map((debt) => renderDebtCard(debt))}
             </div>
           </>

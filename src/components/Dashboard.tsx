@@ -654,17 +654,22 @@ export default function Dashboard({
             )}
 
             <div className="mt-6">
-              <h3 className="text-base font-medium text-brand-navy mb-3">Active debts</h3>
+              <h3 className="text-base font-medium text-brand-navy mb-1">Active debts</h3>
               {nonHelocActiveDebts.length > 0 ? (
-                <div className="bg-white border border-brand-gray-border rounded-lg overflow-hidden">
+                <>
+                  <p className="text-[11px] text-brand-gray italic text-right mb-2">
+                    Sorted by payoff priority
+                  </p>
+                  <div className="bg-white border border-brand-gray-border rounded-lg overflow-hidden">
                   {nonHelocActiveDebts.map((debt, index) => {
                     const { paidOff, percentage, isOpenAccount } = getDebtProgressInfo(debt);
+                    const isLast = index === nonHelocActiveDebts.length - 1;
                     return (
                       <div
                         key={debt.id}
-                        className={`py-3 px-4 border-l-[3px] ${getDebtRowAccentBorder(debt, isOpenAccount)} ${
+                        className={`py-3 px-4 border-l-4 ${getDebtRowAccentBorder(debt, isOpenAccount)} ${
                           index % 2 === 0 ? 'bg-white' : 'bg-brand-gray-light'
-                        }`}
+                        } ${isLast ? '' : 'border-b border-brand-gray-border'}`}
                       >
                         <div className="flex items-start gap-3">
                           <div className="flex-1 min-w-0">
@@ -696,7 +701,7 @@ export default function Dashboard({
                               <button
                                 type="button"
                                 onClick={() => handleLogPaymentClick(debt.id)}
-                                className="text-[12px] px-3 py-1 rounded-lg border border-brand-orange text-brand-orange hover:bg-brand-orange/5 transition-colors"
+                                className="text-[11px] px-3 py-1 rounded-md bg-brand-navy hover:bg-brand-navy-dark text-white font-medium transition-colors"
                               >
                                 Log Payment
                               </button>
@@ -727,7 +732,8 @@ export default function Dashboard({
                       </div>
                     );
                   })}
-                </div>
+                  </div>
+                </>
               ) : (
                 <p className="text-sm text-brand-gray">No active non-HELOC debts.</p>
               )}
