@@ -1,4 +1,4 @@
-import { Download, Filter, Trash2, AlertTriangle } from 'lucide-react';
+import { Download, Trash2, AlertTriangle } from 'lucide-react';
 import { useState } from 'react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
@@ -17,7 +17,63 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  type TooltipProps,
 } from 'recharts';
+
+const CHART_GRID_STROKE = '#E5E7EB';
+const CHART_AXIS_TICK = { fontSize: 11, fill: '#6B7280' };
+const BRAND_ORANGE = '#FF6B35';
+const BRAND_GRAY = '#6B7280';
+const BRAND_NAVY = '#1E3A5F';
+const BRAND_BLUE = '#2D9CDB';
+const BRAND_RED = '#EB5757';
+
+function PageHeader({ onExport }: { onExport: () => void }) {
+  return (
+    <div className="bg-brand-navy py-3 px-5">
+      <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-white text-lg font-medium leading-tight">Progress</h1>
+          <p className="text-white/65 text-xs mt-0.5">See how far you&apos;ve come</p>
+        </div>
+        <button
+          type="button"
+          onClick={onExport}
+          className="inline-flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white text-[13px] font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
+        >
+          <Download className="w-4 h-4" />
+          <span>Export Report</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function BarChartTooltip({ active, payload, label }: TooltipProps<number, string>) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-white border border-brand-gray-border rounded-lg px-3 py-2 shadow-sm text-xs">
+      <p className="font-medium text-brand-navy mb-1">{label}</p>
+      {payload.map((entry) => (
+        <p key={String(entry.dataKey)} className="text-brand-gray">
+          {entry.name}: {CalculationService.formatCurrency(Number(entry.value) || 0)}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function getSourceBadgeClass(source: UnifiedPayment['source']): string {
+  if (source === 'checking') return 'bg-brand-navy text-white';
+  if (source === 'direct') return 'bg-brand-orange text-white';
+  return 'bg-brand-blue text-white';
+}
+
+function getSourceLabel(source: UnifiedPayment['source']): string {
+  if (source === 'direct') return 'Direct';
+  if (source === 'heloc') return 'HELOC';
+  return 'Checking';
+}
 
 interface ProgressReportsProps {
   onDataUpdate: () => void;
@@ -79,8 +135,8 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
   const totalPrincipal = filteredPayments.reduce((sum, p) => sum + p.principalPaid, 0);
 
   const interestVsPrincipalData = [
-    { name: 'Interest Paid', value: totalInterest, color: '#EB5757' },
-    { name: 'Principal Paid', value: totalPrincipal, color: '#27AE60' },
+    { name: 'Interest Paid', value: totalInterest, color: BRAND_RED },
+    { name: 'Principal Paid', value: totalPrincipal, color: BRAND_NAVY },
   ];
 
   const handleConfirmDelete = () => {
@@ -192,142 +248,161 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
 
   if (unifiedPayments.length === 0) {
     return (
-      <div className="text-center py-16">
-        <p className="text-xl text-gray-600">No payment history yet. Log your first payment to see progress reports.</p>
-        <p className="text-gray-500 mt-2">Payments from Dashboard, HELOC Tracker, and Checking Register will all appear here.</p>
+      <div className="bg-brand-gray-light min-h-screen">
+        <PageHeader onExport={handleExportHistory} />
+        <div className="max-w-4xl mx-auto px-5 py-16 text-center">
+          <p className="text-base text-brand-navy">No payment history yet. Log your first payment to see progress reports.</p>
+          <p className="text-sm text-brand-gray mt-2">
+            Payments from Dashboard, HELOC Tracker, and Checking Register will all appear here.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Progress Reports</h2>
-      </div>
+    <div className="bg-brand-gray-light min-h-screen">
+      <PageHeader onExport={handleExportHistory} />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <p className="text-sm text-gray-600 mb-2">Total Debt Reduced</p>
-          <p className="text-3xl font-bold text-brand-green">
-            {CalculationService.formatCurrency(metrics.totalPaidOff)}
-          </p>
-          <p className="text-sm text-gray-500 mt-1">{metrics.progressPercentage.toFixed(1)}% complete</p>
-        </div>
+      <div className="max-w-4xl mx-auto px-5 py-6 space-y-5">
+        <h2 className="text-base font-medium text-brand-navy mt-5 mb-3">Progress Reports</h2>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <p className="text-sm text-gray-600 mb-2">Principal Paid</p>
-          <p className="text-3xl font-bold text-brand-green">
-            {CalculationService.formatCurrency(totalPrincipal)}
-          </p>
-          <p className="text-sm text-gray-500 mt-1">Actual debt eliminated</p>
-        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-orange">
+            <p className="text-[11px] uppercase text-brand-gray tracking-wide">Total debt reduced</p>
+            <p className="text-[22px] font-medium text-brand-navy mt-1">
+              {CalculationService.formatCurrency(metrics.totalPaidOff)}
+            </p>
+            <p className="text-[11px] text-brand-gray mt-0.5">{metrics.progressPercentage.toFixed(1)}% complete</p>
+          </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <p className="text-sm text-gray-600 mb-2">Interest Paid</p>
-          <p className="text-3xl font-bold text-brand-red">
-            {CalculationService.formatCurrency(totalInterest)}
-          </p>
-          <p className="text-sm text-gray-500 mt-1">{filteredPayments.length} payment{filteredPayments.length !== 1 ? 's' : ''}</p>
-        </div>
+          <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-green">
+            <p className="text-[11px] uppercase text-brand-gray tracking-wide">Principal paid</p>
+            <p className="text-[22px] font-medium text-brand-navy mt-1">
+              {CalculationService.formatCurrency(totalPrincipal)}
+            </p>
+            <p className="text-[11px] text-brand-gray mt-0.5">Actual debt eliminated</p>
+          </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <p className="text-sm text-gray-600 mb-2">Remaining Debt</p>
-          <p className="text-3xl font-bold text-brand-navy">
-            {CalculationService.formatCurrency(metrics.totalCurrentBalance)}
-          </p>
-          <p className="text-sm text-gray-500 mt-1">{metrics.activeDebts.length} active debt{metrics.activeDebts.length !== 1 ? 's' : ''}</p>
+          <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-red">
+            <p className="text-[11px] uppercase text-brand-gray tracking-wide">Interest paid</p>
+            <p className="text-[22px] font-medium text-brand-red mt-1">
+              {CalculationService.formatCurrency(totalInterest)}
+            </p>
+            <p className="text-[11px] text-brand-gray mt-0.5">
+              {filteredPayments.length} payment{filteredPayments.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+
+          <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-blue">
+            <p className="text-[11px] uppercase text-brand-gray tracking-wide">Remaining debt</p>
+            <p className="text-[22px] font-medium text-brand-navy mt-1">
+              {CalculationService.formatCurrency(metrics.totalCurrentBalance)}
+            </p>
+            <p className="text-[11px] text-brand-gray mt-0.5">
+              {metrics.activeDebts.length} active debt{metrics.activeDebts.length !== 1 ? 's' : ''}
+            </p>
+          </div>
         </div>
-      </div>
 
       {paymentBreakdown.total > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Payment Sources Breakdown</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white border border-brand-gray-border rounded-lg p-5">
+          <h3 className="text-sm font-medium text-brand-navy mb-3">Payment sources breakdown</h3>
+          <div className="flex flex-wrap gap-4">
             {paymentBreakdown.directCount > 0 && (
-              <div className="bg-blue-50 rounded-lg p-4">
-                <div className="flex items-center space-x-3 mb-2">
-                  <div className="bg-brand-blue w-4 h-4 rounded"></div>
-                  <p className="text-sm font-semibold text-gray-700">Direct Payments</p>
+              <div className="bg-orange-50 border border-brand-orange rounded-lg p-4 inline-block min-w-[200px]">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-brand-orange shrink-0" />
+                  <p className="text-[13px] font-medium text-brand-navy">Direct Payments</p>
                 </div>
-                <p className="text-2xl font-bold text-brand-blue mb-1">
+                <p className="text-lg font-medium text-brand-navy mb-1">
                   {CalculationService.formatCurrency(paymentBreakdown.direct)}
                 </p>
-                <p className="text-xs text-gray-600">
-                  {paymentBreakdown.directCount} payment{paymentBreakdown.directCount !== 1 ? 's' : ''} · {((paymentBreakdown.direct / paymentBreakdown.total) * 100).toFixed(0)}% of total
+                <p className="text-[11px] text-brand-gray">
+                  {paymentBreakdown.directCount} payment{paymentBreakdown.directCount !== 1 ? 's' : ''} ·{' '}
+                  {((paymentBreakdown.direct / paymentBreakdown.total) * 100).toFixed(0)}% of total
                 </p>
-                <p className="text-xs text-gray-500 mt-2">
-                  Logged via Dashboard or My Debts
-                </p>
+                <p className="text-[11px] text-brand-gray italic mt-1">Logged via Dashboard or My Debts</p>
               </div>
             )}
 
             {paymentBreakdown.helocCount > 0 && (
-              <div className="bg-purple-50 rounded-lg p-4">
-                <div className="flex items-center space-x-3 mb-2">
-                  <div className="bg-purple-600 w-4 h-4 rounded"></div>
-                  <p className="text-sm font-semibold text-gray-700">HELOC Velocity Banking</p>
+              <div className="bg-blue-50 border border-brand-blue rounded-lg p-4 inline-block min-w-[200px]">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-brand-blue shrink-0" />
+                  <p className="text-[13px] font-medium text-brand-navy">HELOC Velocity Banking</p>
                 </div>
-                <p className="text-2xl font-bold text-purple-600 mb-1">
+                <p className="text-lg font-medium text-brand-navy mb-1">
                   {CalculationService.formatCurrency(paymentBreakdown.heloc)}
                 </p>
-                <p className="text-xs text-gray-600">
-                  {paymentBreakdown.helocCount} chunk{paymentBreakdown.helocCount !== 1 ? 's' : ''} · {((paymentBreakdown.heloc / paymentBreakdown.total) * 100).toFixed(0)}% of total
+                <p className="text-[11px] text-brand-gray">
+                  {paymentBreakdown.helocCount} chunk{paymentBreakdown.helocCount !== 1 ? 's' : ''} ·{' '}
+                  {((paymentBreakdown.heloc / paymentBreakdown.total) * 100).toFixed(0)}% of total
                 </p>
-                <p className="text-xs text-gray-500 mt-2">
-                  Debts paid off using HELOC draws
-                </p>
+                <p className="text-[11px] text-brand-gray italic mt-1">Debts paid off using HELOC draws</p>
               </div>
             )}
 
             {paymentBreakdown.checkingCount > 0 && (
-              <div className="bg-green-50 rounded-lg p-4">
-                <div className="flex items-center space-x-3 mb-2">
-                  <div className="bg-brand-green w-4 h-4 rounded"></div>
-                  <p className="text-sm font-semibold text-gray-700">Checking Register</p>
+              <div className="bg-green-50 border border-brand-green rounded-lg p-4 inline-block min-w-[200px]">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-brand-green shrink-0" />
+                  <p className="text-[13px] font-medium text-brand-navy">Checking Register</p>
                 </div>
-                <p className="text-2xl font-bold text-brand-green mb-1">
+                <p className="text-lg font-medium text-brand-navy mb-1">
                   {CalculationService.formatCurrency(paymentBreakdown.checking)}
                 </p>
-                <p className="text-xs text-gray-600">
-                  {paymentBreakdown.checkingCount} payment{paymentBreakdown.checkingCount !== 1 ? 's' : ''} · {((paymentBreakdown.checking / paymentBreakdown.total) * 100).toFixed(0)}% of total
+                <p className="text-[11px] text-brand-gray">
+                  {paymentBreakdown.checkingCount} payment{paymentBreakdown.checkingCount !== 1 ? 's' : ''} ·{' '}
+                  {((paymentBreakdown.checking / paymentBreakdown.total) * 100).toFixed(0)}% of total
                 </p>
-                <p className="text-xs text-gray-500 mt-2">
-                  Logged via Checking Register
-                </p>
+                <p className="text-[11px] text-brand-gray italic mt-1">Logged via Checking Register</p>
               </div>
             )}
           </div>
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-semibold text-gray-700">Total Principal Paid</span>
-              <span className="text-xl font-bold text-gray-900">{CalculationService.formatCurrency(paymentBreakdown.total)}</span>
-            </div>
+          <div className="mt-3 pt-3 border-t border-brand-gray-border flex justify-between items-center">
+            <span className="text-[13px] text-brand-gray">Total Principal Paid</span>
+            <span className="text-[13px] font-medium text-brand-navy">
+              {CalculationService.formatCurrency(paymentBreakdown.total)}
+            </span>
           </div>
         </div>
       )}
 
       {strategyResult && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Projected vs. Actual Progress</h3>
+        <div className="bg-white border border-brand-gray-border rounded-lg p-5">
+          <h3 className="text-sm font-medium text-brand-navy mb-4">Projected vs. actual progress</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={projectedData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+              <CartesianGrid stroke={CHART_GRID_STROKE} strokeDasharray="3 3" />
+              <XAxis dataKey="month" tick={CHART_AXIS_TICK} axisLine={false} tickLine={false} />
+              <YAxis
+                tick={CHART_AXIS_TICK}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+              />
               <Tooltip formatter={(value: number) => CalculationService.formatCurrency(value)} />
-              <Legend />
+              <Legend
+                verticalAlign="bottom"
+                align="center"
+                wrapperStyle={{ fontSize: 11, paddingTop: 12 }}
+              />
               <Line
                 type="monotone"
                 dataKey="projected"
-                stroke="#9CA3AF"
-                strokeWidth={2}
+                stroke={BRAND_GRAY}
+                strokeWidth={1.5}
+                strokeDasharray="6 4"
+                dot={{ fill: BRAND_GRAY, r: 3 }}
                 name="Projected Balance"
               />
               <Line
                 type="monotone"
                 dataKey="actual"
-                stroke="#2D9CDB"
-                strokeWidth={3}
+                stroke={BRAND_ORANGE}
+                strokeWidth={2}
+                dot={{ fill: BRAND_ORANGE, r: 3 }}
                 name="Actual Balance"
               />
             </LineChart>
@@ -336,26 +411,35 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
       )}
 
       {monthlyPaymentsArray.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Monthly Payments by Source</h3>
+        <div className="bg-white border border-brand-gray-border rounded-lg p-5">
+          <h3 className="text-sm font-medium text-brand-navy mb-4">Monthly payments by source</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={monthlyPaymentsArray}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" />
-              <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
-              <Tooltip formatter={(value: number) => CalculationService.formatCurrency(value)} />
-              <Legend />
-              <Bar dataKey="direct" stackId="a" fill="#2D9CDB" name="Direct Payments" />
-              <Bar dataKey="heloc" stackId="a" fill="#9B59B6" name="HELOC Chunks" />
-              <Bar dataKey="checking" stackId="a" fill="#27AE60" name="Checking Register" />
+              <CartesianGrid stroke={CHART_GRID_STROKE} strokeDasharray="3 3" />
+              <XAxis dataKey="month" tick={CHART_AXIS_TICK} axisLine={false} tickLine={false} />
+              <YAxis
+                tick={CHART_AXIS_TICK}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+              />
+              <Tooltip content={<BarChartTooltip />} />
+              <Legend
+                verticalAlign="bottom"
+                align="center"
+                wrapperStyle={{ fontSize: 11, paddingTop: 12 }}
+              />
+              <Bar dataKey="checking" stackId="a" fill={BRAND_NAVY} name="Checking Register" />
+              <Bar dataKey="direct" stackId="a" fill={BRAND_ORANGE} name="Direct Payments" />
+              <Bar dataKey="heloc" stackId="a" fill={BRAND_BLUE} name="HELOC Chunks" />
             </BarChart>
           </ResponsiveContainer>
         </div>
       )}
 
       {totalInterest > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Interest vs. Principal</h3>
+        <div className="bg-white border border-brand-gray-border rounded-lg p-5">
+          <h3 className="text-sm font-medium text-brand-navy mb-4">Interest vs. principal</h3>
           <div className="flex items-center justify-center">
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -364,9 +448,19 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                  label={({ name, percent, x, y }) => (
+                    <text
+                      x={x}
+                      y={y}
+                      fill={name === 'Principal Paid' ? BRAND_NAVY : BRAND_RED}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fontSize={11}
+                    >
+                      {`${name}: ${(percent * 100).toFixed(1)}%`}
+                    </text>
+                  )}
                   outerRadius={100}
-                  fill="#8884d8"
                   dataKey="value"
                 >
                   {interestVsPrincipalData.map((entry, index) => (
@@ -379,14 +473,14 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
           </div>
           <div className="grid grid-cols-2 gap-4 mt-4">
             <div className="text-center">
-              <p className="text-sm text-gray-600">Interest Paid</p>
-              <p className="text-2xl font-bold text-brand-red">
+              <p className="text-[11px] text-brand-gray">Interest Paid</p>
+              <p className="text-lg font-medium text-brand-red mt-0.5">
                 {CalculationService.formatCurrency(totalInterest)}
               </p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-gray-600">Principal Paid</p>
-              <p className="text-2xl font-bold text-brand-green">
+              <p className="text-[11px] text-brand-gray">Principal Paid</p>
+              <p className="text-lg font-medium text-brand-navy mt-0.5">
                 {CalculationService.formatCurrency(totalPrincipal)}
               </p>
             </div>
@@ -395,48 +489,53 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
       )}
 
       {homeEquity?.hasHELOC && helocTransactions.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">HELOC Balance Over Time</h3>
+        <div className="bg-white border border-brand-gray-border rounded-lg p-5">
+          <h3 className="text-sm font-medium text-brand-navy mb-4">HELOC balance over time</h3>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={helocTransactions.map(t => ({
               date: new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
               balance: t.balance,
               type: t.type,
             }))}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+              <CartesianGrid stroke={CHART_GRID_STROKE} strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={CHART_AXIS_TICK} axisLine={false} tickLine={false} />
+              <YAxis
+                tick={CHART_AXIS_TICK}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+              />
               <Tooltip
                 formatter={(value: number) => CalculationService.formatCurrency(value)}
                 labelFormatter={(label) => `Date: ${label}`}
               />
-              <Legend />
+              <Legend verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
               <Line
                 type="stepAfter"
                 dataKey="balance"
-                stroke="#9B59B6"
+                stroke={BRAND_BLUE}
                 strokeWidth={2}
                 name="HELOC Balance"
-                dot={{ r: 4 }}
+                dot={{ r: 3, fill: BRAND_BLUE }}
               />
             </LineChart>
           </ResponsiveContainer>
           <div className="mt-4 grid grid-cols-3 gap-4">
-            <div className="text-center p-3 bg-purple-50 rounded-lg">
-              <p className="text-xs text-purple-700 font-semibold mb-1">Current Balance</p>
-              <p className="text-lg font-bold text-purple-900">
+            <div className="text-center p-3 bg-blue-50 border border-brand-blue rounded-lg">
+              <p className="text-[11px] text-brand-gray font-medium mb-1">Current Balance</p>
+              <p className="text-lg font-medium text-brand-navy">
                 {CalculationService.formatCurrency(helocTransactions[helocTransactions.length - 1]?.balance || 0)}
               </p>
             </div>
-            <div className="text-center p-3 bg-green-50 rounded-lg">
-              <p className="text-xs text-green-700 font-semibold mb-1">Total Payments</p>
-              <p className="text-lg font-bold text-green-900">
+            <div className="text-center p-3 bg-green-50 border border-brand-green rounded-lg">
+              <p className="text-[11px] text-brand-gray font-medium mb-1">Total Payments</p>
+              <p className="text-lg font-medium text-brand-navy">
                 {CalculationService.formatCurrency(helocTransactions.filter(t => t.type === 'payment').reduce((sum, t) => sum + t.amount, 0))}
               </p>
             </div>
-            <div className="text-center p-3 bg-red-50 rounded-lg">
-              <p className="text-xs text-red-700 font-semibold mb-1">Total Draws</p>
-              <p className="text-lg font-bold text-red-900">
+            <div className="text-center p-3 bg-red-50 border border-brand-red rounded-lg">
+              <p className="text-[11px] text-brand-gray font-medium mb-1">Total Draws</p>
+              <p className="text-lg font-medium text-brand-navy">
                 {CalculationService.formatCurrency(helocTransactions.filter(t => t.type === 'draw').reduce((sum, t) => sum + t.amount, 0))}
               </p>
             </div>
@@ -444,96 +543,95 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold text-gray-800">Payment History</h3>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Filter className="w-4 h-4 text-gray-500" />
-              <select
-                value={filterDebtId}
-                onChange={(e) => setFilterDebtId(e.target.value)}
-                className="px-3 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-brand-blue focus:border-transparent"
-              >
-                <option value="all">All Debts</option>
-                {debts.filter(debt => debt.category !== 'HELOC').map(debt => (
-                  <option key={debt.id} value={debt.id}>{debt.accountName}</option>
-                ))}
-              </select>
-            </div>
-            <button
-              onClick={handleExportHistory}
-              className="flex items-center space-x-2 text-brand-blue hover:text-[#1E8BBD] text-sm font-semibold transition-colors"
+      <div className="bg-white border border-brand-gray-border rounded-lg p-5">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
+          <h3 className="text-sm font-medium text-brand-navy">Payment history</h3>
+          <div className="flex items-center gap-3">
+            <select
+              value={filterDebtId}
+              onChange={(e) => setFilterDebtId(e.target.value)}
+              className="px-3 py-1.5 border border-brand-gray-border rounded-md text-xs text-brand-gray bg-white focus:border-brand-navy outline-none"
             >
-              <Download className="w-4 h-4" />
+              <option value="all">All Debts</option>
+              {debts.filter(debt => debt.category !== 'HELOC').map(debt => (
+                <option key={debt.id} value={debt.id}>{debt.accountName}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleExportHistory}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-blue hover:underline transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
               <span>Export CSV</span>
             </button>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="overflow-x-auto -mx-5">
+          <table className="w-full min-w-[720px]">
             <thead>
-              <tr className="border-b-2 border-gray-200">
-                <th className="text-left py-3 px-2 text-sm font-semibold text-gray-700">Date</th>
-                <th className="text-left py-3 px-2 text-sm font-semibold text-gray-700">Debt</th>
-                <th className="text-left py-3 px-2 text-sm font-semibold text-gray-700">Source</th>
-                <th className="text-right py-3 px-2 text-sm font-semibold text-gray-700">Principal</th>
-                <th className="text-right py-3 px-2 text-sm font-semibold text-gray-700">Interest</th>
-                <th className="text-left py-3 px-2 text-sm font-semibold text-gray-700">Description</th>
-                <th className="py-3 px-2"></th>
+              <tr className="bg-brand-gray-light border-b border-brand-gray-border">
+                <th className="text-left py-2.5 px-5 text-[11px] uppercase tracking-wide font-medium text-brand-gray">Date</th>
+                <th className="text-left py-2.5 px-2 text-[11px] uppercase tracking-wide font-medium text-brand-gray">Debt</th>
+                <th className="text-left py-2.5 px-2 text-[11px] uppercase tracking-wide font-medium text-brand-gray">Source</th>
+                <th className="text-right py-2.5 px-2 text-[11px] uppercase tracking-wide font-medium text-brand-gray">Principal</th>
+                <th className="text-right py-2.5 px-2 text-[11px] uppercase tracking-wide font-medium text-brand-gray">Interest</th>
+                <th className="text-left py-2.5 px-2 text-[11px] uppercase tracking-wide font-medium text-brand-gray">Description</th>
+                <th className="py-2.5 px-5 text-[11px] uppercase tracking-wide font-medium text-brand-gray text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {[...filteredPayments].reverse().map(p => (
-                <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-3 px-2 text-sm text-gray-800">
+              {[...filteredPayments].reverse().map((p, index) => (
+                <tr
+                  key={p.id}
+                  className={`border-b border-brand-gray-border ${
+                    index % 2 === 0 ? 'bg-white' : 'bg-brand-gray-light'
+                  }`}
+                >
+                  <td className="py-2.5 px-5 text-xs text-brand-gray">
                     {CalculationService.formatDate(p.date)}
                   </td>
-                  <td className="py-3 px-2 text-sm text-gray-800">
+                  <td className="py-2.5 px-2 text-[13px] text-brand-navy">
                     {p.debtName}
                     {p.transferredToHELOC && (
-                      <div className="text-xs text-purple-600 italic mt-0.5">Transferred to HELOC</div>
+                      <div className="text-[11px] text-brand-blue italic mt-0.5">Transferred to HELOC</div>
                     )}
                     {p.isPaidOff && !p.transferredToHELOC && (
-                      <div className="text-xs text-green-600 font-semibold mt-0.5">Paid Off</div>
+                      <div className="text-[11px] text-brand-green font-medium mt-0.5">Paid Off</div>
                     )}
                   </td>
-                  <td className="py-3 px-2">
-                    <span className={`text-xs font-semibold px-2 py-1 rounded ${
-                      p.source === 'direct' ? 'bg-brand-blue/20 text-brand-blue' :
-                      p.source === 'heloc' ? 'bg-purple-100 text-purple-700' :
-                      'bg-green-100 text-green-700'
-                    }`}>
-                      {p.source === 'direct' ? 'Direct' :
-                       p.source === 'heloc' ? 'HELOC' :
-                       'Checking'}
+                  <td className="py-2.5 px-2">
+                    <span className={`inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full ${getSourceBadgeClass(p.source)}`}>
+                      {getSourceLabel(p.source)}
                     </span>
                   </td>
-                  <td className="py-3 px-2 text-sm text-right text-brand-green font-mono font-semibold">
+                  <td className="py-2.5 px-2 text-[13px] text-right font-medium text-brand-navy">
                     {CalculationService.formatCurrencyDetailed(p.principalPaid)}
                   </td>
-                  <td className="py-3 px-2 text-sm text-right text-red-600 font-mono">
+                  <td className="py-2.5 px-2 text-[13px] text-right font-medium text-brand-red">
                     {p.interestCharged > 0 ? CalculationService.formatCurrencyDetailed(p.interestCharged) : '-'}
                   </td>
-                  <td className="py-3 px-2 text-sm text-gray-700">
+                  <td className="py-2.5 px-2 text-xs text-brand-gray max-w-[200px] truncate">
                     {p.description || '-'}
                   </td>
-                  <td className="py-3 px-2 text-right">
+                  <td className="py-2.5 px-5 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
+                        type="button"
                         onClick={(e) => { e.stopPropagation(); handleOpenEdit(p); }}
-                        className="px-2 py-1 text-xs font-semibold text-brand-blue hover:bg-blue-50 rounded transition-colors"
+                        className="text-xs font-medium text-brand-blue hover:underline"
                         title="Edit payment"
                       >
                         Edit
                       </button>
                       <button
+                        type="button"
                         onClick={(e) => { e.stopPropagation(); setPendingDelete(p); }}
-                        className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                        className="p-1 text-brand-gray hover:text-brand-red transition-colors"
                         title="Delete payment"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </td>
@@ -544,11 +642,12 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
         </div>
       </div>
 
-      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r mt-6">
-        <h4 className="font-semibold text-blue-900 mb-2">About Unified Payment History</h4>
-        <p className="text-blue-800 text-sm">
+      <div className="bg-brand-blue-light border-l-4 border-brand-blue rounded-lg p-4">
+        <h4 className="text-[13px] font-medium text-brand-navy mb-2">About unified payment history</h4>
+        <p className="text-xs text-brand-gray leading-relaxed">
           This report combines payments from all sources: direct debt payments (Dashboard/My Debts), HELOC draws used to pay debts (HELOC Tracker), and checking account debt payments (Checking Register). This gives you a complete view of your debt elimination progress regardless of which method you use.
         </p>
+      </div>
       </div>
 
       {deleteSuccess && (

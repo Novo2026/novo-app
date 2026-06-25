@@ -409,8 +409,7 @@ function App() {
       case 'progress':
         return (
           <ProFeatureGate featureName="Progress Reports">
-            <div>
-              <PageHero page="progress" title="Progress" subtitle="See how far you've come" />
+            <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 md:-mt-8">
               <ProgressReports onDataUpdate={handleDataUpdate} />
             </div>
           </ProFeatureGate>
