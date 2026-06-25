@@ -361,8 +361,7 @@ function App() {
         );
       case 'strategies':
         return (
-          <div>
-            <PageHero page="plan" title="My Plan" subtitle="Your fastest path to debt freedom" />
+          <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 md:-mt-8">
             <PaymentStrategies
               onDataUpdate={handleDataUpdate}
               onNavigateToSmarterPayments={() => setCurrentSection('smarter-payments')}

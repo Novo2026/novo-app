@@ -1,5 +1,18 @@
 import { useState } from 'react';
-import { RefreshCw, TrendingDown, Calendar, DollarSign, BarChart3, AlertTriangle, CheckCircle, Info } from 'lucide-react';
+import {
+  RefreshCw,
+  TrendingDown,
+  DollarSign,
+  CheckCircle,
+  Info,
+  Plus,
+  Zap,
+  CheckCircle2,
+  HelpCircle,
+  Calendar,
+  LineChart,
+  FileText,
+} from 'lucide-react';
 import MyPlan from './MyPlan';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
@@ -11,7 +24,37 @@ import AdvancedVelocityBanking from './AdvancedVelocityBanking';
 import ChunkingRiskAssessment from './ChunkingRiskAssessment';
 import SmartChunkingCalculator from './SmartChunkingCalculator';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import type { StrategyResult } from '../types';
+import type { Debt, StrategyResult } from '../types';
+
+function getDebtAccentBorder(debt: Debt): string {
+  switch (debt.category) {
+    case 'Mortgage':
+      return 'border-l-brand-blue';
+    case 'Auto Loan':
+      return 'border-l-brand-orange';
+    case 'Credit Card':
+      return 'border-l-brand-red';
+    case 'Personal Loan':
+      return 'border-l-brand-green';
+    default:
+      return 'border-l-brand-gray';
+  }
+}
+
+function getDebtTypePillClasses(debt: Debt): string {
+  switch (debt.category) {
+    case 'Mortgage':
+      return 'inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-brand-blue border border-brand-blue';
+    case 'Auto Loan':
+      return 'inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-orange-50 text-brand-orange-dark border border-brand-orange';
+    case 'Credit Card':
+      return 'inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-50 text-brand-red border border-brand-red';
+    case 'Personal Loan':
+      return 'inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-green-50 text-brand-green border border-brand-green';
+    default:
+      return 'inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-50 text-brand-gray border border-brand-gray';
+  }
+}
 
 interface StrategyResultsProps {
   result: StrategyResult;
@@ -133,7 +176,14 @@ export default function StrategyResults({
       return dataPoint;
     });
 
-  const colors = ['#2D9CDB', '#27AE60', '#F2C94C', '#EB5757', '#9B51E0', '#FF6B35'];
+  const colors = [
+    'var(--brand-blue)',
+    'var(--brand-green)',
+    'var(--brand-orange)',
+    'var(--brand-red)',
+    'var(--brand-navy)',
+    'var(--brand-orange-dark)',
+  ];
 
   const hasRateArbitrageWarnings = currentResult.strategy.type === 'heloc-velocity' &&
     allDebts.some(d => d.interestRate < helocRate && d.id !== 'HELOC_VIRTUAL');
@@ -187,40 +237,49 @@ export default function StrategyResults({
   const helocTacticalImpact = calculateHelocTacticalImpact();
 
   return (
-    <div className="space-y-8">
+    <div className="bg-brand-gray-light min-h-screen">
+      <div className="bg-brand-navy py-3 px-5">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-white text-lg font-medium leading-tight">My Plan</h1>
+            <p className="text-white/65 text-xs mt-0.5">Your fastest path to debt freedom</p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={handleRecalculate}
+              disabled={isRecalculating}
+              className="inline-flex items-center gap-2 border border-white text-white text-xs px-3 py-2 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRecalculating ? 'animate-spin' : ''}`} />
+              <span>{isRecalculating ? 'Refreshing...' : 'Refresh Strategy'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onRunNew}
+              className="inline-flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white text-[13px] font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New Strategy</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-5 py-6 space-y-3">
       {showAutoUpdateBanner && (
-        <div className="bg-gradient-to-r from-brand-green to-[#229954] text-white rounded-lg shadow-lg p-4 flex items-center space-x-3 animate-fadeIn">
-          <CheckCircle className="w-5 h-5 flex-shrink-0" />
-          <p className="text-sm font-medium">Strategy updated based on recent activity</p>
+        <div className="bg-green-50 border border-green-200 border-l-4 border-l-brand-green rounded-lg p-4 flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-brand-green shrink-0" />
+          <p className="text-sm font-medium text-brand-navy">Strategy updated based on recent activity</p>
         </div>
       )}
 
       {isAutoCalculating && (
-        <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-lg p-4 flex items-center space-x-3">
-          <RefreshCw className="w-5 h-5 flex-shrink-0 animate-spin" />
+        <div className="bg-brand-blue-light border border-brand-blue rounded-lg p-4 flex items-center gap-3 text-brand-blue">
+          <RefreshCw className="w-5 h-5 shrink-0 animate-spin" />
           <p className="text-sm font-medium">Recalculating strategy with updated data...</p>
         </div>
       )}
-
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">Your Payoff Strategy</h2>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={handleRecalculate}
-            disabled={isRecalculating}
-            className="flex items-center space-x-2 text-brand-blue hover:text-[#1E8BBD] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRecalculating ? 'animate-spin' : ''}`} />
-            <span>{isRecalculating ? 'Recalculating...' : 'Refresh Strategy'}</span>
-          </button>
-          <button
-            onClick={onRunNew}
-            className="flex items-center space-x-2 bg-brand-blue hover:bg-[#1E8BBD] text-white font-semibold px-4 py-2 rounded-lg transition-colors"
-          >
-            <span>New Strategy</span>
-          </button>
-        </div>
-      </div>
 
 {hasLowCashFlow ? (
         <MyPlan
@@ -233,147 +292,133 @@ export default function StrategyResults({
         />
       ) : (
         <>
-          <div id="strategy-comparison" className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-gradient-to-br from-brand-green to-[#229954] text-white rounded-lg shadow-lg p-6">
-              <h3 className="text-sm font-semibold mb-2 opacity-90">Your Strategy (Optimized)</h3>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3">
-                  <Calendar className="w-8 h-8" />
-                  <div>
-                    <p className="text-2xl font-bold">
-                      {Math.floor(currentResult.totalMonths / 12)} years, {currentResult.totalMonths % 12} months
-                    </p>
-                    <p className="text-sm opacity-90">Debt-Free: {CalculationService.formatMonthYear(currentResult.debtFreeDate)}</p>
-                  </div>
+          <div id="strategy-comparison" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-brand-navy text-white rounded-lg border-t-4 border-t-brand-orange p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-[11px] uppercase text-white/70 tracking-wide">Your Strategy</span>
+                <span className="bg-brand-orange text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">Optimized</span>
+              </div>
+              <p className="text-[26px] font-medium leading-tight">
+                {Math.floor(currentResult.totalMonths / 12)} years, {currentResult.totalMonths % 12} months
+              </p>
+              <p className="text-xs text-white/70 mt-1">
+                Debt-Free: {CalculationService.formatMonthYear(currentResult.debtFreeDate)}
+              </p>
+              <div className="border-t border-white/15 my-4" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-[11px] text-white/60">Total Interest</p>
+                  <p className="text-base font-medium mt-0.5">{CalculationService.formatCurrency(currentResult.totalInterest)}</p>
                 </div>
-                <div className="pt-3 border-t border-white/20">
-                  <p className="text-sm opacity-90">Total Interest</p>
-                  <p className="text-xl font-bold">{CalculationService.formatCurrency(currentResult.totalInterest)}</p>
-                </div>
-                <div className="pt-2">
-                  <p className="text-sm opacity-90">Total Paid</p>
-                  <p className="text-xl font-bold">{CalculationService.formatCurrency(result.totalPaid)}</p>
+                <div>
+                  <p className="text-[11px] text-white/60">Total Paid</p>
+                  <p className="text-base font-medium mt-0.5">{CalculationService.formatCurrency(result.totalPaid)}</p>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white border-2 border-gray-300 rounded-lg shadow-md p-6">
-              <h3 className="text-sm font-semibold mb-2 text-gray-600">Minimum Payments Only (Baseline)</h3>
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3">
-                  <Calendar className="w-8 h-8 text-gray-400" />
-                  <div>
-                    <p className="text-2xl font-bold text-gray-800">
-                      {Math.floor(minimumOnly.totalMonths / 12)} years, {minimumOnly.totalMonths % 12} months
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Debt-Free: {CalculationService.formatMonthYear(minimumOnly.debtFreeDate)}
-                    </p>
-                  </div>
-                </div>
-                <div className="pt-3 border-t border-gray-200">
-                  <p className="text-sm text-gray-600">Total Interest</p>
-                  <p className="text-xl font-bold text-gray-800">
+            <div className="bg-white border border-brand-gray-border rounded-lg border-t-4 border-t-brand-gray p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-[11px] uppercase text-brand-gray tracking-wide">Minimum Payments Only</span>
+                <span className="bg-brand-gray-light text-brand-gray text-[10px] font-medium px-2 py-0.5 rounded-full border border-brand-gray-border">Baseline</span>
+              </div>
+              <p className="text-[26px] font-medium text-brand-navy leading-tight">
+                {Math.floor(minimumOnly.totalMonths / 12)} years, {minimumOnly.totalMonths % 12} months
+              </p>
+              <p className="text-xs text-brand-gray mt-1">
+                Debt-Free: {CalculationService.formatMonthYear(minimumOnly.debtFreeDate)}
+              </p>
+              <div className="border-t border-brand-gray-border my-4" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-[11px] text-brand-gray">Total Interest</p>
+                  <p className="text-base font-medium text-brand-navy mt-0.5">
                     {CalculationService.formatCurrency(minimumOnly.totalInterest)}
                   </p>
                 </div>
-                <div className="pt-2">
-                  <p className="text-sm text-gray-600">Total Paid</p>
-                  <p className="text-xl font-bold text-gray-800">
+                <div>
+                  <p className="text-[11px] text-brand-gray">Total Paid</p>
+                  <p className="text-base font-medium text-brand-navy mt-0.5">
                     {CalculationService.formatCurrency(minimumOnly.totalPaid)}
                   </p>
-                  {hasMortgages && (
-                    <p className="text-xs text-gray-400 mt-2 italic">
-                      Excludes mortgages — shown on fixed payment schedule
-                    </p>
-                  )}
                 </div>
               </div>
+              {hasMortgages && (
+                <p className="text-[11px] text-brand-gray italic mt-4">
+                  Excludes mortgages — shown on fixed payment schedule
+                </p>
+              )}
             </div>
           </div>
 
           {hasMortgages && (
-            <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
-              <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-blue-800">
+            <div className="bg-brand-blue-light border-l-4 border-brand-blue rounded-r-lg p-3 text-[11px] text-brand-blue flex items-start gap-2">
+              <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <p>
                 <strong>Note:</strong> Mortgage{mortgageCount > 1 ? 's' : ''} are on fixed payment schedules and not included in the accelerated payoff strategy. Your debt-free date above reflects your non-mortgage debts.
               </p>
             </div>
           )}
 
           {isValidComparison ? (
-            <div className="bg-gradient-to-br from-brand-blue to-[#1E8BBD] text-white rounded-lg shadow-lg p-6">
-              <div className="flex items-start space-x-4">
-                <div className="bg-white/20 p-3 rounded-lg">
-                  <TrendingDown className="w-8 h-8" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold mb-2">
-                    YOU'LL SAVE {CalculationService.formatCurrency(interestSaved)}!
-                  </h3>
-                  <p className="text-lg opacity-90">
-                    And be debt-free{' '}
-                    <span className="font-bold">
-                      {Math.floor(monthsSaved / 12)} years,{' '}
-                      {monthsSaved % 12} months
-                    </span>{' '}
-                    sooner!
-                  </p>
-                </div>
+            <div className="bg-green-50 border border-green-200 border-l-4 border-l-brand-green rounded-lg p-4 flex items-start gap-3">
+              <TrendingDown className="w-5 h-5 text-brand-green shrink-0 mt-0.5" />
+              <div>
+                <p className="text-base font-medium text-brand-navy">
+                  You&apos;ll save {CalculationService.formatCurrency(interestSaved)} in interest
+                </p>
+                <p className="text-[13px] text-brand-green mt-0.5">
+                  And be debt-free{' '}
+                  {Math.floor(monthsSaved / 12)} years, {monthsSaved % 12} months sooner
+                </p>
               </div>
             </div>
           ) : (
-            <div className="bg-amber-50 border-2 border-amber-500 rounded-lg shadow-lg p-6">
-              <div className="flex items-start space-x-4">
-                <div className="bg-amber-500/20 p-3 rounded-lg">
-                  <TrendingDown className="w-8 h-8 text-amber-700" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold mb-2 text-amber-900">
-                    Strategy Comparison Unavailable
-                  </h3>
-                  <p className="text-amber-800">
-                    Unable to calculate accurate baseline comparison. Please verify all debt information is correct,
-                    especially minimum payments and interest rates. If you have a mortgage, ensure the P&I payment
-                    matches your actual monthly payment.
-                  </p>
-                </div>
+            <div className="bg-amber-50 border border-amber-200 border-l-4 border-brand-orange rounded-lg p-4 flex items-start gap-3">
+              <TrendingDown className="w-5 h-5 text-brand-orange shrink-0 mt-0.5" />
+              <div>
+                <p className="text-base font-medium text-brand-navy">Strategy Comparison Unavailable</p>
+                <p className="text-[13px] text-brand-gray mt-1">
+                  Unable to calculate accurate baseline comparison. Please verify all debt information is correct,
+                  especially minimum payments and interest rates. If you have a mortgage, ensure the P&I payment
+                  matches your actual monthly payment.
+                </p>
               </div>
             </div>
           )}
         </>
       )}
 
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-xl font-bold text-gray-800 mb-6">How to Execute Your Strategy</h3>
+      <div className="bg-white border border-brand-gray-border rounded-lg p-5">
+        <h3 className="text-sm font-medium text-brand-navy mb-5">How to Execute Your Strategy</h3>
 
-        <div className="space-y-6">
-          <div className="bg-gradient-to-r from-brand-blue/10 to-brand-green/10 rounded-lg p-5 border-l-4 border-brand-blue">
-            <div className="flex items-center space-x-2 mb-3">
-              <DollarSign className="w-6 h-6 text-brand-blue" />
-              <h4 className="font-bold text-gray-800 text-lg">Your Total Monthly Cash Flow</h4>
+        <div className="space-y-5">
+          <div className="bg-brand-gray-light border border-brand-gray-border rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <DollarSign className="w-5 h-5 text-brand-orange shrink-0" />
+              <h4 className="text-xs text-brand-gray">Your Total Monthly Cash Flow</h4>
             </div>
             {financialProfile ? (
               <>
-                <p className="text-3xl font-bold text-gray-800 mb-2">
+                <p className="text-2xl font-medium text-brand-navy mb-3">
                   {CalculationService.formatCurrency(
                     financialProfile.monthlyNetIncome -
                     financialProfile.monthlyEssentialExpenses -
                     financialProfile.monthlyDiscretionaryExpenses
                   )}
                 </p>
-                <div className="mt-3 space-y-2 text-sm bg-gray-50 rounded-lg p-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Minimum payments:</span>
-                    <span className="font-semibold text-gray-800">
+                <div className="space-y-0 text-sm border-t border-brand-gray-border">
+                  <div className="flex justify-between py-2 border-b border-brand-gray-border">
+                    <span className="text-brand-gray">Minimum payments</span>
+                    <span className="font-medium text-brand-navy">
                       {CalculationService.formatCurrency(
                         allDebts.reduce((sum, d) => sum + d.minimumPayment, 0)
                       )}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Extra for debt payoff:</span>
-                    <span className="font-semibold text-gray-800">
+                  <div className="flex justify-between py-2">
+                    <span className="text-brand-gray">Extra for debt payoff</span>
+                    <span className="font-medium text-brand-navy">
                       {CalculationService.formatCurrency(
                         financialProfile.monthlyNetIncome -
                         financialProfile.monthlyEssentialExpenses -
@@ -383,142 +428,169 @@ export default function StrategyResults({
                     </span>
                   </div>
                   {paidOffDebts.length > 0 && (
-                    <div className="pt-2 mt-2 border-t border-gray-200">
-                      <div className="flex items-start gap-2">
-                        <span className="text-brand-green font-semibold">✓</span>
-                        <p className="text-gray-700 flex-1">
-                          <span className="font-semibold text-brand-green">
+                    <div className="pt-2 mt-1 border-t border-brand-gray-border">
+                      <p className="text-xs text-brand-green flex items-start gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>
+                          <span className="font-medium">
                             {CalculationService.formatCurrency(paidOffDebts.reduce((sum, d) => sum + d.minimumPayment, 0))}
-                          </span> freed from paid-off debts is included in your extra payment!
-                        </p>
-                      </div>
+                          </span>{' '}
+                          freed from paid-off debts is included in your extra payment!
+                        </span>
+                      </p>
                     </div>
                   )}
                 </div>
               </>
             ) : (
-              <p className="text-gray-600">Set up your financial profile to see cash flow details.</p>
+              <p className="text-brand-gray text-sm">Set up your financial profile to see cash flow details.</p>
             )}
           </div>
 
           <div>
-            <h4 className="font-semibold text-gray-800 mb-3">Payment Breakdown This Month:</h4>
+            <h4 className="text-sm font-medium text-brand-navy mb-3">Payment Breakdown This Month</h4>
             {paidOffDebts.length > 0 && (
-              <div className="mb-3 bg-amber-50 border-2 border-amber-300 rounded-lg p-3 flex items-start gap-2">
-                <span className="text-amber-600 font-bold text-base flex-shrink-0">&#9889;</span>
-                <p className="text-sm text-amber-800">
-                  <span className="font-bold">Snowball active:</span>{' '}
+              <div className="mb-3 bg-amber-50 border border-amber-200 border-l-4 border-brand-orange rounded-lg p-3 flex items-start gap-2">
+                <Zap className="w-4 h-4 text-brand-orange shrink-0 mt-0.5" />
+                <p className="text-[13px] text-brand-navy">
+                  <span className="font-medium">Snowball active:</span>{' '}
                   {CalculationService.formatCurrency(paidOffDebts.reduce((s, d) => s + d.minimumPayment, 0))}/month freed from{' '}
                   {paidOffDebts.length} paid-off debt{paidOffDebts.length !== 1 ? 's' : ''} is rolled into your target debt payment automatically.
                 </p>
               </div>
             )}
-            <div className="space-y-2">
-              {allDebts
-                .sort((a, b) => b.interestRate - a.interestRate)
-                .map((debt, index) => {
-                  const isTargetDebt = index === 0;
-                  const extraPayment = currentResult.strategy.extraMonthlyPayment || 0;
-                  const paymentAmount = debt.minimumPayment + (isTargetDebt ? extraPayment : 0);
-                  const isHELOC = debt.id === 'HELOC_VIRTUAL';
-                  const freedMinimums = paidOffDebts.reduce((s, d) => s + d.minimumPayment, 0);
-                  const baseCashFlow = extraPayment - freedMinimums;
+            <div className="space-y-3">
+              {(() => {
+                const sortedDebts = [...allDebts].sort((a, b) => b.interestRate - a.interestRate);
+                const targetDebt = sortedDebts[0];
+                const otherDebts = sortedDebts.slice(1);
+                const extraPayment = currentResult.strategy.extraMonthlyPayment || 0;
+                const freedMinimums = paidOffDebts.reduce((s, d) => s + d.minimumPayment, 0);
+                const baseCashFlow = extraPayment - freedMinimums;
+                const isHELOC = targetDebt?.id === 'HELOC_VIRTUAL';
+                const targetPayment = targetDebt
+                  ? targetDebt.minimumPayment + extraPayment
+                  : 0;
 
-                  return (
-                    <div
-                      key={debt.id}
-                      className={`flex items-center justify-between p-3 rounded-lg ${
-                        isTargetDebt ? 'bg-brand-green/10 border-2 border-brand-green' : 'bg-gray-50'
-                      }`}
-                    >
-                      <div className="flex-1">
-                        <span className="font-medium text-gray-800">{debt.accountName}:</span>
-                        {isTargetDebt ? (
-                          <div className="mt-1 text-sm text-gray-700 space-y-0.5">
-                            {isHELOC ? (
-                              <span>
-                                {CalculationService.formatCurrency(0)} (no minimum) +{' '}
-                                {CalculationService.formatCurrency(extraPayment)} extra ={' '}
-                                <span className="font-bold text-brand-green">{CalculationService.formatCurrency(paymentAmount)}</span>
-                              </span>
-                            ) : (
-                              <>
-                                <div className="flex flex-wrap gap-x-1 items-center">
-                                  <span>{CalculationService.formatCurrency(debt.minimumPayment)} min</span>
-                                  {freedMinimums > 0 && (
-                                    <span className="text-amber-700 font-semibold">
-                                      + {CalculationService.formatCurrency(freedMinimums)} freed
-                                    </span>
-                                  )}
-                                  {baseCashFlow > 0 && (
-                                    <span className="text-brand-blue font-semibold">
-                                      + {CalculationService.formatCurrency(baseCashFlow)} extra
-                                    </span>
-                                  )}
-                                  <span className="text-gray-500">=</span>
-                                  <span className="font-bold text-brand-green">{CalculationService.formatCurrency(paymentAmount)} total</span>
-                                </div>
-                              </>
-                            )}
+                return (
+                  <>
+                    {targetDebt && (
+                      <div className="bg-blue-50 border border-brand-blue rounded-lg p-4">
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[13px] font-medium text-brand-navy">{targetDebt.accountName}</span>
+                              <span className={getDebtTypePillClasses(targetDebt)}>{targetDebt.category}</span>
+                            </div>
                           </div>
-                        ) : (
-                          <span className="ml-2 text-gray-700">
-                            {CalculationService.formatCurrency(debt.minimumPayment)} <span className="text-gray-500">(minimum only)</span>
+                          <span className="bg-brand-orange text-white text-[10px] font-medium px-2 py-1 rounded-md shrink-0">
+                            FOCUS HERE
                           </span>
-                        )}
+                        </div>
+                        <p className="text-[13px] text-brand-navy">
+                          {isHELOC ? (
+                            <>
+                              <span className="text-brand-gray">{CalculationService.formatCurrency(0)} min</span>
+                              {' + '}
+                              <span className="text-brand-blue">{CalculationService.formatCurrency(extraPayment)} extra</span>
+                              {' = '}
+                              <span className="font-semibold text-brand-navy">{CalculationService.formatCurrency(targetPayment)}</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-brand-gray">{CalculationService.formatCurrency(targetDebt.minimumPayment)} min</span>
+                              {freedMinimums > 0 && (
+                                <>
+                                  {' + '}
+                                  <span className="text-brand-green">{CalculationService.formatCurrency(freedMinimums)} freed</span>
+                                </>
+                              )}
+                              {baseCashFlow > 0 && (
+                                <>
+                                  {' + '}
+                                  <span className="text-brand-blue">{CalculationService.formatCurrency(baseCashFlow)} extra</span>
+                                </>
+                              )}
+                              {' = '}
+                              <span className="font-semibold text-brand-navy">{CalculationService.formatCurrency(targetPayment)}</span>
+                            </>
+                          )}
+                        </p>
                       </div>
-                      {isTargetDebt && (
-                        <span className="ml-3 bg-brand-green text-white text-xs font-bold px-3 py-1 rounded-full flex-shrink-0">
-                          FOCUS HERE
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
+                    )}
+                    {otherDebts.length > 0 && (
+                      <div className="bg-white border border-brand-gray-border rounded-lg overflow-hidden">
+                        {otherDebts.map((debt, index) => (
+                          <div
+                            key={debt.id}
+                            className={`flex items-center justify-between gap-3 px-4 py-3 border-b border-brand-gray-border last:border-b-0 border-l-4 ${getDebtAccentBorder(debt)} ${
+                              index % 2 === 0 ? 'bg-white' : 'bg-brand-gray-light'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                              <span className="text-[13px] text-brand-navy">{debt.accountName}</span>
+                              <span className={getDebtTypePillClasses(debt)}>{debt.category}</span>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="text-[13px] font-medium text-brand-navy">
+                                {CalculationService.formatCurrency(debt.minimumPayment)}
+                              </span>
+                              <span className="text-[11px] text-brand-gray ml-1.5">(minimum only)</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
             {helocDebt && allDebts[0].id === 'HELOC_VIRTUAL' && (
-              <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-gray-700">
-                  <span className="font-semibold">Pay down your HELOC balance first</span> - it has the highest interest rate at {helocRate.toFixed(2)}%.
+              <div className="mt-3 bg-brand-blue-light border-l-4 border-brand-blue rounded-r-lg p-3 text-[11px] text-brand-blue">
+                <p>
+                  <span className="font-medium">Pay down your HELOC balance first</span> — it has the highest interest rate at {helocRate.toFixed(2)}%.
                   Once HELOC reaches $0, extra payments will automatically move to your next highest-rate debt.
                 </p>
               </div>
             )}
           </div>
 
-          <div>
-            <h4 className="font-semibold text-gray-800 mb-3">Payment Priority (Automatic):</h4>
-            <p className="text-sm text-gray-700 mb-3">
-              The extra {CalculationService.formatCurrency(currentResult.strategy.extraMonthlyPayment || 0)} always goes to your highest-interest debt first.
+          <div className="bg-white border border-brand-gray-border rounded-lg p-5">
+            <h4 className="text-sm font-medium text-brand-navy">Payment Priority (Automatic)</h4>
+            <p className="text-xs text-brand-gray mt-1 mb-4">
+              Extra {CalculationService.formatCurrency(currentResult.strategy.extraMonthlyPayment || 0)} always targets highest-interest debt first
             </p>
-            <div className="space-y-2">
+            <div>
               {currentResult.payoffTimeline.map((item, index) => {
                 const debt = allDebts.find(d => d.id === item.debtId);
                 const startMonth = index === 0 ? 1 : currentResult.payoffTimeline[index - 1].payoffMonth + 1;
                 const isHELOC = item.debtId === 'HELOC_VIRTUAL';
 
                 return (
-                  <div key={item.debtId} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex-shrink-0 w-8 h-8 bg-brand-blue text-white rounded-full flex items-center justify-center text-sm font-bold">
+                  <div
+                    key={item.debtId}
+                    className="flex items-center gap-3 py-3 border-b border-brand-gray-border last:border-b-0"
+                  >
+                    <div className="flex-shrink-0 w-6 h-6 bg-brand-navy text-white rounded-full flex items-center justify-center text-xs font-medium">
                       {index + 1}
                     </div>
-                    <div className="flex-1">
-                      <span className="font-medium text-gray-800">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-brand-gray">
                         Months {startMonth}-{item.payoffMonth}:
-                      </span>
-                      <span className="ml-2 text-gray-700">
-                        {item.debtName}
-                      </span>
-                      {debt && (
-                        <span className="ml-2 text-sm text-gray-600">
-                          ({debt.interestRate.toFixed(2)}% interest)
-                        </span>
-                      )}
-                      {isHELOC && index === 0 && (
-                        <span className="ml-2 text-sm font-semibold text-blue-600">
-                          ← Pay HELOC balance of {CalculationService.formatCurrency(helocBalance)} first
-                        </span>
-                      )}
+                      </p>
+                      <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                        <span className="text-[13px] font-medium text-brand-navy">{item.debtName}</span>
+                        {debt && (
+                          <span className="inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-brand-gray-light text-brand-gray border border-brand-gray-border">
+                            {debt.interestRate.toFixed(2)}% APR
+                          </span>
+                        )}
+                        {isHELOC && index === 0 && (
+                          <span className="text-xs text-brand-blue">
+                            Pay HELOC balance of {CalculationService.formatCurrency(helocBalance)} first
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -526,42 +598,42 @@ export default function StrategyResults({
             </div>
           </div>
 
-          <div className="bg-[#F2C94C]/10 rounded-lg p-5 border-l-4 border-[#F2C94C]">
-            <h4 className="font-semibold text-gray-800 mb-3">How It Works:</h4>
-            <ol className="space-y-2 text-gray-700">
-              <li className="flex items-start space-x-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-brand-blue text-white rounded-full flex items-center justify-center text-xs font-bold">
+          <div className="bg-brand-cream border-l-4 border-brand-orange rounded-lg p-4">
+            <h4 className="text-sm font-medium text-brand-navy mb-3">How It Works</h4>
+            <ol className="space-y-2">
+              <li className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 bg-brand-navy text-white rounded-full flex items-center justify-center text-xs font-medium">
                   1
                 </span>
-                <span>Each month, pay the minimum on ALL debts</span>
+                <span className="text-[13px] text-brand-navy">Each month, pay the minimum on ALL debts</span>
               </li>
-              <li className="flex items-start space-x-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-brand-blue text-white rounded-full flex items-center justify-center text-xs font-bold">
+              <li className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 bg-brand-navy text-white rounded-full flex items-center justify-center text-xs font-medium">
                   2
                 </span>
-                <span>
+                <span className="text-[13px] text-brand-navy">
                   Add the extra {CalculationService.formatCurrency(currentResult.strategy.extraMonthlyPayment || 0)} to the debt with highest interest
                   {helocDebt && allDebts[0].id === 'HELOC_VIRTUAL' && (
-                    <span className="block mt-1 text-blue-600 font-semibold">
-                      (Start with HELOC - eliminate your {CalculationService.formatCurrency(helocBalance)} balance first)
+                    <span className="block mt-1 text-brand-blue font-medium">
+                      Start with HELOC — eliminate your {CalculationService.formatCurrency(helocBalance)} balance first
                     </span>
                   )}
                 </span>
               </li>
-              <li className="flex items-start space-x-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-brand-blue text-white rounded-full flex items-center justify-center text-xs font-bold">
+              <li className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 bg-brand-navy text-white rounded-full flex items-center justify-center text-xs font-medium">
                   3
                 </span>
-                <span>When a debt is paid off, move that entire payment to the next highest-interest debt</span>
+                <span className="text-[13px] text-brand-navy">When a debt is paid off, move that entire payment to the next highest-interest debt</span>
               </li>
-              <li className="flex items-start space-x-3">
-                <span className="flex-shrink-0 w-6 h-6 bg-brand-blue text-white rounded-full flex items-center justify-center text-xs font-bold">
+              <li className="flex items-start gap-3">
+                <span className="flex-shrink-0 w-6 h-6 bg-brand-navy text-white rounded-full flex items-center justify-center text-xs font-medium">
                   4
                 </span>
-                <span>Repeat until debt-free</span>
+                <span className="text-[13px] text-brand-navy">Repeat until debt-free</span>
               </li>
             </ol>
-            <p className="mt-4 text-sm font-semibold text-gray-800 bg-white/50 rounded p-3">
+            <p className="mt-4 text-[13px] font-medium text-brand-navy">
               This strategy automatically targets high-interest debt first to save you the most money.
             </p>
           </div>
@@ -726,8 +798,9 @@ export default function StrategyResults({
         </div>
       )}
 
+      <div className="space-y-3">
       <Accordion
-        emoji="❓"
+        icon={<HelpCircle className="w-5 h-5 text-brand-orange" />}
         title="Understanding Your Strategy & FAQ"
         defaultOpen={false}
       >
@@ -859,25 +932,25 @@ export default function StrategyResults({
       </Accordion>
 
       <Accordion
-        emoji="📅"
+        icon={<Calendar className="w-5 h-5 text-brand-blue" />}
         title="Debt Payoff Timeline"
         defaultOpen={false}
       >
         <div className="pt-4 space-y-4">
           {currentResult.payoffTimeline.map((item, index) => (
-            <div key={item.debtId} className="flex items-center space-x-4">
-              <div className="flex-shrink-0 w-12 h-12 bg-brand-green text-white rounded-full flex items-center justify-center font-bold">
+            <div key={item.debtId} className="flex items-center gap-4">
+              <div className="flex-shrink-0 w-8 h-8 bg-brand-navy text-white rounded-full flex items-center justify-center text-sm font-medium">
                 {index + 1}
               </div>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-800">{item.debtName}</p>
-                <p className="text-sm text-gray-600">
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium text-brand-navy">{item.debtName}</p>
+                <p className="text-xs text-brand-gray">
                   Paid off in month {item.payoffMonth} ({CalculationService.formatMonthYear(item.payoffDate)})
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-600">Month</p>
-                <p className="font-bold text-brand-blue">{item.payoffMonth}</p>
+              <div className="text-right shrink-0">
+                <p className="text-xs text-brand-gray">Month</p>
+                <p className="text-sm font-medium text-brand-navy">{item.payoffMonth}</p>
               </div>
             </div>
           ))}
@@ -885,7 +958,7 @@ export default function StrategyResults({
       </Accordion>
 
       <Accordion
-        emoji="📊"
+        icon={<LineChart className="w-5 h-5 text-brand-green" />}
         title="Payoff Projection Chart"
         defaultOpen={false}
       >
@@ -916,37 +989,39 @@ export default function StrategyResults({
       </Accordion>
 
       <Accordion
-        emoji="📋"
+        icon={<FileText className="w-5 h-5 text-brand-gray" />}
         title="Strategy Details"
         defaultOpen={false}
       >
-        <div className="pt-4 space-y-2">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Extra Monthly Payment:</span>
-            <span className="font-semibold">
+        <div className="pt-4 space-y-2 text-sm">
+          <div className="flex justify-between py-2 border-b border-brand-gray-border">
+            <span className="text-brand-gray">Extra Monthly Payment</span>
+            <span className="font-medium text-brand-navy">
               {CalculationService.formatCurrency(currentResult.strategy.extraMonthlyPayment || 0)}
             </span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Starting Debt:</span>
-            <span className="font-semibold">
+          <div className="flex justify-between py-2 border-b border-brand-gray-border">
+            <span className="text-brand-gray">Starting Debt</span>
+            <span className="font-medium text-brand-navy">
               {CalculationService.formatCurrency(
                 allDebts.reduce((sum, d) => sum + d.currentBalance, 0)
               )}
             </span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Number of Debts:</span>
-            <span className="font-semibold">{allDebts.length}</span>
+          <div className="flex justify-between py-2 border-b border-brand-gray-border">
+            <span className="text-brand-gray">Number of Debts</span>
+            <span className="font-medium text-brand-navy">{allDebts.length}</span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Strategy Calculated:</span>
-            <span className="font-semibold">
+          <div className="flex justify-between py-2">
+            <span className="text-brand-gray">Strategy Calculated</span>
+            <span className="font-medium text-brand-navy">
               {CalculationService.formatDate(currentResult.strategy.calculatedAt)}
             </span>
           </div>
         </div>
       </Accordion>
+      </div>
+      </div>
     </div>
   );
 }
