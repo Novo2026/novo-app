@@ -377,11 +377,11 @@ export default function SavingsTracker() {
                                 <span className="text-[11px] text-brand-gray w-16 shrink-0">
                                   {CalculationService.formatLocalDateShort(transaction.date)}
                                 </span>
-                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-1">
                                   <span
                                     className={`w-2 h-2 rounded-full shrink-0 ${getTransactionDotClass(transaction.type)}`}
                                   />
-                                  <span className="text-[13px] text-brand-navy truncate">
+                                  <span className="text-[13px] text-brand-navy">
                                     {getTransactionDescription(transaction)}
                                   </span>
                                 </div>
