@@ -1,9 +1,12 @@
 import { supabase } from '../lib/supabase';
 
+import { APP_VERSION_STORAGE_KEY } from '../config/app';
+
 const EXCLUDE_PREFIXES = ['sb-'];
 
 // Ephemeral display state — never sync to cloud or restore on login
 const EXCLUDE_KEYS = [
+  APP_VERSION_STORAGE_KEY,
   'novo_proactive_messages',
   'novo_proactive_ssages',
   'novo_detected_milestones',
