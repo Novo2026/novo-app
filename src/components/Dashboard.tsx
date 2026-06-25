@@ -445,41 +445,41 @@ export default function Dashboard({
 
       <div className="max-w-5xl mx-auto px-5 pb-8">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 my-5">
-          <div className="bg-orange-50 border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-orange">
-            <p className="text-[11px] text-brand-gray uppercase tracking-wide">Total debt</p>
-            <p className="text-[22px] font-medium text-brand-navy mt-1">
+          <div className="bg-orange-50 border border-brand-gray-border rounded-lg p-3 sm:p-4 border-l-4 border-l-brand-orange min-w-0">
+            <p className="text-[10px] sm:text-[11px] text-brand-gray uppercase tracking-wide truncate whitespace-nowrap overflow-hidden">Total debt</p>
+            <p className="text-[18px] sm:text-[22px] font-medium text-brand-navy mt-1 whitespace-nowrap">
               {CalculationService.formatCurrency(metrics.totalCurrentBalance)}
             </p>
-            <p className="text-[11px] text-brand-gray mt-0.5">
+            <p className="text-[10px] sm:text-[11px] text-brand-gray mt-0.5 line-clamp-2">
               {metrics.progressPercentage.toFixed(1)}% paid off
             </p>
           </div>
-          <div className="bg-green-50 border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-green">
-            <p className="text-[11px] text-brand-gray uppercase tracking-wide">Cash on hand</p>
-            <p className="text-[22px] font-medium text-brand-navy mt-1">
+          <div className="bg-green-50 border border-brand-gray-border rounded-lg p-3 sm:p-4 border-l-4 border-l-brand-green min-w-0">
+            <p className="text-[10px] sm:text-[11px] text-brand-gray uppercase tracking-wide truncate whitespace-nowrap overflow-hidden">Cash on hand</p>
+            <p className="text-[18px] sm:text-[22px] font-medium text-brand-navy mt-1 whitespace-nowrap">
               {CalculationService.formatCurrency(cashOnHand)}
             </p>
-            <p className="text-[11px] text-brand-gray mt-0.5">
+            <p className="text-[10px] sm:text-[11px] text-brand-gray mt-0.5 line-clamp-2">
               {checkingAccounts.length > 0
                 ? `Across ${checkingAccounts.length} account${checkingAccounts.length !== 1 ? 's' : ''}`
                 : 'No checking accounts'}
             </p>
           </div>
-          <div className="bg-blue-50 border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-blue">
-            <p className="text-[11px] text-brand-gray uppercase tracking-wide">Monthly surplus</p>
-            <p className="text-[22px] font-medium text-brand-navy mt-1">
+          <div className="bg-blue-50 border border-brand-gray-border rounded-lg p-3 sm:p-4 border-l-4 border-l-brand-blue min-w-0">
+            <p className="text-[10px] sm:text-[11px] text-brand-gray uppercase tracking-wide truncate whitespace-nowrap overflow-hidden">Monthly surplus</p>
+            <p className="text-[18px] sm:text-[22px] font-medium text-brand-navy mt-1 whitespace-nowrap">
               {CalculationService.formatCurrency(monthlySurplusValue)}
             </p>
-            <p className="text-[11px] text-brand-gray mt-0.5">After savings carve-out</p>
+            <p className="text-[10px] sm:text-[11px] text-brand-gray mt-0.5 line-clamp-2">After savings carve-out</p>
           </div>
-          <div className="bg-purple-50 border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-orange-dark">
-            <p className="text-[11px] text-brand-gray uppercase tracking-wide">Debt-free date</p>
-            <p className="text-[22px] font-medium text-brand-navy mt-1">
+          <div className="bg-purple-50 border border-brand-gray-border rounded-lg p-3 sm:p-4 border-l-4 border-l-brand-orange-dark min-w-0">
+            <p className="text-[10px] sm:text-[11px] text-brand-gray uppercase tracking-wide truncate whitespace-nowrap overflow-hidden">Debt-free date</p>
+            <p className="text-[18px] sm:text-[22px] font-medium text-brand-navy mt-1 whitespace-nowrap">
               {optimizedProjection
                 ? CalculationService.formatMonthYear(optimizedProjection.debtFreeDate)
                 : '—'}
             </p>
-            <p className="text-[11px] text-brand-gray mt-0.5">Non-mortgage debts</p>
+            <p className="text-[10px] sm:text-[11px] text-brand-gray mt-0.5 line-clamp-2">Non-mortgage debts</p>
           </div>
         </div>
 

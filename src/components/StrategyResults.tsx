@@ -56,6 +56,14 @@ function getDebtTypePillClasses(debt: Debt): string {
   }
 }
 
+function getFocusTargetDebt(debts: Debt[]): Debt | null {
+  return (
+    [...debts]
+      .filter((debt) => debt.currentBalance > 0)
+      .sort((a, b) => b.interestRate - a.interestRate)[0] ?? null
+  );
+}
+
 interface StrategyResultsProps {
   result: StrategyResult;
   onRunNew: () => void;
@@ -137,6 +145,10 @@ export default function StrategyResults({
 
   // Include HELOC in debt list for display
   const allDebts = helocDebt ? [...debts, helocDebt] : debts;
+  const focusTargetDebt = getFocusTargetDebt(allDebts);
+  const otherFocusDebts = [...allDebts]
+    .filter((debt) => debt.currentBalance > 0 && debt.id !== focusTargetDebt?.id)
+    .sort((a, b) => b.interestRate - a.interestRate);
 
   const minimumOnly = CalculationService.projectMinimumPaymentsOnly(debts);
 
@@ -239,28 +251,37 @@ export default function StrategyResults({
   return (
     <div className="bg-brand-gray-light min-h-screen">
       <div className="bg-brand-navy py-3 px-5">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
-          <div>
+        <div className="max-w-4xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
             <h1 className="text-white text-lg font-medium leading-tight">My Plan</h1>
             <p className="text-white/65 text-xs mt-0.5">Your fastest path to debt freedom</p>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex w-full sm:w-auto gap-2">
             <button
               type="button"
               onClick={handleRecalculate}
               disabled={isRecalculating}
-              className="inline-flex items-center gap-2 border border-white text-white text-xs px-3 py-2 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex flex-1 sm:flex-none items-center justify-center gap-2 border border-white text-white text-xs px-3 py-2 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-w-0"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRecalculating ? 'animate-spin' : ''}`} />
-              <span>{isRecalculating ? 'Refreshing...' : 'Refresh Strategy'}</span>
+              <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isRecalculating ? 'animate-spin' : ''}`} />
+              <span className="truncate">
+                {isRecalculating ? (
+                  'Refreshing...'
+                ) : (
+                  <>
+                    <span className="sm:hidden">Refresh</span>
+                    <span className="hidden sm:inline">Refresh Strategy</span>
+                  </>
+                )}
+              </span>
             </button>
             <button
               type="button"
               onClick={onRunNew}
-              className="inline-flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white text-[13px] font-medium px-4 py-2 rounded-lg transition-colors"
+              className="inline-flex flex-1 sm:flex-none items-center justify-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white text-xs sm:text-[13px] font-medium px-3 sm:px-4 py-2 rounded-lg transition-colors min-w-0"
             >
-              <Plus className="w-4 h-4" />
-              <span>New Strategy</span>
+              <Plus className="w-4 h-4 shrink-0" />
+              <span className="truncate">New Strategy</span>
             </button>
           </div>
         </div>
@@ -461,26 +482,23 @@ export default function StrategyResults({
             )}
             <div className="space-y-3">
               {(() => {
-                const sortedDebts = [...allDebts].sort((a, b) => b.interestRate - a.interestRate);
-                const targetDebt = sortedDebts[0];
-                const otherDebts = sortedDebts.slice(1);
                 const extraPayment = currentResult.strategy.extraMonthlyPayment || 0;
                 const freedMinimums = paidOffDebts.reduce((s, d) => s + d.minimumPayment, 0);
                 const baseCashFlow = extraPayment - freedMinimums;
-                const isHELOC = targetDebt?.id === 'HELOC_VIRTUAL';
-                const targetPayment = targetDebt
-                  ? targetDebt.minimumPayment + extraPayment
+                const isHELOC = focusTargetDebt?.id === 'HELOC_VIRTUAL';
+                const targetPayment = focusTargetDebt
+                  ? focusTargetDebt.minimumPayment + extraPayment
                   : 0;
 
                 return (
                   <>
-                    {targetDebt && (
+                    {focusTargetDebt && (
                       <div className="bg-blue-50 border border-brand-blue rounded-lg p-4">
                         <div className="flex items-start justify-between gap-3 mb-2">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-[13px] font-medium text-brand-navy">{targetDebt.accountName}</span>
-                              <span className={getDebtTypePillClasses(targetDebt)}>{targetDebt.category}</span>
+                              <span className="text-[13px] font-medium text-brand-navy">{focusTargetDebt.accountName}</span>
+                              <span className={getDebtTypePillClasses(focusTargetDebt)}>{focusTargetDebt.category}</span>
                             </div>
                           </div>
                           <span className="bg-brand-orange text-white text-[10px] font-medium px-2 py-1 rounded-md shrink-0">
@@ -498,7 +516,7 @@ export default function StrategyResults({
                             </>
                           ) : (
                             <>
-                              <span className="text-brand-gray">{CalculationService.formatCurrency(targetDebt.minimumPayment)} min</span>
+                              <span className="text-brand-gray">{CalculationService.formatCurrency(focusTargetDebt.minimumPayment)} min</span>
                               {freedMinimums > 0 && (
                                 <>
                                   {' + '}
@@ -518,9 +536,9 @@ export default function StrategyResults({
                         </p>
                       </div>
                     )}
-                    {otherDebts.length > 0 && (
+                    {otherFocusDebts.length > 0 && (
                       <div className="bg-white border border-brand-gray-border rounded-lg overflow-hidden">
-                        {otherDebts.map((debt, index) => (
+                        {otherFocusDebts.map((debt, index) => (
                           <div
                             key={debt.id}
                             className={`flex items-center justify-between gap-3 px-4 py-3 border-b border-brand-gray-border last:border-b-0 border-l-4 ${getDebtAccentBorder(debt)} ${
@@ -545,7 +563,7 @@ export default function StrategyResults({
                 );
               })()}
             </div>
-            {helocDebt && allDebts[0].id === 'HELOC_VIRTUAL' && (
+            {helocDebt && focusTargetDebt?.id === 'HELOC_VIRTUAL' && (
               <div className="mt-3 bg-brand-blue-light border-l-4 border-brand-blue rounded-r-lg p-3 text-[11px] text-brand-blue">
                 <p>
                   <span className="font-medium">Pay down your HELOC balance first</span> — it has the highest interest rate at {helocRate.toFixed(2)}%.
@@ -613,7 +631,7 @@ export default function StrategyResults({
                 </span>
                 <span className="text-[13px] text-brand-navy">
                   Add the extra {CalculationService.formatCurrency(currentResult.strategy.extraMonthlyPayment || 0)} to the debt with highest interest
-                  {helocDebt && allDebts[0].id === 'HELOC_VIRTUAL' && (
+                  {helocDebt && focusTargetDebt?.id === 'HELOC_VIRTUAL' && (
                     <span className="block mt-1 text-brand-blue font-medium">
                       Start with HELOC — eliminate your {CalculationService.formatCurrency(helocBalance)} balance first
                     </span>
@@ -870,8 +888,18 @@ export default function StrategyResults({
           <div>
             <h5 className="font-bold text-gray-800 mb-2">Why is NOVO recommending I pay this debt first?</h5>
             <p className="text-gray-700">
-              NOVO prioritizes debts by interest rate. Your highest-rate debt ({allDebts[0]?.accountName} at {allDebts[0]?.interestRate.toFixed(2)}%)
-              costs you the most money every month, so paying it off first saves you the maximum amount in interest charges.
+              {focusTargetDebt ? (
+                <>
+                  NOVO prioritizes debts by interest rate. Your highest-rate debt ({focusTargetDebt.accountName} at{' '}
+                  {focusTargetDebt.interestRate.toFixed(2)}%) costs you the most money every month, so paying it off
+                  first saves you the maximum amount in interest charges.
+                </>
+              ) : (
+                <>
+                  NOVO prioritizes debts by interest rate. Your highest-rate debt with a balance costs you the most
+                  money every month, so paying it off first saves you the maximum amount in interest charges.
+                </>
+              )}
             </p>
           </div>
 

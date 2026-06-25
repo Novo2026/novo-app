@@ -479,17 +479,17 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
     return (
       <div className="bg-brand-gray-light min-h-screen">
         <div className="bg-brand-navy py-3 px-5">
-          <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
-            <div>
+          <div className="max-w-5xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
               <h1 className="text-white text-lg font-medium leading-tight">My Debts</h1>
               <p className="text-white/65 text-xs mt-0.5">Track and manage every debt in one place</p>
             </div>
             <button
               type="button"
               onClick={() => setShowAddDebt(true)}
-              className="inline-flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white text-[13px] font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
+              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white text-xs sm:text-[13px] font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 shrink-0" />
               <span>Add Debt</span>
             </button>
           </div>
@@ -788,17 +788,17 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
 
   const pageHeader = (
     <div className="bg-brand-navy py-3 px-5">
-      <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
-        <div>
+      <div className="max-w-5xl mx-auto flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-white text-lg font-medium leading-tight">My Debts</h1>
           <p className="text-white/65 text-xs mt-0.5">Track and manage every debt in one place</p>
         </div>
         <button
           type="button"
           onClick={() => setShowAddDebt(true)}
-          className="inline-flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white text-[13px] font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
+          className="inline-flex w-full sm:w-auto items-center justify-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white text-xs sm:text-[13px] font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-4 h-4 shrink-0" />
           <span>Add Debt</span>
         </button>
       </div>
