@@ -477,6 +477,7 @@ export default function WhatIfSimulator() {
             </div>
           </div>
 
+          <div className="space-y-2">
           <div className="bg-white border border-brand-gray-border rounded-lg border-t-[3px] border-t-brand-green shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-5">
             <div className="flex items-center gap-2 mb-5">
               <h2 className="text-[15px] font-medium text-brand-navy">Results</h2>
@@ -558,6 +559,11 @@ export default function WhatIfSimulator() {
                 priority as the payoff engine).
               </p>
             )}
+          </div>
+          <p className="text-[11px] text-brand-gray italic px-1">
+            Note: Simulator projections use a simplified calculation and may differ slightly from your My Plan
+            results. Use this tool to explore directional scenarios, not exact dates.
+          </p>
           </div>
         </div>
       </div>
