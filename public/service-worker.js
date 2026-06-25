@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'novo-cache-2026-06-16-v1';
+const CACHE_VERSION = '__CACHE_VERSION__';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 
 const NEVER_CACHE_PATTERNS = [
@@ -8,6 +8,7 @@ const NEVER_CACHE_PATTERNS = [
 ];
 
 const JS_CSS_PATTERN = /\.(js|css)$/;
+const HASHED_ASSET_PATTERN = /-[A-Za-z0-9_-]{8,}\.[a-z0-9]+$/i;
 
 self.addEventListener('install', (event) => {
   console.log('[NOVO SW] Installing version:', CACHE_VERSION);
@@ -19,12 +20,12 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (!cacheName.startsWith(CACHE_VERSION)) {
-            console.log('[NOVO SW] Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
+        cacheNames
+          .filter((name) => name !== `${CACHE_VERSION}-static`)
+          .map((name) => {
+            console.log('[NOVO SW] Deleting old cache:', name);
+            return caches.delete(name);
+          })
       );
     }).then(() => {
       console.log('[NOVO SW] Now controlling all clients');
@@ -66,10 +67,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  if (HASHED_ASSET_PATTERN.test(url.pathname)) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) return cachedResponse;
+        return fetch(request).then((response) => {
+          if (response && response.status === 200) {
+            const responseClone = response.clone();
+            caches.open(STATIC_CACHE).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // Fixed-name assets (icons, manifest, etc.): network-first so updates propagate immediately.
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) return cachedResponse;
-      return fetch(request).then((response) => {
+    fetch(request)
+      .then((response) => {
         if (response && response.status === 200) {
           const responseClone = response.clone();
           caches.open(STATIC_CACHE).then((cache) => {
@@ -77,8 +96,8 @@ self.addEventListener('fetch', (event) => {
           });
         }
         return response;
-      });
-    })
+      })
+      .catch(() => caches.match(request))
   );
 });
 

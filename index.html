@@ -41,7 +41,7 @@
         let refreshing = false;
 
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/service-worker.js')
+          navigator.serviceWorker.register('/service-worker.js', { updateViaCache: 'none' })
             .then((reg) => {
               console.log('NOVO Service Worker registered');
 
@@ -64,17 +64,16 @@
                     if (!refreshing) {
                       console.log('NOVO update available!');
 
-                      // Show update banner
+                      // Show update banner — user clicks to activate new SW; reload on controllerchange
                       const banner = document.createElement('div');
-                      banner.textContent = '📱 NOVO update available - reloading...';
-                      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#10b981;color:white;padding:12px;text-align:center;z-index:9999;font-family:system-ui,-apple-system,sans-serif;font-size:14px;font-weight:500;box-shadow:0 2px 8px rgba(0,0,0,0.1)';
-                      document.body.appendChild(banner);
-
-                      // Wait 2 seconds, then reload
-                      setTimeout(() => {
+                      banner.textContent = 'NOVO has been updated. Click to reload for the latest version.';
+                      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#10b981;color:white;padding:12px;text-align:center;z-index:9999;font-family:system-ui,-apple-system,sans-serif;font-size:14px;font-weight:500;box-shadow:0 2px 8px rgba(0,0,0,0.1);cursor:pointer';
+                      banner.addEventListener('click', () => {
+                        if (refreshing) return;
                         refreshing = true;
                         newWorker.postMessage({ type: 'SKIP_WAITING' });
-                      }, 2000);
+                      });
+                      document.body.appendChild(banner);
                     }
                   }
                 });
