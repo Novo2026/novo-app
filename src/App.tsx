@@ -355,8 +355,7 @@ function App() {
         );
       case 'debts':
         return (
-          <div>
-            <PageHero page="debts" title="My Debts" subtitle="Track and manage every debt in one place" />
+          <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 md:-mt-8">
             <MyDebts onDataUpdate={handleDataUpdate} />
           </div>
         );

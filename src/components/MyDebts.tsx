@@ -1,5 +1,18 @@
-import { useState } from 'react';
-import { Plus, DollarSign, Pencil, Trash2, Calendar, RefreshCw, ArrowRightLeft, Home, ChevronDown, ChevronUp, CheckCircle, Trophy } from 'lucide-react';
+﻿import { useState } from 'react';
+import {
+  Plus,
+  DollarSign,
+  Pencil,
+  Trash2,
+  RefreshCw,
+  ArrowRightLeft,
+  Home,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2,
+  Trophy,
+  X,
+} from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import AddDebtModal from './AddDebtModal';
@@ -16,10 +29,7 @@ import { MILESTONE_CELEBRATIONS_DISABLED } from '../utils/milestoneEngine';
 import {
   formatLoanStartDateForDisplay,
   formatLoanTermForDisplay,
-  formatOriginalAmountForDisplay,
   formatProjectedPayoffMonthYear,
-  getMonthsRemainingUntilProjectedPayoff,
-  hasCompleteInstallmentMetadata,
   hasProjectedPayoffMetadata,
   isInstallmentLoanCategory,
 } from '../utils/installmentLoan';
@@ -27,6 +37,30 @@ import type { Debt, Transaction, Milestone } from '../types';
 
 interface MyDebtsProps {
   onDataUpdate: () => void;
+}
+
+function getDebtAccentBorder(debt: Debt, isOpenAccount: boolean): string {
+  if (isOpenAccount) return 'border-l-brand-gray';
+  switch (debt.category) {
+    case 'Mortgage':
+      return 'border-l-brand-blue';
+    case 'Auto Loan':
+      return 'border-l-brand-orange';
+    case 'Credit Card':
+      return 'border-l-brand-red';
+    case 'Personal Loan':
+      return 'border-l-brand-green';
+    default:
+      return 'border-l-brand-gray';
+  }
+}
+
+function formatPaidOffDisplayDate(debt: Debt): string {
+  const date = debt.paidOffDate ?? debt.homeSaleDate;
+  if (!date || Number.isNaN(new Date(date).getTime())) {
+    return 'date not recorded';
+  }
+  return new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
 export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
@@ -70,6 +104,10 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
   const paidOffDebts = allDebts.filter(d => d.isPaidOff);
   const zeroBalanceActiveDebts = activeDebts.filter(d => d.currentBalance === 0);
   const paidDownToZeroDebts = zeroBalanceActiveDebts.filter(d => d.startingBalance > 0);
+  const isAdminMode = localStorage.getItem('novo_admin_mode') === 'true';
+  const totalOwed = activeDebts.reduce((sum, d) => sum + d.currentBalance, 0);
+  const totalMinimums = activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
+  const totalEliminated = paidOffDebts.reduce((sum, d) => sum + d.startingBalance, 0);
 
   const handleAddCharge = (debtId: string) => {
     setSelectedDebtId(debtId);
@@ -324,17 +362,6 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
     onDataUpdate();
   };
 
-  const getRefinanceButtonLabel = (debt: Debt): string => {
-    if (debt.category === 'Credit Card') return 'Transfer Balance';
-    if (debt.category === 'Student Loan') return 'Refinance/Consolidate';
-    return 'Refinance This Loan';
-  };
-
-  const getRefinanceIcon = (debt: Debt) => {
-    if (debt.category === 'Credit Card') return <ArrowRightLeft className="w-3.5 h-3.5" />;
-    return <RefreshCw className="w-3.5 h-3.5" />;
-  };
-
   const getLastRefinanceDate = (debt: Debt): string | null => {
     if (!debt.refinanceHistory || debt.refinanceHistory.length === 0) return null;
     const last = debt.refinanceHistory[debt.refinanceHistory.length - 1];
@@ -345,13 +372,6 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
     if (!debt.refinanceHistory || debt.refinanceHistory.length === 0) return false;
     const last = debt.refinanceHistory[debt.refinanceHistory.length - 1];
     return last.newRate < last.previousRate;
-  };
-
-  const getDebtPaymentHistory = (debtId: string) => {
-    const payments = StorageService.getUnifiedPayments().filter(p => p.debtId === debtId);
-    const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-    const totalInterest = payments.reduce((sum, p) => sum + p.interestCharged, 0);
-    return { totalPaid, totalInterest };
   };
 
   const getLastPaymentForDebt = (debtId: string) => {
@@ -390,16 +410,33 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
 
   if (allDebts.length === 0) {
     return (
-      <>
-        <div className="text-center py-16">
-          <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">No Debts Added Yet</h2>
-          <p className="text-gray-600 mb-6">
+      <div className="bg-brand-gray-light min-h-screen">
+        <div className="bg-brand-navy py-3 px-5">
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+            <div>
+              <h1 className="text-white text-lg font-medium leading-tight">My Debts</h1>
+              <p className="text-white/65 text-xs mt-0.5">Track and manage every debt in one place</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAddDebt(true)}
+              className="inline-flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white text-[13px] font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Debt</span>
+            </button>
+          </div>
+        </div>
+        <div className="max-w-5xl mx-auto px-5 py-16 text-center">
+          <DollarSign className="w-16 h-16 text-brand-gray mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-brand-navy mb-2">No Debts Added Yet</h2>
+          <p className="text-brand-gray mb-6">
             Add your first debt to start tracking your payoff progress.
           </p>
           <button
+            type="button"
             onClick={() => setShowAddDebt(true)}
-            className="inline-flex items-center space-x-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-colors"
+            className="inline-flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold py-3 px-6 rounded-lg transition-colors"
           >
             <Plus className="w-5 h-5" />
             <span>Add Your First Debt</span>
@@ -412,427 +449,383 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
             onSuccess={handleDebtAdded}
           />
         )}
-      </>
+      </div>
     );
   }
 
-  const renderDebtCard = (debt: Debt, isPaidOffCard = false) => {
+  const renderDebtCard = (debt: Debt) => {
     const isOpenAccount = debt.currentBalance === 0 && !debt.isPaidOff && debt.startingBalance === 0;
     const isPaidDownToZero = debt.currentBalance === 0 && !debt.isPaidOff && debt.startingBalance > 0;
-    const isZeroBalance = isOpenAccount || isPaidDownToZero;
-    const paidOff = debt.startingBalance - debt.currentBalance;
-    const progress = debt.startingBalance > 0 ? (paidOff / debt.startingBalance) * 100 : 0;
-
-    if (isPaidOffCard) {
-      const { totalPaid, totalInterest } = getDebtPaymentHistory(debt.id);
-      return (
-        <div
-          key={debt.id}
-          className={`bg-white rounded-lg shadow-md border-2 transition-all ${
-            debt.homeSold ? 'border-amber-400' :
-            debt.transferredToHELOC ? 'border-[#F2994A]' : 'border-brand-green'
-          }`}
-        >
-          <div className="p-6">
-            <div className="flex justify-between items-start mb-3">
-              <div className="flex-1">
-                <h3 className="font-bold text-lg text-gray-700 line-through decoration-gray-400 mb-1">{debt.accountName}</h3>
-                <p className="text-sm text-gray-500">{debt.category}</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className={`flex items-center space-x-1 text-white text-xs font-bold px-3 py-1 rounded-full ${
-                  debt.homeSold ? 'bg-amber-500' :
-                  debt.transferredToHELOC ? 'bg-[#F2994A]' : 'bg-brand-green'
-                }`}>
-                  {debt.homeSold ? <Home className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
-                  <span>
-                    {debt.homeSold ? 'HOME SOLD' :
-                     debt.transferredToHELOC ? 'TRANSFERRED' : 'PAID OFF'}
-                  </span>
-                </span>
-                <button
-                  onClick={(e) => handleDeleteClick(debt, e)}
-                  className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                  title="Delete debt"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-sm mb-4">
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-xs text-gray-500 mb-1">Original Balance</p>
-                <p className="font-bold text-gray-800">{CalculationService.formatCurrency(debt.startingBalance)}</p>
-              </div>
-              <div className="bg-emerald-50 rounded-lg p-3">
-                <p className="text-xs text-gray-500 mb-1">Date Paid Off</p>
-                <p className="font-bold text-brand-green">
-                  {debt.paidOffDate && !isNaN(new Date(debt.paidOffDate).getTime())
-                    ? new Date(debt.paidOffDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                    : debt.homeSaleDate && !isNaN(new Date(debt.homeSaleDate).getTime())
-                      ? new Date(debt.homeSaleDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                      : 'Recently'}
-                </p>
-              </div>
-              {totalPaid > 0 && (
-                <div className="bg-blue-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">Total Paid</p>
-                  <p className="font-bold text-brand-blue">{CalculationService.formatCurrency(totalPaid)}</p>
-                </div>
-              )}
-              {totalInterest > 0 && (
-                <div className="bg-red-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">Total Interest Paid</p>
-                  <p className="font-bold text-red-600">{CalculationService.formatCurrency(totalInterest)}</p>
-                </div>
-              )}
-            </div>
-
-            <div className="mb-4">
-              <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                <div className="h-full rounded-full bg-brand-green w-full" />
-              </div>
-              <p className="text-xs text-gray-500 mt-1 text-right">100% paid off</p>
-            </div>
-
-            <div className="flex space-x-2">
-              <button
-                onClick={() => handleViewDetail(debt)}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-semibold py-2 px-4 rounded transition-colors"
-              >
-                View Payment History
-              </button>
-              <button
-                onClick={(e) => handleDeleteClick(debt, e)}
-                className="bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold py-2 px-4 rounded transition-colors flex items-center gap-1"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
+    const paidOffAmount = debt.startingBalance - debt.currentBalance;
+    const progress = debt.startingBalance > 0 ? (paidOffAmount / debt.startingBalance) * 100 : 0;
+    const lastPayment = getLastPaymentForDebt(debt.id);
+    const projectedPayoff = hasProjectedPayoffMetadata(debt) && formatProjectedPayoffMonthYear(debt)
+      ? formatProjectedPayoffMonthYear(debt)
+      : 'â€”';
 
     return (
       <div
         key={debt.id}
-        className={`bg-white rounded-lg shadow-md border-2 transition-all hover:shadow-lg ${
-          isOpenAccount ? 'border-blue-200' :
-          isPaidDownToZero ? 'border-brand-green ring-2 ring-brand-green/20' : 'border-gray-200'
-        }`}
+        className={`bg-white border border-brand-gray-border rounded-lg border-l-4 ${getDebtAccentBorder(debt, isOpenAccount)}`}
       >
-        <div className="p-6">
+        <div className="p-4">
           {isPaidDownToZero && (
-            <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 mb-4">
-              <Trophy className="w-4 h-4 text-brand-green flex-shrink-0" />
-              <p className="text-sm font-semibold text-brand-green">Balance reached $0 — close this account when you&apos;re ready.</p>
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-3">
+              <Trophy className="w-4 h-4 text-brand-green shrink-0" />
+              <p className="text-xs font-medium text-brand-green">Balance reached $0 â€” close this account when ready.</p>
             </div>
           )}
-          <div className="flex justify-between items-start mb-4">
-            <div className="flex-1">
-              <h3 className="font-bold text-xl text-gray-800 mb-1">{debt.accountName}</h3>
-              <p className="text-sm text-gray-500">{debt.category}</p>
-            </div>
-            <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+
+          <div className="flex items-start justify-between gap-2 mb-3">
+            <div className="min-w-0">
+              <h3 className="text-[15px] font-medium text-brand-navy">{debt.accountName}</h3>
+              <p className="text-[11px] text-brand-gray mt-0.5">{debt.category}</p>
               {debt.refinanceHistory && debt.refinanceHistory.length > 0 && (
                 <span
-                  className={`flex items-center space-x-1 text-xs font-semibold px-2 py-1 rounded-full ${
-                    didRateImprove(debt)
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-blue-100 text-blue-700'
+                  className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full mt-1 ${
+                    didRateImprove(debt) ? 'bg-green-50 text-brand-green' : 'bg-brand-blue-light text-brand-blue'
                   }`}
-                  title={`Refinanced on ${getLastRefinanceDate(debt)}`}
                 >
                   <RefreshCw className="w-3 h-3" />
-                  <span>
-                    {didRateImprove(debt) ? 'Rate Improved' : 'Refinanced'} {getLastRefinanceDate(debt)}
-                    {(() => {
-                      const lastRefi = debt.refinanceHistory?.[debt.refinanceHistory.length - 1];
-                      return lastRefi?.newLender ? (
-                        <span className="text-xs text-gray-500 ml-1">· {lastRefi.newLender}</span>
-                      ) : null;
-                    })()}
-                  </span>
+                  {didRateImprove(debt) ? 'Rate improved' : 'Refinanced'} {getLastRefinanceDate(debt)}
                 </span>
               )}
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
               {isOpenAccount && (
-                <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-1 rounded-full">
+                <span className="text-[10px] bg-blue-50 text-brand-blue border border-brand-blue px-2 py-0.5 rounded-full font-medium">
                   Open
                 </span>
               )}
-              <span className="bg-red-100 text-red-700 text-xs font-semibold px-2 py-1 rounded">
+              <span className="text-[11px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
                 {debt.interestRate}% APR
               </span>
               <button
+                type="button"
                 onClick={(e) => handleEditClick(debt, e)}
-                className="p-1.5 text-gray-500 hover:text-brand-blue hover:bg-blue-50 rounded transition-colors"
+                className="p-1 text-brand-gray hover:text-brand-navy rounded transition-colors"
                 title="Edit debt"
               >
-                <Pencil className="w-4 h-4" />
+                <Pencil className="w-3.5 h-3.5" />
               </button>
               <button
+                type="button"
                 onClick={(e) => handleDeleteClick(debt, e)}
-                className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                className="p-1 text-brand-gray hover:text-brand-navy rounded transition-colors"
                 title="Delete debt"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
 
-          <div className="mb-4">
-            <p className="text-sm text-gray-600 mb-1">Current Balance</p>
-            <p className={`text-3xl font-bold ${isZeroBalance ? 'text-brand-green' : 'text-brand-navy'}`}>
+          <div className="mb-3">
+            <p className="text-[10px] uppercase tracking-wide text-brand-gray">Current Balance</p>
+            <p className={`text-[22px] font-medium mt-0.5 ${isOpenAccount ? 'text-brand-gray' : 'text-brand-navy'}`}>
               {CalculationService.formatCurrency(debt.currentBalance)}
             </p>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-[11px] text-brand-gray mt-0.5">
               Started at {CalculationService.formatCurrency(debt.startingBalance)}
             </p>
-            {debt.replacedByDebtId && (
-              <p className="text-xs text-gray-500 mt-1">Replaced by new mortgage</p>
-            )}
-            {debt.replacedDebtName && (
-              <p className="text-xs text-amber-600 mt-1">Replaced {debt.replacedDebtName}</p>
-            )}
           </div>
 
-          {!isZeroBalance && (
-          <div className="mb-4">
-            <div className="flex justify-between text-sm text-gray-600 mb-2">
-              <span>Amount Paid Off: {CalculationService.formatCurrency(paidOff)}</span>
-              <span>{progress.toFixed(1)}%</span>
+          {isOpenAccount ? (
+            <p className="text-[11px] text-brand-gray mb-3">No balance yet</p>
+          ) : (
+            <div className="mb-3">
+              <div className="flex justify-between text-[11px] mb-1">
+                <span className="text-brand-gray">{progress.toFixed(1)}% paid off</span>
+                <span className="text-brand-green">{CalculationService.formatCurrency(paidOffAmount)} paid off</span>
+              </div>
+              <div className="w-full bg-brand-gray-border rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="h-full bg-brand-orange rounded-full transition-all"
+                  style={{ width: `${Math.min(progress, 100)}%` }}
+                />
+              </div>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all bg-brand-blue"
-                style={{ width: `${Math.min(progress, 100)}%` }}
-              />
-            </div>
-          </div>
           )}
 
-          <div className="text-sm text-gray-600 mb-4">
-            <p>Minimum Payment: {CalculationService.formatCurrency(debt.minimumPayment)}</p>
-            {(() => {
-              const lastPayment = getLastPaymentForDebt(debt.id);
-              if (!lastPayment) return null;
-              return (
-                <div className="mt-2 pt-2 border-t border-gray-100">
-                  <p>
-                    Last payment: {CalculationService.formatCurrency(lastPayment.amount)} on{' '}
-                    {CalculationService.formatLocalDateShort(lastPayment.date)}
-                  </p>
-                  {lastPayment.additionalPrincipal != null && lastPayment.additionalPrincipal > 0 && (
-                    <p className="text-xs text-brand-navy mt-0.5">
-                      Includes {CalculationService.formatCurrency(lastPayment.additionalPrincipal)} additional principal
-                    </p>
-                  )}
-                </div>
-              );
-            })()}
-          </div>
+          {!isOpenAccount && (
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <div>
+                <p className="text-[10px] text-brand-gray">Min payment</p>
+                <p className="text-[13px] text-brand-navy">{CalculationService.formatCurrency(debt.minimumPayment)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-brand-gray">Last payment</p>
+                <p className="text-[13px] text-brand-navy">
+                  {lastPayment
+                    ? `${CalculationService.formatCurrency(lastPayment.amount)} Â· ${CalculationService.formatLocalDateShort(lastPayment.date)}`
+                    : 'â€”'}
+                </p>
+              </div>
+              <div>
+                <p className="text-[10px] text-brand-gray">Projected payoff</p>
+                <p className="text-[13px] text-brand-navy">{projectedPayoff}</p>
+              </div>
+            </div>
+          )}
 
           {isInstallmentLoanCategory(debt.category) &&
-            (debt.originalAmount != null ||
-              debt.loanStartDate ||
-              (debt.loanTerm != null && debt.loanTerm > 0)) && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4 text-sm">
-                {debt.originalAmount != null && debt.originalAmount > 0 && (
-                  <div className="bg-slate-50 rounded-lg px-3 py-2">
-                    <p className="text-xs text-gray-500">Original balance</p>
-                    <p className="font-semibold text-gray-800">
-                      {formatOriginalAmountForDisplay(debt.originalAmount)}
-                    </p>
-                  </div>
-                )}
+            (debt.loanStartDate || (debt.loanTerm != null && debt.loanTerm > 0)) && (
+              <div className="text-[11px] text-brand-gray mb-3">
                 {debt.loanStartDate && (
-                  <div className="bg-slate-50 rounded-lg px-3 py-2">
-                    <p className="text-xs text-gray-500">Loan start</p>
-                    <p className="font-semibold text-gray-800">
-                      {formatLoanStartDateForDisplay(debt.loanStartDate)}
-                    </p>
-                  </div>
+                  <span>Loan start {formatLoanStartDateForDisplay(debt.loanStartDate)}</span>
                 )}
+                {debt.loanStartDate && debt.loanTerm != null && debt.loanTerm > 0 && <span> Â· </span>}
                 {debt.loanTerm != null && debt.loanTerm > 0 && (
-                  <div className="bg-slate-50 rounded-lg px-3 py-2">
-                    <p className="text-xs text-gray-500">Term</p>
-                    <p className="font-semibold text-gray-800">
-                      {formatLoanTermForDisplay(debt.loanTerm, debt.loanTermUnit, debt.isAmortized)}
-                      {hasCompleteInstallmentMetadata(debt) && (
-                        <span className="block text-xs font-normal text-gray-500 mt-0.5">
-                          Installment-aware payoff estimates
-                        </span>
-                      )}
-                    </p>
-                    {hasProjectedPayoffMetadata(debt) && formatProjectedPayoffMonthYear(debt) && (
-                      <p className="text-xs text-brand-navy mt-1.5 font-medium">
-                        Projected payoff: {formatProjectedPayoffMonthYear(debt)}
-                        {(() => {
-                          const monthsLeft = getMonthsRemainingUntilProjectedPayoff(debt);
-                          return monthsLeft != null
-                            ? ` · ${monthsLeft} month${monthsLeft !== 1 ? 's' : ''} left`
-                            : '';
-                        })()}
-                      </p>
-                    )}
-                  </div>
+                  <span>Term {formatLoanTermForDisplay(debt.loanTerm, debt.loanTermUnit, debt.isAmortized)}</span>
+                )}
+                {hasProjectedPayoffMetadata(debt) && formatProjectedPayoffMonthYear(debt) && (
+                  <span className="text-brand-blue ml-1">
+                    Â· Payoff {formatProjectedPayoffMonthYear(debt)}
+                  </span>
                 )}
               </div>
             )}
 
-          <div className="flex flex-col space-y-2">
-            {isZeroBalance && (
-              <button
-                onClick={(e) => handleCloseAccountClick(debt, e)}
-                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center space-x-2 border border-slate-300"
-              >
-                <CheckCircle className="w-4 h-4" />
-                <span>Close Account</span>
-              </button>
-            )}
-            <div className="flex space-x-2">
-              <button
-                onClick={() => handleViewDetail(debt)}
-                className="flex-1 bg-brand-blue hover:bg-[#1E8BBD] text-white text-sm font-semibold py-2 px-4 rounded transition-colors"
-              >
-                View Details
-              </button>
-              {debt.category === 'Credit Card' && (
+          <div className="flex items-center justify-between gap-3 pt-3 border-t border-brand-gray-border">
+            <button
+              type="button"
+              onClick={() => handleViewDetail(debt)}
+              className="text-[13px] font-medium px-4 py-2 rounded-lg border border-brand-navy text-brand-navy hover:bg-brand-navy hover:text-white transition-colors"
+            >
+              View Details
+            </button>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              {isOpenAccount ? (
                 <button
-                  onClick={() => handleAddCharge(debt.id)}
-                  className="bg-[#F2C94C] hover:bg-[#E0B73C] text-gray-800 text-sm font-semibold py-2 px-4 rounded transition-colors"
+                  type="button"
+                  onClick={(e) => handleCloseAccountClick(debt, e)}
+                  className="inline-flex items-center gap-1 text-[12px] text-brand-red hover:underline"
                 >
-                  Add Charge
+                  <X className="w-3.5 h-3.5" />
+                  Close Account
+                </button>
+              ) : (
+                <>
+                  {debt.category !== 'Credit Card' && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleRefinanceClick(debt, e)}
+                      className="inline-flex items-center gap-1 text-[12px] text-brand-blue hover:underline"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Refinance
+                    </button>
+                  )}
+                  {debt.category === 'Credit Card' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleAddCharge(debt.id)}
+                        className="inline-flex items-center gap-1 text-[12px] text-brand-orange hover:underline"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Charge
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleRefinanceClick(debt, e)}
+                        className="inline-flex items-center gap-1 text-[12px] text-brand-blue hover:underline"
+                      >
+                        <ArrowRightLeft className="w-3.5 h-3.5" />
+                        Transfer Balance
+                      </button>
+                    </>
+                  )}
+                  {!debt.isPaidOff && debt.currentBalance > 0 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleMarkPaidOff(debt);
+                      }}
+                      className="inline-flex items-center gap-1 text-[12px] text-brand-green hover:underline"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Mark as Paid Off
+                    </button>
+                  )}
+                  {debt.category === 'Mortgage' && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleSoldHomeClick(debt, e)}
+                      className="inline-flex items-center gap-1 text-[12px] text-brand-orange hover:underline"
+                    >
+                      <Home className="w-3.5 h-3.5" />
+                      Sold Home
+                    </button>
+                  )}
+                </>
+              )}
+              {isAdminMode && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBatchEntryDebt(debt);
+                    setShowBatchEntry(true);
+                  }}
+                  className="inline-flex items-center gap-1 text-[12px] text-brand-gray hover:underline"
+                >
+                  Batch Entry (Demo)
                 </button>
               )}
             </div>
-            <button
-              onClick={(e) => handleRefinanceClick(debt, e)}
-              className="w-full bg-brand-navy/5 hover:bg-brand-navy/10 text-brand-navy text-sm font-semibold py-2 px-4 rounded transition-colors flex items-center justify-center space-x-2"
-            >
-              {getRefinanceIcon(debt)}
-              <span>{getRefinanceButtonLabel(debt)}</span>
-            </button>
-            {!debt.isPaidOff && debt.currentBalance > 0 && (
-              <button
-                onClick={(e) => { e.stopPropagation(); handleMarkPaidOff(debt); }}
-                className="w-full text-center py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors border border-emerald-200 mt-1"
-              >
-                ✓ Mark as Paid Off
-              </button>
-            )}
-            {debt.category === 'Mortgage' && (
-              <button
-                onClick={(e) => handleSoldHomeClick(debt, e)}
-                className="w-full bg-amber-50 hover:bg-amber-100 text-amber-700 text-sm font-semibold py-2 px-4 rounded transition-colors flex items-center justify-center space-x-2"
-              >
-                <Home className="w-3.5 h-3.5" />
-                <span>Sold Home</span>
-              </button>
-            )}
-            <button
-              onClick={() => {
-                setBatchEntryDebt(debt);
-                setShowBatchEntry(true);
-              }}
-              className="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-sm font-semibold py-2 px-4 rounded transition-colors flex items-center justify-center space-x-2"
-            >
-              <Calendar className="w-4 h-4" />
-              <span>Batch Entry (Demo)</span>
-            </button>
           </div>
         </div>
       </div>
     );
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-800">My Debts</h2>
+  const renderPaidOffRow = (debt: Debt, index: number) => (
+    <div
+      key={debt.id}
+      className={`flex items-center gap-3 px-4 py-3 ${index > 0 ? 'border-t border-brand-gray-border' : ''}`}
+    >
+      <CheckCircle2 className="w-5 h-5 text-brand-green shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-medium text-brand-navy">{debt.accountName}</p>
+        <p className="text-[11px] text-brand-gray">{debt.category}</p>
+      </div>
+      <span className="text-[11px] bg-green-50 text-green-700 px-2 py-0.5 rounded-full shrink-0">
+        {debt.homeSold ? 'Home sold' : debt.transferredToHELOC ? 'Transferred' : `Paid off ${formatPaidOffDisplayDate(debt)}`}
+      </span>
+      <span className="text-[13px] font-medium text-brand-navy shrink-0">
+        {CalculationService.formatCurrency(debt.startingBalance)}
+      </span>
+      <button
+        type="button"
+        onClick={() => handleViewDetail(debt)}
+        className="text-[12px] text-brand-blue hover:underline shrink-0"
+      >
+        History
+      </button>
+      <button
+        type="button"
+        onClick={(e) => handleDeleteClick(debt, e)}
+        className="p-1 text-brand-gray hover:text-brand-navy shrink-0"
+        title="Delete debt"
+      >
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+
+  const pageHeader = (
+    <div className="bg-brand-navy py-3 px-5">
+      <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-white text-lg font-medium leading-tight">My Debts</h1>
+          <p className="text-white/65 text-xs mt-0.5">Track and manage every debt in one place</p>
+        </div>
         <button
+          type="button"
           onClick={() => setShowAddDebt(true)}
-          className="inline-flex items-center space-x-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors"
+          className="inline-flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white text-[13px] font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
         >
           <Plus className="w-4 h-4" />
           <span>Add Debt</span>
         </button>
       </div>
+    </div>
+  );
 
-      {paidDownToZeroDebts.length > 0 && (
-        <div className="bg-emerald-50 border-2 border-brand-green rounded-xl p-4 flex items-start gap-3">
-          <Trophy className="w-5 h-5 text-brand-green flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-bold text-brand-green text-sm">
-              {paidDownToZeroDebts.length === 1
-                ? `${paidDownToZeroDebts[0].accountName} is at $0!`
-                : `${paidDownToZeroDebts.length} debts are at $0!`}
-            </p>
-            <p className="text-sm text-emerald-700">
-              Click &quot;Close Account&quot; on {paidDownToZeroDebts.length === 1 ? 'the card below' : 'each card below'} to move it to your paid-off history.
-            </p>
+  return (
+    <div className="bg-brand-gray-light min-h-screen">
+      {pageHeader}
+
+      <div className="max-w-5xl mx-auto px-5 pb-8">
+        {activeDebts.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-5">
+            <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-orange">
+              <p className="text-[11px] text-brand-gray uppercase tracking-wide">Active debts</p>
+              <p className="text-[22px] font-medium text-brand-navy mt-1">{activeDebts.length}</p>
+            </div>
+            <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-red">
+              <p className="text-[11px] text-brand-gray uppercase tracking-wide">Total owed</p>
+              <p className="text-[22px] font-medium text-brand-navy mt-1">
+                {CalculationService.formatCurrency(totalOwed)}
+              </p>
+            </div>
+            <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-blue">
+              <p className="text-[11px] text-brand-gray uppercase tracking-wide">Monthly minimums</p>
+              <p className="text-[22px] font-medium text-brand-navy mt-1">
+                {CalculationService.formatCurrency(totalMinimums)}
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {activeDebts.length === 0 && paidOffDebts.length > 0 ? (
-        <div className="text-center py-12 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border-2 border-emerald-200">
-          <Trophy className="w-16 h-16 text-brand-green mx-auto mb-4" />
-          <h3 className="text-2xl font-bold text-gray-800 mb-2">All Debts Paid Off!</h3>
-          <p className="text-gray-600 mb-4">You've eliminated all your tracked debts. Amazing work!</p>
-          <button
-            onClick={() => setShowAddDebt(true)}
-            className="inline-flex items-center space-x-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add New Debt</span>
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {activeDebts.map(debt => renderDebtCard(debt, false))}
-        </div>
-      )}
+        {paidDownToZeroDebts.length > 0 && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3 mb-5">
+            <Trophy className="w-5 h-5 text-brand-green shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-brand-green text-sm">
+                {paidDownToZeroDebts.length === 1
+                  ? `${paidDownToZeroDebts[0].accountName} is at $0!`
+                  : `${paidDownToZeroDebts.length} debts are at $0!`}
+              </p>
+              <p className="text-sm text-brand-gray mt-0.5">
+                Click &quot;Close Account&quot; on {paidDownToZeroDebts.length === 1 ? 'the card below' : 'each card below'} to move it to your paid-off history.
+              </p>
+            </div>
+          </div>
+        )}
 
-      {paidOffDebts.length > 0 && (
-        <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
-          <button
-            onClick={() => setPaidOffExpanded(prev => !prev)}
-            className="w-full flex items-center justify-between px-6 py-4 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-8 h-8 bg-brand-green rounded-full">
-                <CheckCircle className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <span className="font-bold text-gray-800">Paid Off Debts</span>
-                <span className="ml-2 text-sm font-semibold text-brand-green bg-emerald-100 px-2 py-0.5 rounded-full">
+        {activeDebts.length === 0 && paidOffDebts.length > 0 ? (
+          <div className="text-center py-12 bg-white border border-brand-gray-border rounded-lg">
+            <Trophy className="w-16 h-16 text-brand-green mx-auto mb-4" />
+            <h3 className="text-2xl font-bold text-brand-navy mb-2">All Debts Paid Off!</h3>
+            <p className="text-brand-gray mb-4">You&apos;ve eliminated all your tracked debts. Amazing work!</p>
+            <button
+              type="button"
+              onClick={() => setShowAddDebt(true)}
+              className="inline-flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New Debt</span>
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {activeDebts.map((debt) => renderDebtCard(debt))}
+          </div>
+        )}
+
+        {paidOffDebts.length > 0 && (
+          <div className="mt-6 bg-white border border-brand-gray-border rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setPaidOffExpanded((prev) => !prev)}
+              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-brand-gray-light/50 transition-colors"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <CheckCircle2 className="w-5 h-5 text-brand-green shrink-0" />
+                <span className="text-sm font-medium text-brand-navy">Paid Off Debts</span>
+                <span className="text-[11px] bg-green-50 text-green-700 px-2 py-0.5 rounded-full font-medium">
                   {paidOffDebts.length}
                 </span>
+                <span className="text-[11px] text-brand-gray hidden sm:inline">
+                  Â· {CalculationService.formatCurrency(totalEliminated)} eliminated
+                </span>
               </div>
-              <span className="text-sm text-gray-500 hidden sm:inline">
-                — {CalculationService.formatCurrency(paidOffDebts.reduce((s, d) => s + d.startingBalance, 0))} eliminated
-              </span>
-            </div>
-            {paidOffExpanded ? (
-              <ChevronUp className="w-5 h-5 text-gray-500" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-gray-500" />
-            )}
-          </button>
+              {paidOffExpanded ? (
+                <ChevronUp className="w-5 h-5 text-brand-gray shrink-0" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-brand-gray shrink-0" />
+              )}
+            </button>
 
-          {paidOffExpanded && (
-            <div className="p-6 bg-white">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {paidOffDebts.map(debt => renderDebtCard(debt, true))}
+            {paidOffExpanded && (
+              <div className="border-t border-brand-gray-border">
+                {paidOffDebts.map((debt, index) => renderPaidOffRow(debt, index))}
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </div>
 
       {showAddDebt && (
         <AddDebtModal
