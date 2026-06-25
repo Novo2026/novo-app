@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { AlertTriangle, RotateCcw, TrendingDown, TrendingUp } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import {
   getInstallmentRemainingTermMonths,
@@ -292,200 +292,243 @@ export default function WhatIfSimulator() {
     setInputs(baselineInputs);
   };
 
+  const inputClassName =
+    'w-full pl-8 pr-3 py-2 border border-brand-gray-border rounded-lg focus:border-brand-navy outline-none';
+
+  const differenceImproved = monthsDifference > 0;
+  const differenceWorse = monthsDifference < 0;
+  const differenceUnchanged = monthsDifference === 0;
+
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <div className="bg-amber-50 border-2 border-amber-400 text-amber-900 rounded-xl p-4 flex items-start gap-3">
-        <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-        <div>
-          <p className="font-bold">Sandbox Mode - No data is saved</p>
-          <p className="text-sm">
-            This simulator is a safe what-if space. Changes here do not affect your real NOVO profile,
-            strategy, or debts. This version uses a local, explicit month-by-month avalanche loop.
-          </p>
+    <div className="bg-brand-gray-light min-h-screen">
+      <div className="bg-brand-navy py-3 px-5">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-white text-lg font-medium leading-tight">What-If Simulator</h1>
+          <p className="text-white/65 text-xs mt-0.5">Explore scenarios before you commit</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Input Scenario</h2>
-            <button
-              onClick={resetToProfileValues}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-brand-blue hover:text-[#1E8BBD] transition-colors"
-            >
-              <RotateCcw className="w-4 h-4" />
-              Reset to Profile
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Monthly Income</label>
-              <div className="relative">
-                <span className="absolute left-3 top-2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={inputs.monthlyNetIncome || ''}
-                  onChange={(e) => setNumberInput('monthlyNetIncome', e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Essential Expenses</label>
-              <div className="relative">
-                <span className="absolute left-3 top-2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={inputs.monthlyEssentialExpenses || ''}
-                  onChange={(e) => setNumberInput('monthlyEssentialExpenses', e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Discretionary Expenses</label>
-              <div className="relative">
-                <span className="absolute left-3 top-2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={inputs.monthlyDiscretionaryExpenses || ''}
-                  onChange={(e) => setNumberInput('monthlyDiscretionaryExpenses', e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Monthly Savings Goal</label>
-              <div className="relative">
-                <span className="absolute left-3 top-2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={inputs.monthlySavingsGoal || ''}
-                  onChange={(e) => setNumberInput('monthlySavingsGoal', e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <SlidersHorizontal className="w-4 h-4 text-brand-navy" />
-                  <label className="text-sm font-semibold text-gray-700">Surplus Commitment</label>
-                </div>
-                <span className="text-sm font-bold text-brand-navy">{inputs.surplusCommitmentPercent}%</span>
-              </div>
-              <input
-                type="range"
-                min={0}
-                max={100}
-                step={5}
-                value={inputs.surplusCommitmentPercent}
-                onChange={(e) =>
-                  setInputs((prev) => ({
-                    ...prev,
-                    surplusCommitmentPercent: clampPercentToStep(parseInt(e.target.value, 10)),
-                  }))
-                }
-                className="w-full accent-brand-green"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">One-Time Windfall / Bonus</label>
-              <div className="relative">
-                <span className="absolute left-3 top-2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={inputs.oneTimeWindfall || ''}
-                  onChange={(e) => setNumberInput('oneTimeWindfall', e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Extra Monthly Contribution</label>
-              <div className="relative">
-                <span className="absolute left-3 top-2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={inputs.extraMonthlyContribution || ''}
-                  onChange={(e) => setNumberInput('extraMonthlyContribution', e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
-                />
-              </div>
-            </div>
+      <div className="max-w-4xl mx-auto px-5 py-6 space-y-5">
+        <div className="bg-amber-50 border border-amber-200 border-l-4 border-brand-orange rounded-lg p-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-brand-orange shrink-0 mt-0.5" />
+          <div>
+            <p className="text-[13px] font-medium text-brand-navy">Sandbox mode — no data is saved</p>
+            <p className="text-xs text-brand-gray mt-1">
+              This simulator is a safe what-if space. Changes here do not affect your real NOVO profile,
+              strategy, or debts. This version uses a local, explicit month-by-month avalanche loop.
+            </p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Results (Instant)</h2>
-          <div className="space-y-3">
-            <div className="flex justify-between border-b border-gray-100 pb-2">
-              <span className="text-gray-600">Total surplus available</span>
-              <span className="font-bold text-gray-900">{formatCurrency(baseMonthlySurplus)}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div className="bg-white border border-brand-gray-border rounded-lg border-t-[3px] border-t-brand-orange shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-5">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-[15px] font-medium text-brand-navy">Input Scenario</h2>
+              <button
+                type="button"
+                onClick={resetToProfileValues}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-blue hover:opacity-80 transition-opacity"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Reset to Profile
+              </button>
             </div>
-            <div className="flex justify-between border-b border-gray-100 pb-2">
-              <span className="text-gray-600">Amount going to savings</span>
-              <span className="font-bold text-brand-green">{formatCurrency(inputs.monthlySavingsGoal)}</span>
-            </div>
-            <div className="flex justify-between border-b border-gray-100 pb-2">
-              <span className="text-gray-600">Amount going to debt</span>
-              <span className="font-bold text-brand-navy">
-                {formatCurrency(baseMonthlySurplus + Math.max(0, inputs.extraMonthlyContribution))}
-              </span>
-            </div>
-            <div className="flex justify-between border-b border-gray-100 pb-2">
-              <span className="text-gray-600">Projected debt-free date</span>
-              <span className="font-bold text-brand-navy">
-                {scenarioTotalMonths > 0
-                  ? formatMonthYearFromMonths(scenarioTotalMonths)
-                  : 'No active debt'}
-              </span>
-            </div>
-            <div className="flex justify-between border-b border-gray-100 pb-2">
-              <span className="text-gray-600">Estimated interest saved</span>
-              <span className={`font-bold ${estimatedInterestSaved >= 0 ? 'text-brand-green' : 'text-red-600'}`}>
-                {estimatedInterestSaved >= 0 ? '+' : '-'}{' '}
-                {formatCurrency(Math.abs(estimatedInterestSaved))}
-              </span>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-brand-gray mb-1.5">Monthly Income</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-brand-gray">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={inputs.monthlyNetIncome || ''}
+                    onChange={(e) => setNumberInput('monthlyNetIncome', e.target.value)}
+                    className={inputClassName}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-brand-gray mb-1.5">Essential Expenses</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-brand-gray">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={inputs.monthlyEssentialExpenses || ''}
+                    onChange={(e) => setNumberInput('monthlyEssentialExpenses', e.target.value)}
+                    className={inputClassName}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-brand-gray mb-1.5">Discretionary Expenses</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-brand-gray">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={inputs.monthlyDiscretionaryExpenses || ''}
+                    onChange={(e) => setNumberInput('monthlyDiscretionaryExpenses', e.target.value)}
+                    className={inputClassName}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-brand-gray mb-1.5">Monthly Savings Goal</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-brand-gray">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={inputs.monthlySavingsGoal || ''}
+                    onChange={(e) => setNumberInput('monthlySavingsGoal', e.target.value)}
+                    className={inputClassName}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-medium text-brand-gray">Surplus Commitment</label>
+                  <span className="text-xs font-medium text-brand-navy">{inputs.surplusCommitmentPercent}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={inputs.surplusCommitmentPercent}
+                  onChange={(e) =>
+                    setInputs((prev) => ({
+                      ...prev,
+                      surplusCommitmentPercent: clampPercentToStep(parseInt(e.target.value, 10)),
+                    }))
+                  }
+                  className="slider-surplus"
+                  aria-label="Surplus commitment percent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-brand-gray mb-1.5">One-Time Windfall / Bonus</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-brand-gray">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={inputs.oneTimeWindfall || ''}
+                    onChange={(e) => setNumberInput('oneTimeWindfall', e.target.value)}
+                    className={inputClassName}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-brand-gray mb-1.5">Extra Monthly Contribution</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2 text-brand-gray">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={inputs.extraMonthlyContribution || ''}
+                    onChange={(e) => setNumberInput('extraMonthlyContribution', e.target.value)}
+                    className={inputClassName}
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="mt-6 bg-brand-navy/5 border border-brand-navy/20 rounded-lg p-4">
-            <p className="text-sm font-semibold text-gray-700 mb-1">Difference vs current plan</p>
-            <p className="text-lg font-bold text-brand-navy">
-              {monthsDifference > 0 &&
-                `You'd be debt free ${monthsDifference} month${monthsDifference === 1 ? '' : 's'} sooner`}
-              {monthsDifference < 0 &&
-                `You'd be debt free ${Math.abs(monthsDifference)} month${Math.abs(monthsDifference) === 1 ? '' : 's'} later`}
-              {monthsDifference === 0 && 'Your timeline is unchanged from your current plan'}
-            </p>
-          </div>
+          <div className="bg-white border border-brand-gray-border rounded-lg border-t-[3px] border-t-brand-green shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-5">
+            <div className="flex items-center gap-2 mb-5">
+              <h2 className="text-[15px] font-medium text-brand-navy">Results</h2>
+              <span className="inline-flex text-[11px] font-medium px-2 py-0.5 rounded-full bg-brand-gray-light text-brand-gray border border-brand-gray-border">
+                Instant
+              </span>
+            </div>
 
-          {inputs.oneTimeWindfall > 0 && (
-            <p className="mt-3 text-xs text-gray-500">
-              Windfall is modeled as an immediate principal reduction on highest-rate debts first (same avalanche
-              priority as the payoff engine).
-            </p>
-          )}
+            <div>
+              <div className="flex justify-between items-center py-3 border-b border-brand-gray-border">
+                <span className="text-[13px] text-brand-gray">Total surplus available</span>
+                <span className="text-[13px] font-medium text-brand-navy">{formatCurrency(baseMonthlySurplus)}</span>
+              </div>
+              <div className="flex justify-between items-center py-3 border-b border-brand-gray-border">
+                <span className="text-[13px] text-brand-gray">Amount going to savings</span>
+                <span className="text-[13px] font-medium text-brand-green">{formatCurrency(inputs.monthlySavingsGoal)}</span>
+              </div>
+              <div className="flex justify-between items-center py-3 border-b border-brand-gray-border">
+                <span className="text-[13px] text-brand-gray">Amount going to debt</span>
+                <span className="text-[13px] font-medium text-brand-navy">
+                  {formatCurrency(baseMonthlySurplus + Math.max(0, inputs.extraMonthlyContribution))}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-3 border-b border-brand-gray-border">
+                <span className="text-[13px] text-brand-gray">Projected debt-free date</span>
+                <span className="text-[13px] font-semibold text-brand-navy">
+                  {scenarioTotalMonths > 0
+                    ? formatMonthYearFromMonths(scenarioTotalMonths)
+                    : 'No active debt'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-3">
+                <span className="text-[13px] text-brand-gray">Estimated interest saved</span>
+                <span className={`text-[13px] font-medium ${estimatedInterestSaved >= 0 ? 'text-brand-green' : 'text-brand-red'}`}>
+                  {estimatedInterestSaved >= 0 ? '+' : '-'}{' '}
+                  {formatCurrency(Math.abs(estimatedInterestSaved))}
+                </span>
+              </div>
+            </div>
+
+            <div
+              className={`mt-5 rounded-lg p-4 ${
+                differenceImproved
+                  ? 'bg-green-50 border border-green-200'
+                  : differenceWorse
+                    ? 'bg-red-50 border border-red-200'
+                    : 'bg-brand-gray-light border border-brand-gray-border'
+              }`}
+            >
+              <p className="text-[13px] font-medium text-brand-gray mb-1">Difference vs current plan</p>
+              {differenceUnchanged ? (
+                <p className="text-[13px] text-brand-gray italic">Your timeline is unchanged from your current plan</p>
+              ) : (
+                <p
+                  className={`text-[13px] font-medium flex items-start gap-2 ${
+                    differenceImproved ? 'text-brand-green' : 'text-brand-red'
+                  }`}
+                >
+                  {differenceImproved ? (
+                    <TrendingDown className="w-4 h-4 shrink-0 mt-0.5" />
+                  ) : (
+                    <TrendingUp className="w-4 h-4 shrink-0 mt-0.5" />
+                  )}
+                  <span>
+                    {differenceImproved &&
+                      `You'd be debt free ${monthsDifference} month${monthsDifference === 1 ? '' : 's'} sooner`}
+                    {differenceWorse &&
+                      `You'd be debt free ${Math.abs(monthsDifference)} month${Math.abs(monthsDifference) === 1 ? '' : 's'} later`}
+                  </span>
+                </p>
+              )}
+            </div>
+
+            {inputs.oneTimeWindfall > 0 && (
+              <p className="mt-3 text-xs text-brand-gray">
+                Windfall is modeled as an immediate principal reduction on highest-rate debts first (same avalanche
+                priority as the payoff engine).
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>

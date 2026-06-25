@@ -378,8 +378,7 @@ function App() {
       case 'what-if':
         return (
           <ProFeatureGate featureName="What-If Simulator">
-            <div>
-              <PageHero page="what-if" title="What-If Simulator" subtitle="Explore scenarios before you commit" />
+            <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 md:-mt-8">
               <WhatIfSimulator />
             </div>
           </ProFeatureGate>
