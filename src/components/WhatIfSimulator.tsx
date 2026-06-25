@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, RotateCcw, TrendingDown, TrendingUp } from 'lucide-react';
+import { CalculationService } from '../services/calculations';
 import { StorageService } from '../services/storage';
 import {
   getInstallmentRemainingTermMonths,
   hasCompleteInstallmentMetadata,
 } from '../utils/installmentLoan';
-import type { Debt } from '../types';
 
 interface SimulatorInputs {
   monthlyNetIncome: number;
@@ -34,10 +34,21 @@ interface SimDebt {
   maxPayoffMonths?: number;
 }
 
+interface SimulatorFinancialInputs {
+  monthlyNetIncome: number;
+  monthlyEssentialExpenses: number;
+  monthlyDiscretionaryExpenses: number;
+  monthlySavingsGoal: number;
+  surplusCommitmentPercent: number;
+  extraMonthlyContribution: number;
+}
+
 interface SimResult {
   months: number;
   totalInterest: number;
   windfallApplied: number;
+  surplusAfterSavings: number;
+  amountGoingToDebt: number;
 }
 
 const MAX_SIM_MONTHS = 1200;
@@ -111,20 +122,35 @@ const applyWindfallToBalances = (debts: SimDebt[], windfall: number): number => 
   return Math.round(windfallApplied * 100) / 100;
 };
 
-const runPayoffSimulation = (debts: SimDebt[], baseExtraPayment: number, windfall: number): SimResult => {
+const runPayoffSimulation = (
+  debts: SimDebt[],
+  financial: SimulatorFinancialInputs,
+  windfall: number
+): SimResult => {
   const filteredDebts = filterTraditionalSimulationDebts(debts);
   const working = cloneSimDebts(filteredDebts);
 
+  // Month 0: lump-sum windfall on highest-rate debt(s) before the monthly payment loop.
   const windfallApplied = applyWindfallToBalances(working, windfall);
 
-  let extraPool = Math.max(0, baseExtraPayment);
-  for (const debt of working) {
-    if (debt.balance <= 0.005 && debt.minimumPayment > 0) {
-      extraPool += debt.minimumPayment;
-    }
-  }
-
   const activeDebts = working.filter((d) => d.balance > 0.005);
+  const totalMinimumPayments = activeDebts.reduce(
+    (sum, debt) => sum + Math.max(0, debt.minimumPayment),
+    0
+  );
+
+  const cashFlow = CalculationService.calculateCashFlow(
+    financial.monthlyNetIncome,
+    financial.monthlyEssentialExpenses,
+    financial.monthlyDiscretionaryExpenses,
+    totalMinimumPayments,
+    financial.monthlySavingsGoal,
+    financial.surplusCommitmentPercent
+  );
+
+  const amountGoingToDebt =
+    Math.max(0, cashFlow.recommendedExtraPayment) + Math.max(0, financial.extraMonthlyContribution);
+  let extraPool = amountGoingToDebt;
 
   let months = 0;
   let totalInterest = 0;
@@ -202,6 +228,8 @@ const runPayoffSimulation = (debts: SimDebt[], baseExtraPayment: number, windfal
     months,
     totalInterest: Math.round(totalInterest * 100) / 100,
     windfallApplied: Math.round(windfallApplied * 100) / 100,
+    surplusAfterSavings: Math.round(cashFlow.surplusAfterSavings * 100) / 100,
+    amountGoingToDebt: Math.round(amountGoingToDebt * 100) / 100,
   };
 };
 
@@ -243,36 +271,36 @@ export default function WhatIfSimulator() {
 
   const [inputs, setInputs] = useState<SimulatorInputs>(baselineInputs);
 
-  const baseMonthlySurplus = useMemo(
-    () =>
-      Math.max(
-        0,
-        inputs.monthlyNetIncome -
-          inputs.monthlyEssentialExpenses -
-          inputs.monthlyDiscretionaryExpenses -
-          inputs.monthlySavingsGoal
-      ),
-    [
-      inputs.monthlyNetIncome,
-      inputs.monthlyEssentialExpenses,
-      inputs.monthlyDiscretionaryExpenses,
-      inputs.monthlySavingsGoal,
-    ]
+  const scenarioFinancial = useMemo<SimulatorFinancialInputs>(
+    () => ({
+      monthlyNetIncome: inputs.monthlyNetIncome,
+      monthlyEssentialExpenses: inputs.monthlyEssentialExpenses,
+      monthlyDiscretionaryExpenses: inputs.monthlyDiscretionaryExpenses,
+      monthlySavingsGoal: inputs.monthlySavingsGoal,
+      surplusCommitmentPercent: inputs.surplusCommitmentPercent,
+      extraMonthlyContribution: inputs.extraMonthlyContribution,
+    }),
+    [inputs]
   );
 
-  const baselineResult = useMemo(() => {
-    const debtsForBaseline = filterTraditionalSimulationDebts(simulationDebts);
-    return runPayoffSimulation(debtsForBaseline, baseMonthlySurplus, 0);
-  }, [simulationDebts, baseMonthlySurplus]);
+  const baselineFinancial = useMemo<SimulatorFinancialInputs>(
+    () => ({
+      ...scenarioFinancial,
+      surplusCommitmentPercent: baselineInputs.surplusCommitmentPercent,
+      extraMonthlyContribution: 0,
+    }),
+    [scenarioFinancial, baselineInputs.surplusCommitmentPercent]
+  );
 
-  const scenarioResult = useMemo(() => {
-    const debtsForScenario = filterTraditionalSimulationDebts(simulationDebts);
-    return runPayoffSimulation(
-      debtsForScenario,
-      baseMonthlySurplus + Math.max(0, inputs.extraMonthlyContribution),
-      Math.max(0, inputs.oneTimeWindfall)
-    );
-  }, [simulationDebts, baseMonthlySurplus, inputs.extraMonthlyContribution, inputs.oneTimeWindfall]);
+  const baselineResult = useMemo(
+    () => runPayoffSimulation(simulationDebts, baselineFinancial, 0),
+    [simulationDebts, baselineFinancial]
+  );
+
+  const scenarioResult = useMemo(
+    () => runPayoffSimulation(simulationDebts, scenarioFinancial, Math.max(0, inputs.oneTimeWindfall)),
+    [simulationDebts, scenarioFinancial, inputs.oneTimeWindfall]
+  );
   const baselineTotalMonths = baselineResult.months;
   const scenarioTotalMonths = scenarioResult.months;
   const baselineTotalInterest = baselineResult.totalInterest;
@@ -460,7 +488,9 @@ export default function WhatIfSimulator() {
             <div>
               <div className="flex justify-between items-center py-3 border-b border-brand-gray-border">
                 <span className="text-[13px] text-brand-gray">Total surplus available</span>
-                <span className="text-[13px] font-medium text-brand-navy">{formatCurrency(baseMonthlySurplus)}</span>
+                <span className="text-[13px] font-medium text-brand-navy">
+                  {formatCurrency(scenarioResult.surplusAfterSavings)}
+                </span>
               </div>
               <div className="flex justify-between items-center py-3 border-b border-brand-gray-border">
                 <span className="text-[13px] text-brand-gray">Amount going to savings</span>
@@ -469,7 +499,7 @@ export default function WhatIfSimulator() {
               <div className="flex justify-between items-center py-3 border-b border-brand-gray-border">
                 <span className="text-[13px] text-brand-gray">Amount going to debt</span>
                 <span className="text-[13px] font-medium text-brand-navy">
-                  {formatCurrency(baseMonthlySurplus + Math.max(0, inputs.extraMonthlyContribution))}
+                  {formatCurrency(scenarioResult.amountGoingToDebt)}
                 </span>
               </div>
               <div className="flex justify-between items-center py-3 border-b border-brand-gray-border">
