@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type MouseEvent } from 'react';
 import {
   Home,
   Calculator,
@@ -22,6 +22,11 @@ const parseDollar = (v: string) => parseFloat(v.replace(/[^0-9.]/g, '')) || 0;
 
 const REFI_BENCHMARK_RATE = 6.5;
 const STRATEGY_CALL_URL = 'https://api.leadconnectorhq.com/widget/booking/Ms28gTzPwpR5BbzeU0Dc';
+
+function openBenBookingCalendar(event?: MouseEvent<HTMLAnchorElement>) {
+  event?.preventDefault();
+  window.open(STRATEGY_CALL_URL, '_blank', 'noopener,noreferrer');
+}
 
 export const CREDIT_SCORE_RANGE_OPTIONS = [
   '760+',
@@ -624,6 +629,7 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
                         href={STRATEGY_CALL_URL}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={openBenBookingCalendar}
                         className="inline-block text-xs font-medium text-brand-blue hover:underline"
                       >
                         Explore with Ben →
