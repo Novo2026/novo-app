@@ -417,8 +417,7 @@ function App() {
       case 'home-ready':
         return (
           <ProFeatureGate featureName="Home Ready">
-            <div>
-              <PageHero page="home-ready" title="Home Ready" subtitle="Your path from debt freedom to homeownership" />
+            <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 md:-mt-8">
               <HomeReady onNavigateToSettings={() => setCurrentSection('settings')} />
             </div>
           </ProFeatureGate>
