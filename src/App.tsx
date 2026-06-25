@@ -370,8 +370,7 @@ function App() {
         );
       case 'smarter-payments':
         return (
-          <div>
-            <PageHero page="smarter-payments" title="Smarter Payments" subtitle="Pay less interest without spending more" />
+          <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 md:-mt-8">
             <SmarterPayments onDataUpdate={handleDataUpdate} />
           </div>
         );
