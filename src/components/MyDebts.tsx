@@ -623,17 +623,15 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
               </div>
               <div>
                 <p className="text-[10px] text-brand-gray">Last payment</p>
-                <p className="text-[13px] text-brand-navy">
-                  {lastPayment
-                    ? (
-                      <>
-                        {CalculationService.formatCurrency(lastPayment.amount)}
-                        {' \u00B7 '}
-                        {CalculationService.formatLocalDateShort(lastPayment.date)}
-                      </>
-                    )
-                    : '\u2014'}
-                </p>
+                {lastPayment ? (
+                  <p className="text-[13px] text-brand-navy">
+                    {CalculationService.formatCurrency(lastPayment.amount)}
+                    {' \u00B7 '}
+                    {CalculationService.formatLocalDateShort(lastPayment.date)}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-brand-gray italic">No payments yet</p>
+                )}
               </div>
               <div>
                 <p className="text-[10px] text-brand-gray">Projected payoff</p>
