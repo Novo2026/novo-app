@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import {
   Plus,
   DollarSign,
@@ -55,12 +55,56 @@ function getDebtAccentBorder(debt: Debt, isOpenAccount: boolean): string {
   }
 }
 
+function getDebtHeaderTintBg(debt: Debt, isOpenAccount: boolean): string {
+  if (isOpenAccount) return 'bg-gray-50';
+  switch (debt.category) {
+    case 'Mortgage':
+      return 'bg-blue-50';
+    case 'Auto Loan':
+      return 'bg-orange-50';
+    case 'Credit Card':
+      return 'bg-red-50';
+    case 'Personal Loan':
+      return 'bg-green-50';
+    default:
+      return 'bg-gray-50';
+  }
+}
+
 function formatPaidOffDisplayDate(debt: Debt): string {
   const date = debt.paidOffDate ?? debt.homeSaleDate;
   if (!date || Number.isNaN(new Date(date).getTime())) {
     return 'date not recorded';
   }
   return new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
+
+type DebtSortOption = 'balance-desc' | 'balance-asc' | 'apr-desc' | 'apr-asc' | 'name-asc';
+
+const DEBT_SORT_LABELS: Record<DebtSortOption, string> = {
+  'balance-desc': 'Balance (high to low)',
+  'balance-asc': 'Balance (low to high)',
+  'apr-desc': 'APR (high to low)',
+  'apr-asc': 'APR (low to high)',
+  'name-asc': 'Name (A-Z)',
+};
+
+function sortActiveDebts(debts: Debt[], sortBy: DebtSortOption): Debt[] {
+  const sorted = [...debts];
+  switch (sortBy) {
+    case 'balance-desc':
+      return sorted.sort((a, b) => b.currentBalance - a.currentBalance);
+    case 'balance-asc':
+      return sorted.sort((a, b) => a.currentBalance - b.currentBalance);
+    case 'apr-desc':
+      return sorted.sort((a, b) => b.interestRate - a.interestRate);
+    case 'apr-asc':
+      return sorted.sort((a, b) => a.interestRate - b.interestRate);
+    case 'name-asc':
+      return sorted.sort((a, b) => a.accountName.localeCompare(b.accountName));
+    default:
+      return sorted;
+  }
 }
 
 export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
@@ -98,6 +142,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
     nextDebtName?: string;
     monthsSavedByAcceleration?: number;
   } | null>(null);
+  const [debtSort, setDebtSort] = useState<DebtSortOption>('balance-desc');
 
   const allDebts = StorageService.getDebts().filter(d => d.category !== 'HELOC');
   const activeDebts = allDebts.filter(d => !d.isPaidOff);
@@ -108,6 +153,10 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
   const totalOwed = activeDebts.reduce((sum, d) => sum + d.currentBalance, 0);
   const totalMinimums = activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
   const totalEliminated = paidOffDebts.reduce((sum, d) => sum + d.startingBalance, 0);
+  const sortedActiveDebts = useMemo(
+    () => sortActiveDebts(activeDebts, debtSort),
+    [activeDebts, debtSort]
+  );
 
   const handleAddCharge = (debtId: string) => {
     setSelectedDebtId(debtId);
@@ -461,22 +510,15 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
     const lastPayment = getLastPaymentForDebt(debt.id);
     const projectedPayoff = hasProjectedPayoffMetadata(debt) && formatProjectedPayoffMonthYear(debt)
       ? formatProjectedPayoffMonthYear(debt)
-      : 'â€”';
+      : '\u2014';
 
     return (
       <div
         key={debt.id}
-        className={`bg-white border border-brand-gray-border rounded-lg border-l-4 ${getDebtAccentBorder(debt, isOpenAccount)}`}
+        className={`bg-white border border-brand-gray-border rounded-lg border-l-4 overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.08),0_1px_2px_rgba(0,0,0,0.04)] ${getDebtAccentBorder(debt, isOpenAccount)}`}
       >
-        <div className="p-4">
-          {isPaidDownToZero && (
-            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-3">
-              <Trophy className="w-4 h-4 text-brand-green shrink-0" />
-              <p className="text-xs font-medium text-brand-green">Balance reached $0 â€” close this account when ready.</p>
-            </div>
-          )}
-
-          <div className="flex items-start justify-between gap-2 mb-3">
+        <div className={`${getDebtHeaderTintBg(debt, isOpenAccount)} -mx-px -mt-px rounded-t-lg px-4 py-3`}>
+          <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h3 className="text-[15px] font-medium text-brand-navy">{debt.accountName}</h3>
               <p className="text-[11px] text-brand-gray mt-0.5">{debt.category}</p>
@@ -518,6 +560,15 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
               </button>
             </div>
           </div>
+        </div>
+
+        <div className="p-4">
+          {isPaidDownToZero && (
+            <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-3">
+              <Trophy className="w-4 h-4 text-brand-green shrink-0" />
+              <p className="text-xs font-medium text-brand-green">Balance reached $0 {'\u2014'} close this account when ready.</p>
+            </div>
+          )}
 
           <div className="mb-3">
             <p className="text-[10px] uppercase tracking-wide text-brand-gray">Current Balance</p>
@@ -556,8 +607,14 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                 <p className="text-[10px] text-brand-gray">Last payment</p>
                 <p className="text-[13px] text-brand-navy">
                   {lastPayment
-                    ? `${CalculationService.formatCurrency(lastPayment.amount)} Â· ${CalculationService.formatLocalDateShort(lastPayment.date)}`
-                    : 'â€”'}
+                    ? (
+                      <>
+                        {CalculationService.formatCurrency(lastPayment.amount)}
+                        {' \u00B7 '}
+                        {CalculationService.formatLocalDateShort(lastPayment.date)}
+                      </>
+                    )
+                    : '\u2014'}
                 </p>
               </div>
               <div>
@@ -573,13 +630,13 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                 {debt.loanStartDate && (
                   <span>Loan start {formatLoanStartDateForDisplay(debt.loanStartDate)}</span>
                 )}
-                {debt.loanStartDate && debt.loanTerm != null && debt.loanTerm > 0 && <span> Â· </span>}
+                {debt.loanStartDate && debt.loanTerm != null && debt.loanTerm > 0 && <span>{' \u00B7 '}</span>}
                 {debt.loanTerm != null && debt.loanTerm > 0 && (
                   <span>Term {formatLoanTermForDisplay(debt.loanTerm, debt.loanTermUnit, debt.isAmortized)}</span>
                 )}
                 {hasProjectedPayoffMetadata(debt) && formatProjectedPayoffMonthYear(debt) && (
-                  <span className="text-brand-blue ml-1">
-                    Â· Payoff {formatProjectedPayoffMonthYear(debt)}
+                  <span className="text-brand-blue">
+                    {' \u00B7 '}Payoff {formatProjectedPayoffMonthYear(debt)}
                   </span>
                 )}
               </div>
@@ -789,9 +846,27 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {activeDebts.map((debt) => renderDebtCard(debt))}
-          </div>
+          <>
+            <div className="flex items-center justify-between mt-5 mb-3">
+              <h2 className="text-base font-medium text-brand-navy">My Debts</h2>
+              <label className="sr-only" htmlFor="debt-sort">Sort debts</label>
+              <select
+                id="debt-sort"
+                value={debtSort}
+                onChange={(e) => setDebtSort(e.target.value as DebtSortOption)}
+                className="text-[12px] text-brand-gray border border-brand-gray-border rounded-md px-2 py-1.5 bg-white"
+              >
+                {(Object.keys(DEBT_SORT_LABELS) as DebtSortOption[]).map((option) => (
+                  <option key={option} value={option}>
+                    Sort by: {DEBT_SORT_LABELS[option]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {sortedActiveDebts.map((debt) => renderDebtCard(debt))}
+            </div>
+          </>
         )}
 
         {paidOffDebts.length > 0 && (
@@ -808,7 +883,7 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
                   {paidOffDebts.length}
                 </span>
                 <span className="text-[11px] text-brand-gray hidden sm:inline">
-                  Â· {CalculationService.formatCurrency(totalEliminated)} eliminated
+                  {' \u00B7 '}{CalculationService.formatCurrency(totalEliminated)} eliminated
                 </span>
               </div>
               {paidOffExpanded ? (

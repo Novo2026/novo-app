@@ -662,7 +662,9 @@ export default function Dashboard({
                     return (
                       <div
                         key={debt.id}
-                        className={`px-4 py-3 border-l-4 ${getDebtRowAccentBorder(debt, isOpenAccount)} ${index > 0 ? 'border-t border-brand-gray-border' : ''}`}
+                        className={`py-3 px-4 border-l-[3px] ${getDebtRowAccentBorder(debt, isOpenAccount)} ${
+                          index % 2 === 0 ? 'bg-white' : 'bg-brand-gray-light'
+                        }`}
                       >
                         <div className="flex items-start gap-3">
                           <div className="flex-1 min-w-0">
