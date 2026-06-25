@@ -435,7 +435,7 @@ export default function Dashboard({
             <h1 className="text-white text-lg font-medium leading-tight">
               Good {getTimeOfDay()}, {userName}!
             </h1>
-            <p className="text-white/65 text-xs mt-0.5">Your debt freedom command center v2</p>
+            <p className="text-white/65 text-xs mt-0.5">Your debt freedom command center</p>
           </div>
           <span className="bg-white/15 text-white text-xs px-3 py-1 rounded-full whitespace-nowrap shrink-0">
             {healthScore.score} · {healthScore.label}
