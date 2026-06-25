@@ -24,6 +24,7 @@ import EditPaymentModal from './EditPaymentModal';
 import EditDebtModal from './EditDebtModal';
 import StartHereRibbon from './StartHereRibbon';
 import FinancialHealthScore, { computeFinancialHealthScore } from './FinancialHealthScore';
+import MortgageBalanceModal from './MortgageBalanceModal';
 import {
   formatLoanStartDateForDisplay,
   formatOriginalAmountForDisplay,
@@ -168,6 +169,7 @@ export default function Dashboard({
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingDebt, setDeletingDebt] = useState<Debt | null>(null);
+  const [showMortgageBalanceModal, setShowMortgageBalanceModal] = useState(false);
 
   const debts = StorageService.getDebts();
   const transactions = StorageService.getTransactions();
@@ -572,7 +574,13 @@ export default function Dashboard({
               {metricDebtProgress.toFixed(1)}% paid off
             </p>
             {hasDebtFreedomDebts && hasActiveMortgage && (
-              <p className="text-[10px] text-brand-blue mt-0.5">+ mortgage</p>
+              <button
+                type="button"
+                onClick={() => setShowMortgageBalanceModal(true)}
+                className="text-[10px] text-brand-blue mt-0.5 hover:underline underline-offset-2"
+              >
+                + mortgage
+              </button>
             )}
           </div>
           <div className="bg-green-50 border border-brand-gray-border rounded-lg p-3 sm:p-4 border-l-4 border-l-brand-green min-w-0">
@@ -1113,6 +1121,10 @@ export default function Dashboard({
           }}
           onSuccess={handleDebtEdited}
         />
+      )}
+
+      {showMortgageBalanceModal && (
+        <MortgageBalanceModal onClose={() => setShowMortgageBalanceModal(false)} />
       )}
 
       {showDeleteConfirm && deletingDebt && (
