@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import {
   Plus,
   DollarSign,
@@ -37,6 +37,8 @@ import type { Debt, Transaction, Milestone } from '../types';
 
 interface MyDebtsProps {
   onDataUpdate: () => void;
+  scrollToDebtId?: string | null;
+  onScrollToDebtHandled?: () => void;
 }
 
 function getDebtAccentBorder(debt: Debt, isOpenAccount: boolean): string {
@@ -125,7 +127,7 @@ function sortActiveDebts(debts: Debt[], sortBy: DebtSortOption): Debt[] {
   }
 }
 
-export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
+export default function MyDebts({ onDataUpdate, scrollToDebtId, onScrollToDebtHandled }: MyDebtsProps) {
   const [showAddDebt, setShowAddDebt] = useState(false);
   const [showAddCharge, setShowAddCharge] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
@@ -161,6 +163,23 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
     monthsSavedByAcceleration?: number;
   } | null>(null);
   const [debtSort, setDebtSort] = useState<DebtSortOption>('balance-desc');
+  const [highlightedDebtId, setHighlightedDebtId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!scrollToDebtId) return;
+
+    const scrollTimer = window.setTimeout(() => {
+      const target = document.getElementById(`debt-card-${scrollToDebtId}`);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setHighlightedDebtId(scrollToDebtId);
+        window.setTimeout(() => setHighlightedDebtId(null), 2500);
+      }
+      onScrollToDebtHandled?.();
+    }, 150);
+
+    return () => window.clearTimeout(scrollTimer);
+  }, [scrollToDebtId, onScrollToDebtHandled]);
 
   const allDebts = StorageService.getDebts().filter(d => d.category !== 'HELOC');
   const activeDebts = allDebts.filter(d => !d.isPaidOff);
@@ -533,7 +552,10 @@ export default function MyDebts({ onDataUpdate }: MyDebtsProps) {
     return (
       <div
         key={debt.id}
-        className={`bg-white border border-brand-gray-border rounded-[10px] border-l-4 border-t-[3px] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.10),0_1px_3px_rgba(0,0,0,0.06)] ${getDebtAccentBorder(debt, isOpenAccount)} ${getDebtTopAccentBorder(debt, isOpenAccount)}`}
+        id={`debt-card-${debt.id}`}
+        className={`bg-white border border-brand-gray-border rounded-[10px] border-l-4 border-t-[3px] overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.10),0_1px_3px_rgba(0,0,0,0.06)] ${getDebtAccentBorder(debt, isOpenAccount)} ${getDebtTopAccentBorder(debt, isOpenAccount)} ${
+          highlightedDebtId === debt.id ? 'ring-2 ring-brand-orange ring-offset-2' : ''
+        }`}
       >
         <div className="p-5">
           <div className="flex items-start justify-between gap-2 mb-3">

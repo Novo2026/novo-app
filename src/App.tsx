@@ -53,6 +53,7 @@ function App() {
   const [menuOpenCount, setMenuOpenCount] = useState(() => {
     return parseInt(localStorage.getItem('menuOpenCount') || '0', 10);
   });
+  const [scrollToDebtId, setScrollToDebtId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -320,6 +321,11 @@ function App() {
     closeMobileMenu();
   };
 
+  const handleNavigateToDebt = (debtId: string) => {
+    setScrollToDebtId(debtId);
+    setCurrentSection('debts');
+  };
+
   const handleAskNovoClick = () => {
     if (!askNovoClicked) {
       localStorage.setItem('askNovoClicked', 'true');
@@ -356,7 +362,11 @@ function App() {
       case 'debts':
         return (
           <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 md:-mt-8">
-            <MyDebts onDataUpdate={handleDataUpdate} />
+            <MyDebts
+              onDataUpdate={handleDataUpdate}
+              scrollToDebtId={scrollToDebtId}
+              onScrollToDebtHandled={() => setScrollToDebtId(null)}
+            />
           </div>
         );
       case 'strategies':
@@ -410,7 +420,10 @@ function App() {
         return (
           <ProFeatureGate featureName="Progress Reports">
             <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 md:-mt-8">
-              <ProgressReports onDataUpdate={handleDataUpdate} />
+              <ProgressReports
+                onDataUpdate={handleDataUpdate}
+                onNavigateToDebt={handleNavigateToDebt}
+              />
             </div>
           </ProFeatureGate>
         );

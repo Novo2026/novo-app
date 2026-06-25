@@ -78,9 +78,10 @@ function getSourceLabel(source: UnifiedPayment['source']): string {
 
 interface ProgressReportsProps {
   onDataUpdate: () => void;
+  onNavigateToDebt?: (debtId: string) => void;
 }
 
-export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) {
+export default function ProgressReports({ onDataUpdate, onNavigateToDebt }: ProgressReportsProps) {
   const [filterDebtId, setFilterDebtId] = useState<string>('all');
   const [pendingDelete, setPendingDelete] = useState<UnifiedPayment | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
@@ -594,7 +595,13 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
                     {CalculationService.formatDate(p.date)}
                   </td>
                   <td className="py-2.5 px-2">
-                    <span className="text-[13px] text-brand-navy">{p.debtName}</span>
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToDebt?.(p.debtId)}
+                      className="text-[13px] text-brand-blue hover:underline cursor-pointer text-left"
+                    >
+                      {p.debtName}
+                    </button>
                     {p.transferredToHELOC && (
                       <div className="text-[11px] text-brand-blue italic mt-0.5">Transferred to HELOC</div>
                     )}
@@ -645,7 +652,7 @@ export default function ProgressReports({ onDataUpdate }: ProgressReportsProps) 
 
       <div className="bg-white border border-brand-gray-border border-l-4 border-l-brand-blue rounded-lg p-4">
         <h4 className="text-[13px] font-medium text-brand-navy mb-2">About unified payment history</h4>
-        <p className="text-[12px] text-brand-gray leading-relaxed">
+        <p className="text-[12px] leading-relaxed text-brand-gray" style={{ color: '#6B7280' }}>
           This report combines payments from all sources: direct debt payments (Dashboard/My Debts), HELOC draws used to pay debts (HELOC Tracker), and checking account debt payments (Checking Register). This gives you a complete view of your debt elimination progress regardless of which method you use.
         </p>
       </div>
