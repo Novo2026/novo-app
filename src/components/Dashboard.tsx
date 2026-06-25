@@ -577,7 +577,7 @@ export default function Dashboard({
               <button
                 type="button"
                 onClick={() => setShowMortgageBalanceModal(true)}
-                className="text-[10px] text-brand-blue mt-0.5 hover:underline underline-offset-2"
+                className="inline-flex items-center justify-center mt-1.5 min-h-7 rounded-full bg-brand-navy px-2 py-0.5 text-xs text-white/90 hover:bg-brand-navy/85 transition-colors"
               >
                 + mortgage
               </button>
