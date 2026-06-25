@@ -89,7 +89,6 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
       : 0;
     localStorage.setItem('novo_rental_income', rentalIncome.toString());
 
-    // Auto-sync gross income total to Financial Profile
     if (totalMonthly > 0) {
       try {
         const existingProfile = JSON.parse(
@@ -104,7 +103,6 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
       }
     }
 
-    // Trigger a storage event so Settings Financial Profile refreshes
     window.dispatchEvent(new Event('focus'));
 
     setShowSuccess(true);
@@ -113,12 +111,12 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="flex items-center space-x-2 mb-4">
-        <Wallet className="w-6 h-6 text-brand-navy" />
-        <h3 className="text-xl font-bold text-gray-800">Income Sources</h3>
+    <div className="bg-white border border-brand-gray-border rounded-lg border-t-[3px] border-t-brand-orange p-5">
+      <div className="flex items-center gap-2 mb-2">
+        <Wallet className="w-4 h-4 text-brand-orange" />
+        <h3 className="text-sm font-medium text-brand-navy">Income Sources</h3>
       </div>
-      <p className="text-gray-600 mb-6">
+      <p className="text-xs text-brand-gray mb-5 leading-relaxed">
         Add or update where your household income comes from. Your situation may change over time — keep this current for the most accurate coaching.
       </p>
 
@@ -129,98 +127,120 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
           const Icon = typeInfo.icon;
 
           return (
-            <div key={typeInfo.type} className={`border-2 rounded-xl transition-all ${isActive ? 'border-brand-orange bg-brand-orange/5' : 'border-gray-200 bg-white'}`}>
+            <div
+              key={typeInfo.type}
+              className={`border rounded-lg transition-all ${
+                isActive ? 'border-brand-orange bg-orange-50' : 'border-brand-gray-border bg-white'
+              }`}
+            >
               <button
                 type="button"
                 onClick={() => toggleSource(typeInfo)}
-                className="w-full flex items-center gap-3 p-3 text-left"
+                className="w-full flex items-center gap-3 p-4 text-left"
               >
-                <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-brand-orange' : 'text-gray-400'}`} />
-                <div className="flex-1">
-                  <p className={`text-sm font-semibold ${isActive ? 'text-brand-orange' : 'text-gray-700'}`}>{typeInfo.label}</p>
-                  <p className="text-xs text-gray-500">{typeInfo.desc}</p>
+                <Icon className={`w-5 h-5 shrink-0 ${isActive ? 'text-brand-orange' : 'text-brand-gray'}`} />
+                <div className="flex-1 min-w-0">
+                  <p className={`text-[13px] font-medium ${isActive ? 'text-brand-navy' : 'text-brand-navy'}`}>{typeInfo.label}</p>
+                  <p className="text-[11px] text-brand-gray">{typeInfo.desc}</p>
                 </div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isActive ? 'border-brand-orange bg-brand-orange' : 'border-gray-300'}`}>
+                <div
+                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                    isActive ? 'border-brand-orange bg-brand-orange' : 'border-brand-gray-border bg-white'
+                  }`}
+                >
                   {isActive && <div className="w-2 h-2 rounded-full bg-white" />}
                 </div>
               </button>
 
               {isActive && existing && (
-                <div className="px-4 pb-4 space-y-3 border-t border-brand-orange/20 pt-3">
+                <div className="px-4 pb-4 space-y-3 border-t border-brand-gray-border pt-3">
                   {typeInfo.type === 'self_employed' && (
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-xs font-semibold text-gray-600">Enter as:</span>
+                    <div className="flex items-center gap-3 mb-2 flex-wrap">
+                      <span className="text-xs font-medium text-brand-gray">Enter as:</span>
                       <button
                         type="button"
                         onClick={() => updateSource(typeInfo.type, { useAnnual: false })}
-                        className={`text-xs px-3 py-1 rounded-full border transition-all ${!existing.useAnnual ? 'bg-brand-navy text-white border-brand-navy' : 'bg-white text-gray-600 border-gray-300'}`}
+                        className={`text-xs px-3 py-1 rounded-full border transition-all ${
+                          !existing.useAnnual
+                            ? 'bg-brand-navy text-white border-brand-navy'
+                            : 'bg-white text-brand-gray border-brand-gray-border'
+                        }`}
                       >
                         Monthly
                       </button>
                       <button
                         type="button"
                         onClick={() => updateSource(typeInfo.type, { useAnnual: true })}
-                        className={`text-xs px-3 py-1 rounded-full border transition-all ${existing.useAnnual ? 'bg-brand-navy text-white border-brand-navy' : 'bg-white text-gray-600 border-gray-300'}`}
+                        className={`text-xs px-3 py-1 rounded-full border transition-all ${
+                          existing.useAnnual
+                            ? 'bg-brand-navy text-white border-brand-navy'
+                            : 'bg-white text-brand-gray border-brand-gray-border'
+                        }`}
                       >
-                        Annual (we'll average it)
+                        Annual (we&apos;ll average it)
                       </button>
                     </div>
                   )}
 
                   {(!existing.useAnnual || typeInfo.type !== 'self_employed') && (
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">
-                        {typeInfo.type === 'commission' ? '12-month average monthly amount' :
-                         typeInfo.type === 'rental' ? 'Monthly rental income' : 'Monthly amount (gross)'}
+                      <label className="block text-xs font-medium text-brand-gray mb-1">
+                        {typeInfo.type === 'commission'
+                          ? '12-month average monthly amount'
+                          : typeInfo.type === 'rental'
+                            ? 'Monthly rental income'
+                            : 'Monthly amount (gross)'}
                       </label>
                       <div className="relative">
-                        <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                        <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
                         <input
                           type="text"
                           value={existing.monthlyAmount}
                           onChange={e => updateSource(typeInfo.type, { monthlyAmount: e.target.value })}
                           placeholder="0"
-                          className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
+                          className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
                         />
                       </div>
                       {typeInfo.type === 'commission' && (
-                        <p className="text-xs text-gray-400 mt-1">Add up last 12 months of commission and divide by 12</p>
+                        <p className="text-[11px] text-brand-gray mt-1">Add up last 12 months of commission and divide by 12</p>
                       )}
                     </div>
                   )}
 
                   {existing.useAnnual && typeInfo.type === 'self_employed' && (
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">Annual amount</label>
+                      <label className="block text-xs font-medium text-brand-gray mb-1">Annual amount</label>
                       <div className="relative">
-                        <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                        <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
                         <input
                           type="text"
                           value={existing.annualAmount}
                           onChange={e => updateSource(typeInfo.type, { annualAmount: e.target.value })}
                           placeholder="0"
-                          className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
+                          className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
                         />
                       </div>
                       {existing.annualAmount && parseFloat(existing.annualAmount.replace(/[^0-9.]/g, '')) > 0 && (
-                        <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-2">
-                          <p className="text-xs text-blue-800 font-medium">
-                            📊 Using <strong>${(parseFloat(existing.annualAmount.replace(/[^0-9.]/g, '')) / 12).toLocaleString('en-US', { maximumFractionDigits: 0 })}/month</strong> as your monthly average for planning purposes
-                          </p>
-                        </div>
+                        <p className="text-[11px] text-brand-gray mt-2">
+                          Using{' '}
+                          <span className="font-medium text-brand-navy">
+                            ${(parseFloat(existing.annualAmount.replace(/[^0-9.]/g, '')) / 12).toLocaleString('en-US', { maximumFractionDigits: 0 })}/month
+                          </span>{' '}
+                          as your monthly average for planning purposes
+                        </p>
                       )}
                     </div>
                   )}
 
                   {typeInfo.type === 'other' && (
                     <div>
-                      <label className="block text-xs font-semibold text-gray-600 mb-1">Description (optional)</label>
+                      <label className="block text-xs font-medium text-brand-gray mb-1">Description (optional)</label>
                       <input
                         type="text"
                         value={existing.description}
                         onChange={e => updateSource(typeInfo.type, { description: e.target.value })}
                         placeholder="e.g. Social Security, pension"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
+                        className="w-full px-3 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
                       />
                     </div>
                   )}
@@ -232,27 +252,30 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
       </div>
 
       {sources.length > 0 && totalMonthly > 0 && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mt-4">
-          <div className="flex justify-between items-center">
-            <p className="text-sm font-semibold text-emerald-800">Combined Monthly Income (Gross)</p>
-            <p className="text-lg font-bold text-emerald-700">${totalMonthly.toLocaleString('en-US', { maximumFractionDigits: 0 })}</p>
+        <div className="bg-brand-gray-light border border-brand-gray-border rounded-lg p-3 mt-4">
+          <div className="flex justify-between items-center gap-3">
+            <p className="text-xs text-brand-gray">Combined Monthly Income</p>
+            <p className="text-base font-medium text-brand-navy">
+              ${totalMonthly.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+            </p>
           </div>
-          <p className="text-xs text-emerald-600 mt-1">
-            Across {sources.length} income source{sources.length > 1 ? 's' : ''}. This total feeds into your Gross Monthly Income above — update that field to match if needed.
+          <p className="text-[11px] text-brand-gray mt-1">
+            Across {sources.length} income source{sources.length > 1 ? 's' : ''}. This total feeds into your Gross Monthly Income — update that field to match if needed.
           </p>
         </div>
       )}
 
       <button
+        type="button"
         onClick={handleSave}
-        className="w-full mt-4 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
+        className="w-full mt-4 bg-brand-navy hover:bg-brand-navy-dark text-white text-[13px] font-medium py-2 px-4 rounded-lg transition-colors"
       >
         Save Income Sources
       </button>
 
       {showSuccess && (
-        <div className="flex items-center space-x-2 bg-emerald-50 border border-emerald-300 text-emerald-800 px-4 py-3 rounded-lg mt-3">
-          <CheckCircle className="w-5 h-5" />
+        <div className="flex items-center gap-2 bg-green-50 border border-brand-green text-brand-green px-4 py-3 rounded-lg mt-3 text-sm">
+          <CheckCircle className="w-4 h-4 shrink-0" />
           <span>Income sources saved</span>
         </div>
       )}

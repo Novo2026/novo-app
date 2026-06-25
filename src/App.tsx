@@ -426,9 +426,12 @@ function App() {
         return <Guide />;
       case 'settings':
         return (
-          <div>
-            <PageHero page="settings" title="Settings" subtitle="Manage your NOVO account and preferences" />
-            <Settings onDataUpdate={handleDataUpdate} onHelocEnabledFirstTime={handleHelocEnabledFirstTime} onNavigate={handleNavigateFromSettings} />
+          <div className="-mx-4 sm:-mx-6 lg:-mx-8 -mt-6 md:-mt-8">
+            <Settings
+              onDataUpdate={handleDataUpdate}
+              onHelocEnabledFirstTime={handleHelocEnabledFirstTime}
+              onNavigate={handleNavigateFromSettings}
+            />
           </div>
         );
       default:
