@@ -9,6 +9,8 @@ export interface IncomeSource {
   annualAmount: string;
   useAnnual: boolean;
   description: string;
+  w2NetMonthlyAmount?: string;
+  w2GrossMonthlyAmount?: string;
 }
 
 const INCOME_TYPES = [
@@ -26,6 +28,14 @@ function getStoredIncomeSources(): IncomeSource[] {
       return (JSON.parse(v2) as IncomeSource[]).map((s) => ({
         ...s,
         useAnnual: s.type === 'self_employed' ? s.useAnnual : false,
+        w2NetMonthlyAmount:
+          s.type === 'w2'
+            ? s.w2NetMonthlyAmount ?? s.monthlyAmount ?? ''
+            : s.w2NetMonthlyAmount,
+        w2GrossMonthlyAmount:
+          s.type === 'w2'
+            ? s.w2GrossMonthlyAmount ?? s.monthlyAmount ?? ''
+            : s.w2GrossMonthlyAmount,
       }));
     }
     const v1 = JSON.parse(localStorage.getItem('novo_income_sources') || '[]');
@@ -37,6 +47,8 @@ function getStoredIncomeSources(): IncomeSource[] {
       annualAmount: '',
       useAnnual: false,
       description: '',
+      w2NetMonthlyAmount: s.type === 'w2' ? (s.monthlyAmount ? String(s.monthlyAmount) : '') : undefined,
+      w2GrossMonthlyAmount: s.type === 'w2' ? (s.monthlyAmount ? String(s.monthlyAmount) : '') : undefined,
     }));
   } catch {
     return [];
@@ -48,7 +60,10 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
   const [showSuccess, setShowSuccess] = useState(false);
   const [isW2Annual, setIsW2Annual] = useState(false);
 
-  const totalMonthly = sources.reduce((sum, s) => {
+  const totalMonthlyNet = sources.reduce((sum, s) => {
+    if (s.type === 'w2') {
+      return sum + (parseFloat((s.w2NetMonthlyAmount || '').replace(/[^0-9.]/g, '')) || 0);
+    }
     if (s.useAnnual && s.annualAmount) {
       return sum + (parseFloat(s.annualAmount.replace(/[^0-9.]/g, '')) / 12 || 0);
     }
@@ -83,9 +98,11 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
     const summary = sources.map(s => ({
       type: s.type,
       label: s.label,
-      monthlyAmount: s.useAnnual
-        ? (parseFloat(s.annualAmount.replace(/[^0-9.]/g, '')) / 12 || 0)
-        : (parseFloat(s.monthlyAmount.replace(/[^0-9.]/g, '')) || 0),
+      monthlyAmount: s.type === 'w2'
+        ? (parseFloat((s.w2NetMonthlyAmount || '').replace(/[^0-9.]/g, '')) || 0)
+        : s.useAnnual
+          ? (parseFloat(s.annualAmount.replace(/[^0-9.]/g, '')) / 12 || 0)
+          : (parseFloat(s.monthlyAmount.replace(/[^0-9.]/g, '')) || 0),
     }));
     localStorage.setItem('novo_income_sources', JSON.stringify(summary));
 
@@ -95,13 +112,20 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
       : 0;
     localStorage.setItem('novo_rental_income', rentalIncome.toString());
 
-    if (totalMonthly > 0) {
+    const w2Source = sources.find((s) => s.type === 'w2');
+    const w2GrossMonthly = parseFloat((w2Source?.w2GrossMonthlyAmount || '').replace(/[^0-9.]/g, '')) || 0;
+
+    if (totalMonthlyNet > 0 || w2GrossMonthly > 0) {
       try {
         const existingProfile = JSON.parse(
           localStorage.getItem('novo_financial_profile') || 'null'
         );
         if (existingProfile) {
-          const updated = { ...existingProfile, monthlyGrossIncome: Math.round(totalMonthly) };
+          const updated = {
+            ...existingProfile,
+            monthlyNetIncome: Math.round(totalMonthlyNet),
+            monthlyGrossIncome: w2GrossMonthly > 0 ? Math.round(w2GrossMonthly) : existingProfile.monthlyGrossIncome,
+          };
           localStorage.setItem('novo_financial_profile', JSON.stringify(updated));
         }
       } catch {
@@ -217,56 +241,89 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
                           </button>
                         </div>
                       )}
-                      <label className="block text-xs font-medium text-brand-gray mb-1">
-                        {typeInfo.type === 'w2'
-                          ? isW2Annual
-                            ? 'Annual Salary (gross)'
-                            : 'Monthly amount (gross)'
-                          : typeInfo.type === 'commission'
+                      {typeInfo.type === 'w2' ? (
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs font-medium text-brand-gray mb-1">
+                              {isW2Annual ? 'Annual Take-Home Pay (after taxes)' : 'Take-Home Pay (after taxes)'}
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
+                              <input
+                                type="text"
+                                value={
+                                  (() => {
+                                    const monthly = parseFloat((existing.w2NetMonthlyAmount || '').replace(/[^0-9.]/g, '')) || 0;
+                                    if (existing.w2NetMonthlyAmount === '') return '';
+                                    return isW2Annual ? (monthly * 12).toString() : (existing.w2NetMonthlyAmount || '');
+                                  })()
+                                }
+                                onChange={e => {
+                                  const raw = e.target.value;
+                                  const parsed = parseFloat(raw.replace(/[^0-9.]/g, '')) || 0;
+                                  const monthlyValue = isW2Annual ? parsed / 12 : parsed;
+                                  updateSource(typeInfo.type, { w2NetMonthlyAmount: raw === '' ? '' : monthlyValue.toString() });
+                                }}
+                                placeholder="0"
+                                className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-brand-gray mb-1">
+                              {isW2Annual
+                                ? 'Gross Annual Salary (before taxes)'
+                                : 'Gross Monthly Salary (before taxes)'}
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
+                              <input
+                                type="text"
+                                value={
+                                  (() => {
+                                    const monthly = parseFloat((existing.w2GrossMonthlyAmount || '').replace(/[^0-9.]/g, '')) || 0;
+                                    if (existing.w2GrossMonthlyAmount === '') return '';
+                                    return isW2Annual ? (monthly * 12).toString() : (existing.w2GrossMonthlyAmount || '');
+                                  })()
+                                }
+                                onChange={e => {
+                                  const raw = e.target.value;
+                                  const parsed = parseFloat(raw.replace(/[^0-9.]/g, '')) || 0;
+                                  const monthlyValue = isW2Annual ? parsed / 12 : parsed;
+                                  updateSource(typeInfo.type, { w2GrossMonthlyAmount: raw === '' ? '' : monthlyValue.toString() });
+                                }}
+                                placeholder="0"
+                                className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
+                              />
+                            </div>
+                            <p className="text-[11px] text-brand-gray mt-1">
+                              Used for mortgage qualification calculations only.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <label className="block text-xs font-medium text-brand-gray mb-1">
+                            {typeInfo.type === 'commission'
                           ? '12-month average monthly amount'
                           : typeInfo.type === 'rental'
                             ? 'Monthly rental income'
                             : 'Monthly amount (gross)'}
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
-                        <input
-                          type="text"
-                          value={
-                            typeInfo.type === 'w2'
-                              ? (() => {
-                                  const monthly = parseFloat(existing.monthlyAmount.replace(/[^0-9.]/g, '')) || 0;
-                                  return monthly > 0
-                                    ? (isW2Annual ? (monthly * 12).toString() : existing.monthlyAmount)
-                                    : existing.monthlyAmount;
-                                })()
-                              : existing.monthlyAmount
-                          }
-                          onChange={e => {
-                            if (typeInfo.type === 'w2') {
-                              const raw = e.target.value;
-                              const parsed = parseFloat(raw.replace(/[^0-9.]/g, '')) || 0;
-                              const monthlyValue = isW2Annual ? parsed / 12 : parsed;
-                              updateSource(typeInfo.type, { monthlyAmount: raw === '' ? '' : monthlyValue.toString() });
-                              return;
-                            }
-                            updateSource(typeInfo.type, { monthlyAmount: e.target.value });
-                          }}
-                          placeholder="0"
-                          className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
-                        />
-                      </div>
-                      {typeInfo.type === 'w2' && isW2Annual && (
-                        <p className="text-[11px] text-brand-gray mt-1">
-                          = $
-                          {((parseFloat(existing.monthlyAmount.replace(/[^0-9.]/g, '')) || 0)).toLocaleString('en-US', {
-                            maximumFractionDigits: 0,
-                          })}
-                          /month
-                        </p>
-                      )}
-                      {typeInfo.type === 'commission' && (
-                        <p className="text-[11px] text-brand-gray mt-1">Add up last 12 months of commission and divide by 12</p>
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
+                            <input
+                              type="text"
+                              value={existing.monthlyAmount}
+                              onChange={e => updateSource(typeInfo.type, { monthlyAmount: e.target.value })}
+                              placeholder="0"
+                              className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
+                            />
+                          </div>
+                          {typeInfo.type === 'commission' && (
+                            <p className="text-[11px] text-brand-gray mt-1">Add up last 12 months of commission and divide by 12</p>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
@@ -315,16 +372,16 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
         })}
       </div>
 
-      {sources.length > 0 && totalMonthly > 0 && (
+      {sources.length > 0 && totalMonthlyNet > 0 && (
         <div className="bg-brand-gray-light border border-brand-gray-border rounded-lg p-3 mt-4">
           <div className="flex justify-between items-center gap-3">
-            <p className="text-xs text-brand-gray">Combined Monthly Income</p>
+            <p className="text-xs text-brand-gray">Combined Monthly Income (Take-Home)</p>
             <p className="text-base font-medium text-brand-navy">
-              ${totalMonthly.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+              ${totalMonthlyNet.toLocaleString('en-US', { maximumFractionDigits: 0 })}
             </p>
           </div>
           <p className="text-[11px] text-brand-gray mt-1">
-            Across {sources.length} income source{sources.length > 1 ? 's' : ''}. This total feeds into your Gross Monthly Income — update that field to match if needed.
+            Across {sources.length} income source{sources.length > 1 ? 's' : ''}. This total feeds into your monthly net income for payoff planning.
           </p>
         </div>
       )}
