@@ -32,9 +32,20 @@ const STORAGE_KEYS = {
   STRATEGY_CALC_HASH: 'novo_strategy_calc_hash',
   FEATURE_PREFERENCES: 'novo_feature_preferences',
   UNIFIED_PAYMENTS: 'novo_unified_payments',
+  ACCOUNT_TYPE: 'novo_account_type',
 };
 
 export const StorageService = {
+  saveAccountType(type: 'solo' | 'couple' | 'family'): void {
+    localStorage.setItem(STORAGE_KEYS.ACCOUNT_TYPE, type);
+  },
+
+  getAccountType(): 'solo' | 'couple' | 'family' {
+    const raw = localStorage.getItem(STORAGE_KEYS.ACCOUNT_TYPE);
+    if (raw === 'couple' || raw === 'family' || raw === 'solo') return raw;
+    return 'solo';
+  },
+
   getDebts(): Debt[] {
     const data = localStorage.getItem(STORAGE_KEYS.DEBTS);
     return data ? JSON.parse(data) : [];

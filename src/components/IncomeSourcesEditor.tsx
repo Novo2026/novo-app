@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle, Briefcase, Building2, TrendingUp, Home, Wallet } from 'lucide-react';
+import { StorageService } from '../services/storage';
 
 export interface IncomeSource {
   id: string;
@@ -78,8 +79,7 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
   const [showSuccess, setShowSuccess] = useState(false);
   const [isW2Annual, setIsW2Annual] = useState(false);
   const [isW2Person2Annual, setIsW2Person2Annual] = useState(false);
-  const financialProfile = JSON.parse(localStorage.getItem('novo_financial_profile') || '{}');
-  const accountType = (financialProfile.accountType || 'solo').toLowerCase();
+  const accountType = StorageService.getAccountType();
   console.log('NOVO account type detected:', accountType);
   const showSecondW2Person = accountType === 'couple' || accountType === 'family';
 

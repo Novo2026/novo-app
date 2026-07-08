@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { DollarSign, CreditCard, CheckCircle, ChevronLeft, Plus, X, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
+import { StorageService } from '../services/storage';
 import CashFlowWarningModal from './CashFlowWarningModal';
 import LearnHELOCModal from './LearnHELOCModal';
 
@@ -209,6 +210,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       if (step === 4) {
         // Clear onboarding progress when complete
         localStorage.removeItem('onboardingProgress');
+        StorageService.saveAccountType(data.accountType || 'solo');
 
         // Track onboarding completion in Google Analytics
         if (typeof window !== 'undefined' && (window as any).gtag) {
