@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { DollarSign, CreditCard, CheckCircle, ChevronLeft, Plus, X, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
-import { StorageService } from '../services/storage';
 import CashFlowWarningModal from './CashFlowWarningModal';
 import LearnHELOCModal from './LearnHELOCModal';
 
@@ -98,6 +97,9 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         const { step: savedStep, data: savedData } = JSON.parse(savedProgress);
         setStep(savedStep);
         setData(savedData);
+        if (savedData.accountType) {
+          localStorage.setItem('novo_account_type', savedData.accountType);
+        }
         setIsResuming(true);
       } catch (error) {
         console.error('Failed to load onboarding progress:', error);
@@ -210,7 +212,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       if (step === 4) {
         // Clear onboarding progress when complete
         localStorage.removeItem('onboardingProgress');
-        StorageService.saveAccountType(data.accountType || 'solo');
+        localStorage.setItem('novo_account_type', data.accountType || 'solo');
 
         // Track onboarding completion in Google Analytics
         if (typeof window !== 'undefined' && (window as any).gtag) {
@@ -255,6 +257,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
   const handleStartOver = () => {
     localStorage.removeItem('onboardingProgress');
+    localStorage.setItem('novo_account_type', 'solo');
     setStep(1);
     setData({
       userName: '',
@@ -364,7 +367,11 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
               <button
                 key={option.value}
                 type="button"
-                onClick={() => setData({ ...data, accountType: option.value as 'solo' | 'couple' | 'family' })}
+                onClick={() => {
+                  const selectedType = option.value as 'solo' | 'couple' | 'family';
+                  localStorage.setItem('novo_account_type', selectedType);
+                  setData({ ...data, accountType: selectedType });
+                }}
                 className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
                   data.accountType === option.value
                     ? 'border-brand-orange bg-brand-orange/5 text-brand-orange'

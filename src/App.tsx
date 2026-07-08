@@ -144,6 +144,7 @@ function App() {
     localStorage.setItem('userFirstName', data.userName);
     localStorage.setItem('userPartnerName', data.partnerName || '');
     localStorage.setItem('userAccountType', data.accountType || 'solo');
+    localStorage.setItem('novo_account_type', data.accountType || 'solo');
     localStorage.setItem('lastVisit', new Date().toISOString());
 
     if (data.address) {

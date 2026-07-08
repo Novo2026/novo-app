@@ -43,6 +43,8 @@ export const StorageService = {
   getAccountType(): 'solo' | 'couple' | 'family' {
     const raw = localStorage.getItem(STORAGE_KEYS.ACCOUNT_TYPE);
     if (raw === 'couple' || raw === 'family' || raw === 'solo') return raw;
+    const legacy = localStorage.getItem('userAccountType');
+    if (legacy === 'couple' || legacy === 'family' || legacy === 'solo') return legacy;
     return 'solo';
   },
 
