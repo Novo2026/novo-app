@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { CheckCircle, Briefcase, Building2, TrendingUp, Home, Wallet } from 'lucide-react';
 
 export interface IncomeSource {
@@ -78,42 +78,9 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
   const [showSuccess, setShowSuccess] = useState(false);
   const [isW2Annual, setIsW2Annual] = useState(false);
   const [isW2Person2Annual, setIsW2Person2Annual] = useState(false);
-  const accountType = useMemo(() => {
-    const profileKeys = ['novo_profile', 'novo_user_profile', 'novo_onboarding'] as const;
-    const fieldNames = ['accountType', 'householdType', 'type'] as const;
-
-    for (const key of profileKeys) {
-      const raw = localStorage.getItem(key);
-      if (!raw) {
-        console.log(`[IncomeSourcesEditor] ${key}: not found`);
-        continue;
-      }
-
-      try {
-        const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== 'object') {
-          console.log(`[IncomeSourcesEditor] ${key}: present but not an object`);
-          continue;
-        }
-
-        for (const field of fieldNames) {
-          const value = (parsed as Record<string, unknown>)[field];
-          if (typeof value === 'string' && value.trim()) {
-            const normalized = value.trim().toLowerCase();
-            console.log(`[IncomeSourcesEditor] account type found`, { key, field, value: normalized });
-            return normalized;
-          }
-        }
-
-        console.log(`[IncomeSourcesEditor] ${key}: no account type field found`);
-      } catch {
-        console.log(`[IncomeSourcesEditor] ${key}: invalid JSON`);
-      }
-    }
-
-    console.log('[IncomeSourcesEditor] account type defaulted to solo');
-    return 'solo';
-  }, []);
+  const financialProfile = JSON.parse(localStorage.getItem('novo_financial_profile') || '{}');
+  const accountType = (financialProfile.accountType || 'solo').toLowerCase();
+  console.log('NOVO account type detected:', accountType);
   const showSecondW2Person = accountType === 'couple' || accountType === 'family';
 
   const totalMonthlyNet = sources.reduce((sum, s) => {
@@ -287,9 +254,11 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
                       {typeInfo.type === 'w2' ? (
                         <div className="space-y-3">
                           <div>
-                            <label className="block text-xs font-medium text-brand-gray mb-1">
-                              {showSecondW2Person ? 'Person 1 — W2 / Salary' : 'W2 / Salary'}
-                            </label>
+                            {showSecondW2Person && (
+                              <label className="block text-xs font-medium text-brand-gray mb-1">
+                                Person 1 — W2 / Salary
+                              </label>
+                            )}
                             <div className="flex items-center gap-3 mb-2 flex-wrap">
                               <span className="text-xs font-medium text-brand-gray">Enter as:</span>
                               <button
