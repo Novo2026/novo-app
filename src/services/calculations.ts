@@ -15,9 +15,15 @@ export interface PaymentCalculation {
 }
 
 export const CalculationService = {
+  getStrategyCashFlowInputs(debts: Debt[]) {
+    const strategyDebts = this.resolveDebtsForPayoffProjection(debts);
+    const totalMinimumPayments = strategyDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
+    return { strategyDebts, totalMinimumPayments };
+  },
+
   calculateCurrentStrategy(): StrategyResult | null {
     const debts = StorageService.getDebts();
-    const activeDebts = debts.filter(d => !d.isPaidOff && d.currentBalance > 0);
+    const { strategyDebts: activeDebts, totalMinimumPayments } = this.getStrategyCashFlowInputs(debts);
 
     if (activeDebts.length === 0) {
       return null;
@@ -28,7 +34,6 @@ export const CalculationService = {
       return null;
     }
 
-    const totalMinimumPayments = activeDebts.reduce((sum, d) => sum + d.minimumPayment, 0);
     const cashFlow = this.calculateCashFlow(
       profile.monthlyNetIncome,
       profile.monthlyEssentialExpenses,
@@ -37,16 +42,18 @@ export const CalculationService = {
       profile.monthlySavingsGoal ?? 0,
       profile.surplusCommitmentPercent ?? 100
     );
+    console.log('[Strategy calculateCurrentStrategy] cash-flow inputs', {
+      income: profile.monthlyNetIncome,
+      essential: profile.monthlyEssentialExpenses,
+      discretionary: profile.monthlyDiscretionaryExpenses,
+      minimums: totalMinimumPayments,
+      finalSurplus: cashFlow.grossSurplus,
+    });
 
     const extraPayment = Math.floor(cashFlow.recommendedExtraPayment);
 
-    const strategyDebts = this.resolveDebtsForPayoffProjection(debts);
-    if (strategyDebts.length === 0) {
-      return null;
-    }
-
-    const baseline = DebtCalculations.calculateBaselineTimeline(strategyDebts);
-    const optimized = DebtCalculations.calculateOptimizedTimeline(strategyDebts, extraPayment);
+    const baseline = DebtCalculations.calculateBaselineTimeline(activeDebts);
+    const optimized = DebtCalculations.calculateOptimizedTimeline(activeDebts, extraPayment);
 
     // Validate results
     const validation = DebtCalculations.validateResults(baseline, optimized);

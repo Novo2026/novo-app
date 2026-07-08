@@ -70,8 +70,8 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
     }
   };
 
-  const debts = StorageService.getDebts().filter(d => !d.isPaidOff && d.currentBalance > 0);
-  const totalMinimumPayments = debts.reduce((sum, d) => sum + d.minimumPayment, 0);
+  const debts = StorageService.getDebts();
+  const { strategyDebts, totalMinimumPayments } = CalculationService.getStrategyCashFlowInputs(debts);
 
   const cashFlowMetrics = CalculationService.calculateCashFlow(
     profile.monthlyNetIncome,
@@ -81,6 +81,13 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
     profile.monthlySavingsGoal ?? 0,
     profile.surplusCommitmentPercent ?? 100
   );
+  console.log('[StrategyWizard Step1] cash-flow inputs', {
+    income: profile.monthlyNetIncome,
+    essential: profile.monthlyEssentialExpenses,
+    discretionary: profile.monthlyDiscretionaryExpenses,
+    minimums: totalMinimumPayments,
+    finalSurplus: cashFlowMetrics.grossSurplus,
+  });
 
   const homeEquityMetrics = homeEquity.ownsHome && homeEquity.homeValue && homeEquity.mortgageBalance !== undefined
     ? CalculationService.calculateHomeEquityMetrics(
@@ -95,7 +102,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
 
   const helocRate = homeEquity.hasHELOC && homeEquity.helocRate ? homeEquity.helocRate : 8.5;
 
-  const debtAnalysis = debts.map(debt => {
+  const debtAnalysis = strategyDebts.map(debt => {
     const rateDiff = debt.interestRate - helocRate;
     let suitability: 'good' | 'marginal' | 'bad';
 
@@ -120,14 +127,28 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
 
   const showHELOCStrategy = homeEquity.ownsHome && availableHELOCCredit > 5000;
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step === 1) {
       StorageService.saveFinancialProfile(profile);
-      setExtraPayment(Math.floor(cashFlowMetrics.recommendedExtraPayment).toString());
+      await Promise.resolve();
+      const savedProfile = StorageService.getFinancialProfile();
+      if (savedProfile) {
+        const refreshedCashFlow = CalculationService.calculateCashFlow(
+          savedProfile.monthlyNetIncome,
+          savedProfile.monthlyEssentialExpenses,
+          savedProfile.monthlyDiscretionaryExpenses,
+          totalMinimumPayments,
+          savedProfile.monthlySavingsGoal ?? 0,
+          savedProfile.surplusCommitmentPercent ?? 100
+        );
+        setExtraPayment(Math.floor(refreshedCashFlow.recommendedExtraPayment).toString());
+      } else {
+        setExtraPayment(Math.floor(cashFlowMetrics.recommendedExtraPayment).toString());
+      }
     } else if (step === 2) {
       StorageService.saveHomeEquity(homeEquity);
     }
-    setStep(step + 1);
+    setStep((prev) => prev + 1);
   };
 
   const handleCalculate = () => {
@@ -135,7 +156,7 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
 
     setTimeout(() => {
       const extra = parseFloat(extraPayment) || 0;
-      const result = CalculationService.projectDebtPayoff(debts, extra);
+      const result = CalculationService.projectDebtPayoff(strategyDebts, extra);
       onComplete(result);
       setLoading(false);
     }, 500);
