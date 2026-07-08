@@ -43,6 +43,8 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
 
   const [extraPayment, setExtraPayment] = useState('');
   const [selectedStrategy, setSelectedStrategy] = useState<'extra-payment' | 'heloc-velocity' | null>(null);
+  const [isGrossAnnual, setIsGrossAnnual] = useState(false);
+  const [isNetAnnual, setIsNetAnnual] = useState(false);
 
   // Load quiz result from localStorage
   useEffect(() => {
@@ -210,16 +212,43 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Monthly Gross Income
+                {isGrossAnnual ? 'Annual Gross Income (Before Taxes)' : 'Monthly Gross Income'}
               </label>
               <p className="text-xs text-gray-500 mb-2">Total income before taxes</p>
+              <div className="inline-flex items-center rounded-full border border-brand-gray-border p-0.5 mb-2 bg-white">
+                <button
+                  type="button"
+                  onClick={() => setIsGrossAnnual(true)}
+                  className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                    isGrossAnnual ? 'bg-brand-navy text-white' : 'text-brand-gray hover:bg-brand-gray-light'
+                  }`}
+                >
+                  Annual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsGrossAnnual(false)}
+                  className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                    !isGrossAnnual ? 'bg-brand-orange text-white' : 'text-brand-gray hover:bg-brand-gray-light'
+                  }`}
+                >
+                  Monthly
+                </button>
+              </div>
               <div className="relative">
                 <span className="absolute left-3 top-2 text-gray-500">$</span>
                 <input
                   type="number"
-                  value={profile.monthlyGrossIncome || ''}
+                  value={
+                    profile.monthlyGrossIncome
+                      ? (isGrossAnnual ? profile.monthlyGrossIncome * 12 : profile.monthlyGrossIncome)
+                      : ''
+                  }
                   onChange={(e) =>
-                    setProfile({ ...profile, monthlyGrossIncome: parseFloat(e.target.value) || 0 })
+                    setProfile({
+                      ...profile,
+                      monthlyGrossIncome: (parseFloat(e.target.value) || 0) / (isGrossAnnual ? 12 : 1),
+                    })
                   }
                   onFocus={(e) => {
                     if (e.target.value === '0') e.target.value = '';
@@ -233,16 +262,43 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Monthly Net Income (After Taxes)
+                {isNetAnnual ? 'Annual Net Income (After Taxes)' : 'Monthly Net Income (After Taxes)'}
               </label>
               <p className="text-xs text-gray-500 mb-2">Take-home pay after taxes</p>
+              <div className="inline-flex items-center rounded-full border border-brand-gray-border p-0.5 mb-2 bg-white">
+                <button
+                  type="button"
+                  onClick={() => setIsNetAnnual(true)}
+                  className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                    isNetAnnual ? 'bg-brand-navy text-white' : 'text-brand-gray hover:bg-brand-gray-light'
+                  }`}
+                >
+                  Annual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsNetAnnual(false)}
+                  className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                    !isNetAnnual ? 'bg-brand-orange text-white' : 'text-brand-gray hover:bg-brand-gray-light'
+                  }`}
+                >
+                  Monthly
+                </button>
+              </div>
               <div className="relative">
                 <span className="absolute left-3 top-2 text-gray-500">$</span>
                 <input
                   type="number"
-                  value={profile.monthlyNetIncome || ''}
+                  value={
+                    profile.monthlyNetIncome
+                      ? (isNetAnnual ? profile.monthlyNetIncome * 12 : profile.monthlyNetIncome)
+                      : ''
+                  }
                   onChange={(e) =>
-                    setProfile({ ...profile, monthlyNetIncome: parseFloat(e.target.value) || 0 })
+                    setProfile({
+                      ...profile,
+                      monthlyNetIncome: (parseFloat(e.target.value) || 0) / (isNetAnnual ? 12 : 1),
+                    })
                   }
                   onFocus={(e) => {
                     if (e.target.value === '0') e.target.value = '';
