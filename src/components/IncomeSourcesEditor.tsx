@@ -190,24 +190,22 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
     localStorage.setItem('w2Person2Gross', w2Person2Gross.toString());
     localStorage.setItem('combinedGrossIncome', combinedGrossIncome.toString());
 
-    if (totalMonthlyNet > 0 || combinedGrossIncome > 0) {
-      try {
-        const existingProfile = JSON.parse(
-          localStorage.getItem('novo_financial_profile') || 'null'
-        );
-        if (existingProfile) {
-          const updated = {
-            ...existingProfile,
-            monthlyNetIncome: Math.round(totalMonthlyNet),
-            monthlyGrossIncome: combinedGrossIncome > 0 ? Math.round(combinedGrossIncome) : existingProfile.monthlyGrossIncome,
-            combinedGrossIncome: Math.round(combinedGrossIncome),
-          };
-          localStorage.setItem('novo_financial_profile', JSON.stringify(updated));
+    const existingProfile = StorageService.getFinancialProfile();
+    const updatedProfile = existingProfile
+      ? {
+          ...existingProfile,
+          monthlyNetIncome: Math.round(totalMonthlyNet),
+          monthlyGrossIncome: Math.round(combinedGrossIncome),
         }
-      } catch {
-        // If no profile yet, skip
-      }
-    }
+      : {
+          monthlyGrossIncome: Math.round(combinedGrossIncome),
+          monthlyNetIncome: Math.round(totalMonthlyNet),
+          monthlyEssentialExpenses: 0,
+          monthlyDiscretionaryExpenses: 0,
+          monthlySavingsGoal: 0,
+          surplusCommitmentPercent: 100,
+        };
+    StorageService.saveFinancialProfile(updatedProfile);
 
     window.dispatchEvent(new Event('focus'));
 
@@ -323,7 +321,7 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
                         </div>
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-brand-gray mb-1">
+                        <label className="block text-xs font-semibold text-brand-navy mb-1">
                           {isW2Annual ? 'Annual Take-Home Pay (after taxes)' : 'Take-Home Pay (after taxes)'}
                         </label>
                         <div className="relative">
@@ -420,7 +418,7 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
                             </div>
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-brand-gray mb-1">
+                            <label className="block text-xs font-semibold text-brand-navy mb-1">
                               {isW2Person2Annual ? 'Annual Take-Home Pay (after taxes)' : 'Take-Home Pay (after taxes)'}
                             </label>
                             <div className="relative">
@@ -681,6 +679,12 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
           </p>
         </div>
       )}
+
+      <div className="mt-4 bg-blue-50 border border-brand-blue/20 rounded-lg p-3">
+        <p className="text-[11px] text-brand-navy leading-relaxed">
+          💡 Your Take-Home Pay (after taxes) drives your debt payoff plan and surplus calculations. Gross income is used only for mortgage qualification estimates.
+        </p>
+      </div>
 
       <button
         type="button"
