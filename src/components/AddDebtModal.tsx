@@ -34,6 +34,11 @@ export default function AddDebtModal({ onClose, onSuccess }: AddDebtModalProps) 
   const [loanStartDate, setLoanStartDate] = useState('');
   const [loanTerm, setLoanTerm] = useState('');
   const [loanTermUnit, setLoanTermUnit] = useState<LoanTermUnit>('years');
+  const homeEquity = StorageService.getHomeEquity();
+  const hasConfiguredHeloc = homeEquity?.hasHELOC === true;
+  const selectableDebtCategories = hasConfiguredHeloc
+    ? DEBT_CATEGORIES.filter((cat) => cat !== 'HELOC')
+    : DEBT_CATEGORIES;
 
   const showInstallmentFields = isInstallmentLoanCategory(category);
 
@@ -124,10 +129,15 @@ export default function AddDebtModal({ onClose, onSuccess }: AddDebtModalProps) 
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
               required
             >
-              {DEBT_CATEGORIES.map(cat => (
+              {selectableDebtCategories.map(cat => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
+            {!hasConfiguredHeloc && (
+              <p className="text-xs text-gray-500 mt-1">
+                Best set up via My Plan → HELOC Velocity Banking for full functionality.
+              </p>
+            )}
           </div>
 
           <div>
