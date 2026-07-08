@@ -1228,10 +1228,12 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Interest Rate</label>
                 <div className="relative">
                   <input
-                    type="text"
+                    type="number"
                     value={debt.interestRate}
-                    onChange={(e) => handleDebtChange(debt.id, 'interestRate', e.target.value.replace(/[^0-9.]/g, ''))}
-                    placeholder="18.5"
+                    onChange={(e) => handleDebtChange(debt.id, 'interestRate', e.target.value)}
+                    placeholder={debt.type === 'Mortgage' ? '6.625' : '18.50'}
+                    step={debt.type === 'Mortgage' ? '0.001' : '0.01'}
+                    min="0"
                     className="w-full pl-2 pr-6 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   />
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">%</span>

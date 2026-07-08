@@ -67,6 +67,11 @@ function getDebtProgressInfo(debt: Debt) {
   return { paidOff, percentage, isOpenAccount };
 }
 
+function formatDebtApr(debt: Debt): string {
+  const precision = debt.category === 'Mortgage' ? 3 : 2;
+  return debt.interestRate.toFixed(precision);
+}
+
 function isDebtFreedomDebt(debt: Debt): boolean {
   return debt.category !== 'Mortgage' && debt.category !== 'HELOC' && debt.id !== 'HELOC_VIRTUAL';
 }
@@ -734,7 +739,7 @@ export default function Dashboard({
                       {' '}to{' '}
                       <span className="font-medium">{targetDebt.accountName}</span>
                       <span className="ml-1.5 text-[11px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-medium">
-                        {targetDebt.interestRate}% APR
+                        {formatDebtApr(targetDebt)}% APR
                       </span>
                     </p>
                     <div className="space-y-2 text-sm border-b border-brand-gray-border pb-3 mb-3">
@@ -765,7 +770,7 @@ export default function Dashboard({
                     Pay minimum on{' '}
                     <span className="font-medium">{targetDebt.accountName}</span>
                     <span className="ml-1.5 text-[11px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-medium">
-                      {targetDebt.interestRate}% APR
+                      {formatDebtApr(targetDebt)}% APR
                     </span>
                     <span className="ml-1 text-brand-gray">
                       — {CalculationService.formatCurrency(targetDebt.minimumPayment)}
@@ -799,7 +804,7 @@ export default function Dashboard({
                               <span className="text-[13px] font-medium text-brand-navy">{debt.accountName}</span>
                               <span className="text-[11px] text-brand-gray">{debt.category}</span>
                               <span className="text-[11px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-medium">
-                                {debt.interestRate}% APR
+                                {formatDebtApr(debt)}% APR
                               </span>
                             </div>
                             {isOpenAccount ? (

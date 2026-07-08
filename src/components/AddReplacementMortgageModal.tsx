@@ -192,7 +192,7 @@ export default function AddReplacementMortgageModal({
                   min="0"
                   value={interestRate}
                   onChange={e => setInterestRate(e.target.value)}
-                  placeholder="0.00"
+                  placeholder="0.000"
                   required
                   className="w-full pl-4 pr-8 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-400 focus:border-transparent"
                 />

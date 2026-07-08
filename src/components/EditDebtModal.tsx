@@ -35,7 +35,9 @@ export default function EditDebtModal({ debt, onClose, onSuccess }: EditDebtModa
   const [startingBalance, setStartingBalance] = useState(debt.startingBalance.toString());
   const [showOriginalBalanceField, setShowOriginalBalanceField] = useState(false);
   const [showBalanceCorrectionPrompt, setShowBalanceCorrectionPrompt] = useState(false);
-  const [interestRate, setInterestRate] = useState(debt.interestRate.toString());
+  const [interestRate, setInterestRate] = useState(
+    debt.category === 'Mortgage' ? debt.interestRate.toFixed(3) : debt.interestRate.toFixed(2)
+  );
   const [minimumPayment, setMinimumPayment] = useState(debt.minimumPayment.toString());
   const [originalAmount, setOriginalAmount] = useState(initialInstallment.originalAmount);
   const [loanStartDate, setLoanStartDate] = useState(initialInstallment.loanStartDate);
@@ -43,6 +45,7 @@ export default function EditDebtModal({ debt, onClose, onSuccess }: EditDebtModa
   const [loanTermUnit, setLoanTermUnit] = useState<LoanTermUnit>(initialInstallment.loanTermUnit);
 
   const showInstallmentFields = isInstallmentLoanCategory(category);
+  const isMortgage = category === 'Mortgage';
 
   const handleBalanceChange = (value: string) => {
     setBalance(value);
@@ -239,8 +242,8 @@ export default function EditDebtModal({ debt, onClose, onSuccess }: EditDebtModa
                 value={interestRate}
                 onChange={(e) => setInterestRate(e.target.value)}
                 className="w-full px-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
-                placeholder="0.00"
-                step="0.01"
+                placeholder={isMortgage ? '0.000' : '0.00'}
+                step={isMortgage ? '0.001' : '0.01'}
                 min="0"
                 required
               />

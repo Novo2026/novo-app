@@ -91,6 +91,11 @@ function getDebtTypePillClasses(debt: Debt, isOpenAccount: boolean): string {
   }
 }
 
+function formatDebtApr(debt: Debt): string {
+  const precision = debt.category === 'Mortgage' ? 3 : 2;
+  return debt.interestRate.toFixed(precision);
+}
+
 function formatPaidOffDisplayDate(debt: Debt): string {
   const date = debt.paidOffDate ?? debt.homeSaleDate;
   if (!date || Number.isNaN(new Date(date).getTime())) {
@@ -582,7 +587,7 @@ export default function MyDebts({ onDataUpdate, scrollToDebtId, onScrollToDebtHa
                 </span>
               )}
               <span className="text-[11px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
-                {debt.interestRate}% APR
+                {formatDebtApr(debt)}% APR
               </span>
               <button
                 type="button"

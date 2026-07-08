@@ -44,7 +44,9 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
   const [newLender, setNewLender] = useState('');
   const [newAccountName, setNewAccountName] = useState(debt.accountName);
   const [newBalance, setNewBalance] = useState(debt.currentBalance.toFixed(2));
-  const [newRate, setNewRate] = useState(debt.interestRate.toString());
+  const isMortgage = debt.category === 'Mortgage';
+  const ratePrecision = isMortgage ? 3 : 2;
+  const [newRate, setNewRate] = useState(debt.interestRate.toFixed(ratePrecision));
   const [newPayment, setNewPayment] = useState(debt.minimumPayment.toFixed(2));
   const [newTerm, setNewTerm] = useState(debt.loanTerm?.toString() || '');
   const [subtype, setSubtype] = useState<RefinanceSubtype>(getDefaultSubtype(debt));
@@ -237,7 +239,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                       'Refinanced';
 
     const rateChangeText = parsedRate !== debt.interestRate
-      ? ` New rate: ${parsedRate}%, was ${debt.interestRate}%.`
+      ? ` New rate: ${parsedRate.toFixed(ratePrecision)}%, was ${debt.interestRate.toFixed(ratePrecision)}%.`
       : '';
 
     const refinanceTransaction: Transaction = {
@@ -304,7 +306,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                   <>
                     <p className="text-sm font-semibold text-amber-800">Interest Rate Increased</p>
                     <p className="text-sm text-amber-700 mt-1">
-                      Rate will increase from {debt.interestRate}% to {parsedNewRate}%. This will cost more in interest over time.
+                      Rate will increase from {debt.interestRate.toFixed(ratePrecision)}% to {parsedNewRate.toFixed(ratePrecision)}%. This will cost more in interest over time.
                     </p>
                   </>
                 )}
@@ -483,7 +485,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
               <div className="relative">
                 <input
                   type="number"
-                  step="0.001"
+                  step={isMortgage ? '0.001' : '0.01'}
                   min="0"
                   value={newRate}
                   onChange={e => handleRateChange(e.target.value)}
@@ -494,13 +496,13 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
               </div>
               {parsedNewRate < debt.interestRate && parsedNewRate >= 0 && (
                 <p className="text-xs text-brand-green mt-1">
-                  -{(debt.interestRate - parsedNewRate).toFixed(2)}% improvement
+                  -{(debt.interestRate - parsedNewRate).toFixed(ratePrecision)}% improvement
                 </p>
               )}
               {parsedNewRate > debt.interestRate && (
                 <p className="text-xs text-amber-600 mt-1 flex items-center space-x-1">
                   <AlertTriangle className="w-3 h-3" />
-                  <span>+{rateDiff.toFixed(2)}% from current</span>
+                  <span>+{rateDiff.toFixed(ratePrecision)}% from current</span>
                 </p>
               )}
             </div>
@@ -582,7 +584,7 @@ export default function RefinanceModal({ debt, onClose, onSuccess }: RefinanceMo
                 {debt.refinanceHistory.map((r, i) => (
                   <div key={r.id} className="flex items-center justify-between text-sm bg-gray-50 rounded-lg px-3 py-2">
                     <span className="text-gray-500">
-                      {i === 0 ? 'Original' : `Refinance ${i}`}: {CalculationService.formatCurrency(r.previousBalance)} @ {r.previousRate}%
+                      {i === 0 ? 'Original' : `Refinance ${i}`}: {CalculationService.formatCurrency(r.previousBalance)} @ {r.previousRate.toFixed(ratePrecision)}%
                     </span>
                     <span className="text-gray-400 text-xs">{CalculationService.formatDate(r.date)}</span>
                   </div>

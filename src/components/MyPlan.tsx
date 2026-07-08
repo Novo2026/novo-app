@@ -186,7 +186,7 @@ export default function MyPlan({
                   <div className="min-w-0 space-y-1 py-1 border-b border-red-200/60 sm:border-0 sm:py-0 last:border-0">
                     <p className="text-xs sm:text-sm text-gray-600">Interest Rate</p>
                     <p className="text-base sm:text-lg font-bold text-red-700 break-words">
-                      {highestRateDebt.interestRate.toFixed(2)}%
+                      {highestRateDebt.interestRate.toFixed(highestRateDebt.category === 'Mortgage' ? 3 : 2)}%
                     </p>
                   </div>
                   <div className="min-w-0 space-y-1 py-1 border-b border-red-200/60 sm:border-0 sm:py-0 last:border-0">
@@ -256,7 +256,7 @@ export default function MyPlan({
                   <li className="flex items-start gap-2">
                     <span className="flex-shrink-0">•</span>
                     <span>
-                      Trade {highestRateDebt.interestRate.toFixed(2)}% interest for {helocRate.toFixed(2)}% (save{' '}
+                      Trade {highestRateDebt.interestRate.toFixed(highestRateDebt.category === 'Mortgage' ? 3 : 2)}% interest for {helocRate.toFixed(2)}% (save{' '}
                       {helocTacticalImpact.interestSavings.toFixed(2)}% on that balance)
                     </span>
                   </li>

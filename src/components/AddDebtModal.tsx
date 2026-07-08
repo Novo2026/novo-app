@@ -41,6 +41,7 @@ export default function AddDebtModal({ onClose, onSuccess }: AddDebtModalProps) 
     : DEBT_CATEGORIES;
 
   const showInstallmentFields = isInstallmentLoanCategory(category);
+  const isMortgage = category === 'Mortgage';
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -174,8 +175,8 @@ export default function AddDebtModal({ onClose, onSuccess }: AddDebtModalProps) 
                 value={interestRate}
                 onChange={(e) => setInterestRate(e.target.value)}
                 className="w-full px-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-blue focus:border-transparent"
-                placeholder="0.00"
-                step="0.01"
+                placeholder={isMortgage ? '0.000' : '0.00'}
+                step={isMortgage ? '0.001' : '0.01'}
                 min="0"
                 required
               />

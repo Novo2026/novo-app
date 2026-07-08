@@ -64,6 +64,11 @@ function getFocusTargetDebt(debts: Debt[]): Debt | null {
   );
 }
 
+function formatDebtApr(debt: Debt): string {
+  const precision = debt.category === 'Mortgage' ? 3 : 2;
+  return debt.interestRate.toFixed(precision);
+}
+
 interface StrategyResultsProps {
   result: StrategyResult;
   onRunNew: () => void;
@@ -600,7 +605,7 @@ export default function StrategyResults({
                         <span className="text-[13px] font-medium text-brand-navy">{item.debtName}</span>
                         {debt && (
                           <span className="inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-brand-gray-light text-brand-gray border border-brand-gray-border">
-                            {debt.interestRate.toFixed(2)}% APR
+                            {formatDebtApr(debt)}% APR
                           </span>
                         )}
                         {isHELOC && index === 0 && (

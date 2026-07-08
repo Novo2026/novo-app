@@ -24,6 +24,9 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
   const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
 
+  const formatApr = (rate: number): string =>
+    rate.toFixed(debt.category === 'Mortgage' ? 3 : 2);
+
   const transactions = StorageService.getTransactions()
     .filter(t => t.debtId === debt.id)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -100,7 +103,7 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
             </span>
           ) : (
             <span className="bg-red-100 text-red-700 text-sm font-semibold px-3 py-2 rounded">
-              {debt.interestRate}% APR
+              {formatApr(debt.interestRate)}% APR
             </span>
           )}
         </div>
@@ -468,13 +471,15 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
                     <div>
                       <p className="text-gray-500 text-xs">Rate</p>
                       <p className="font-semibold text-gray-800">
-                        {r.previousRate}%
+                        {formatApr(r.previousRate)}%
                         <span className="text-gray-400 mx-1">→</span>
                         <span className={rateImproved ? 'text-brand-green' : r.newRate > r.previousRate ? 'text-amber-600' : ''}>
-                          {r.newRate}%
+                          {formatApr(r.newRate)}%
                         </span>
                         {rateImproved && (
-                          <span className="ml-1 text-xs text-brand-green">(-{(r.previousRate - r.newRate).toFixed(2)}%)</span>
+                          <span className="ml-1 text-xs text-brand-green">
+                            (-{(r.previousRate - r.newRate).toFixed(debt.category === 'Mortgage' ? 3 : 2)}%)
+                          </span>
                         )}
                       </p>
                     </div>
