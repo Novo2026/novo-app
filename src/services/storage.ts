@@ -470,6 +470,26 @@ export const StorageService = {
     localStorage.setItem('novo_checking_accounts', JSON.stringify(accounts));
   },
 
+  deleteCheckingAccount(accountId: string): void {
+    const accounts = this.getCheckingAccounts().filter((a) => a.id !== accountId);
+    this.saveCheckingAccounts(accounts);
+
+    localStorage.removeItem(`novo_checking_transactions_${accountId}`);
+    localStorage.removeItem(`novo_checking_transactions_account_${accountId}`);
+
+    if (accountId === 'default_checking') {
+      localStorage.removeItem('novo_checking_transactions');
+      localStorage.removeItem('novo_checking_starting_balance');
+    }
+
+    const existingBatches = localStorage.getItem(STORAGE_KEYS.IMPORT_BATCHES);
+    if (existingBatches) {
+      const batches: ImportBatchRecord[] = JSON.parse(existingBatches);
+      const filtered = batches.filter((batch) => batch.accountId !== accountId);
+      localStorage.setItem(STORAGE_KEYS.IMPORT_BATCHES, JSON.stringify(filtered));
+    }
+  },
+
   getCheckingTransactionsForAccount(accountId: string): CheckingTransaction[] {
     try {
       const stored = localStorage.getItem(`novo_checking_transactions_${accountId}`);

@@ -185,6 +185,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
     getActiveCheckingAccountId(StorageService.getCheckingAccounts())
   );
   const [showAddAccount, setShowAddAccount] = useState(false);
+  const [deleteConfirmAccount, setDeleteConfirmAccount] = useState<CheckingAccount | null>(null);
   const [showReconcilePanel, setShowReconcilePanel] = useState(false);
   const [summaryPeriod, setSummaryPeriod] = useState<SummaryPeriod>('month');
   const [allAccountsCombined, setAllAccountsCombined] = useState(false);
@@ -215,6 +216,26 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
     setAccounts(updated);
     selectCheckingAccount(account.id);
     setShowAddAccount(false);
+  };
+
+  const handleDeleteAccount = (account: CheckingAccount) => {
+    StorageService.deleteCheckingAccount(account.id);
+    const remaining = StorageService.getCheckingAccounts();
+    setAccounts(remaining);
+    setDeleteConfirmAccount(null);
+
+    if (remaining.length > 0) {
+      const nextId = getActiveCheckingAccountId(remaining);
+      selectCheckingAccount(nextId);
+    } else {
+      setSelectedAccountId('');
+      setActiveCheckingAccountId('');
+    }
+
+    setRefreshTrigger((prev) => prev + 1);
+    onDataUpdate?.();
+    setSuccessMessage(`✓ ${account.name} deleted.`);
+    setTimeout(() => setSuccessMessage(null), 5000);
   };
 
   const selectedAccount = accounts.find(a => a.id === selectedAccountId) || accounts[0];
@@ -342,27 +363,40 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
           const balance = getCheckingAccountBalance(account.id, account.startingBalance);
           const isActive = selectedAccountId === account.id;
           return (
-            <button
+            <div
               key={account.id}
-              type="button"
-              onClick={() => selectCheckingAccount(account.id)}
-              className={`flex-1 min-w-[140px] flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
+              className={`flex-1 min-w-[140px] flex items-center gap-1 p-3 rounded-lg transition-all ${
                 isActive
                   ? 'border-2 border-brand-navy bg-white'
                   : 'border border-brand-gray-border bg-white hover:border-brand-navy/30'
               }`}
             >
-              <div className="w-8 h-8 rounded-full bg-brand-blue-light flex items-center justify-center shrink-0">
-                <Building2 className="w-4 h-4 text-brand-navy" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-bold text-brand-navy truncate">{account.name}</p>
-                <p className="text-[11px] text-brand-gray truncate">{account.bankName || 'Checking account'}</p>
-                <p className="text-sm font-medium text-brand-navy mt-0.5">
-                  {CalculationService.formatCurrency(balance)}
-                </p>
-              </div>
-            </button>
+              <button
+                type="button"
+                onClick={() => selectCheckingAccount(account.id)}
+                className="flex items-center gap-3 flex-1 min-w-0 text-left"
+              >
+                <div className="w-8 h-8 rounded-full bg-brand-blue-light flex items-center justify-center shrink-0">
+                  <Building2 className="w-4 h-4 text-brand-navy" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-bold text-brand-navy truncate">{account.name}</p>
+                  <p className="text-[11px] text-brand-gray truncate">{account.bankName || 'Checking account'}</p>
+                  <p className="text-sm font-medium text-brand-navy mt-0.5">
+                    {CalculationService.formatCurrency(balance)}
+                  </p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmAccount(account)}
+                className="p-1.5 text-brand-gray hover:text-red-600 hover:bg-red-50 rounded shrink-0"
+                title="Delete account"
+                aria-label={`Delete ${account.name}`}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
           );
         })}
         <button
@@ -398,6 +432,15 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
                 <h2 className="text-base font-semibold text-brand-navy">{selectedAccount?.name}</h2>
                 <p className="text-xs text-brand-gray">{selectedAccount?.bankName || 'Checking account'}</p>
               </div>
+              {selectedAccount && (
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmAccount(selectedAccount)}
+                  className="text-[11px] text-red-600 hover:text-red-700 hover:underline font-medium shrink-0"
+                >
+                  Delete Account
+                </button>
+              )}
             </div>
 
             <p className="text-[28px] font-medium text-brand-navy leading-none mb-1">
@@ -802,6 +845,36 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
             onDataUpdate?.();
           }}
         />
+      )}
+
+      {deleteConfirmAccount && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[70]">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-bold text-brand-navy mb-2">
+              Delete {deleteConfirmAccount.name}?
+            </h3>
+            <p className="text-sm text-brand-gray mb-6">
+              This will permanently remove this account and all its transactions. This cannot be
+              undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmAccount(null)}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2.5 px-4 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteAccount(deleteConfirmAccount)}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
+              >
+                Yes, Delete Account
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
