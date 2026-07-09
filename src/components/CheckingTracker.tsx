@@ -33,7 +33,7 @@ import {
   calculateMortgageBalanceReduction,
   formatMortgagePaymentDescription,
 } from '../utils/checkingDebtPayment';
-import { recalculateSavingsTransactions } from '../utils/savingsTransactions';
+import { recalculateCheckingBalances, recalculateSavingsTransactions } from '../utils/savingsTransactions';
 import {
   getActiveCheckingAccountId,
   setActiveCheckingAccountId,
@@ -176,9 +176,9 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
   const [showCheckingTransferModal, setShowCheckingTransferModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<CheckingTransaction | null>(null);
   const [editingLedgerTransaction, setEditingLedgerTransaction] = useState<CheckingTransaction | null>(null);
-  const [deleteConfirmTransaction, setDeleteConfirmTransaction] = useState<CheckingTransaction | null>(null);
   const [modalType, setModalType] = useState<'deposit' | 'withdrawal' | 'debt_payment'>('deposit');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [balanceOverride, setBalanceOverride] = useState<number | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<CheckingAccount[]>(() => StorageService.getCheckingAccounts());
   const [selectedAccountId, setSelectedAccountId] = useState<string>(() =>
@@ -247,9 +247,16 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
   }, [refreshTrigger, selectedAccountId]);
 
   const startingBalance = selectedAccount?.startingBalance ?? 0;
-  const currentBalance = transactions.length > 0
-    ? transactions[transactions.length - 1].balance
-    : startingBalance;
+
+  useEffect(() => {
+    setBalanceOverride(null);
+  }, [selectedAccountId, refreshTrigger]);
+
+  const currentBalance = balanceOverride ?? (
+    transactions.length > 0
+      ? transactions[transactions.length - 1].balance
+      : startingBalance
+  );
   const canTransferToChecking = accounts.length > 1;
 
   const recentDeposits = transactions
@@ -284,77 +291,6 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
     setModalType(type);
     setEditingTransaction(transaction);
     setShowModal(true);
-  };
-
-  const handleConfirmDelete = (transaction: CheckingTransaction) => {
-    const runRefresh = (message: string) => {
-      setDeleteConfirmTransaction(null);
-      setSuccessMessage(message);
-      setRefreshTrigger((prev) => prev + 1);
-      onDataUpdate?.();
-      setTimeout(() => setSuccessMessage(null), 5000);
-    };
-
-    if (transaction.linkedHelocTransactionId) {
-      const choice = confirm(
-        'This transaction is linked to a HELOC transaction.\n\n' +
-        'Click OK to delete both transactions, or Cancel to delete only this one.'
-      );
-
-      try {
-        if (choice) {
-          const filteredHeloc = JSON.parse(
-            localStorage.getItem('novo_heloc_transactions') || '[]'
-          ).filter((t: { id: string }) => t.id !== transaction.linkedHelocTransactionId);
-
-          const homeEquity = JSON.parse(localStorage.getItem('novo_home_equity') || '{}');
-          const helocBalance = homeEquity.helocBalance || 0;
-          let runningBalance = helocBalance;
-          filteredHeloc.forEach((txn: { type: string; amount: number; balance: number }) => {
-            if (txn.type === 'draw' || txn.type === 'interest') {
-              runningBalance += txn.amount;
-            } else {
-              runningBalance -= txn.amount;
-            }
-            runningBalance = Math.max(0, runningBalance);
-            txn.balance = Math.round(runningBalance * 100) / 100;
-          });
-
-          localStorage.setItem('novo_heloc_transactions', JSON.stringify(filteredHeloc));
-        }
-
-        StorageService.deleteTransaction(selectedAccountId, transaction.id);
-        runRefresh(
-          choice
-            ? '✓ Both linked transactions deleted. Balances updated.'
-            : '✓ Checking transaction deleted. HELOC transaction kept.'
-        );
-      } catch (err) {
-        setSuccessMessage(err instanceof Error ? err.message : 'Delete failed. Please try again.');
-        setTimeout(() => setSuccessMessage(null), 5000);
-      }
-      return;
-    }
-
-    try {
-      if (isLinkedCheckingDeleteType(transaction.type)) {
-        const result = deleteCheckingTransactionWithLinkedReversal(
-          selectedAccountId,
-          transaction.id
-        );
-        runRefresh(result.message);
-        return;
-      }
-
-      const removed = StorageService.deleteTransaction(selectedAccountId, transaction.id);
-      if (removed === 0) {
-        throw new Error('Transaction could not be found.');
-      }
-      runRefresh('✓ Transaction deleted. Balances updated.');
-    } catch (err) {
-      setSuccessMessage(err instanceof Error ? err.message : 'Delete failed. Please try again.');
-      setTimeout(() => setSuccessMessage(null), 5000);
-    }
   };
 
   return (
@@ -586,9 +522,16 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
               if (transaction.isReconciled) return;
               setEditingLedgerTransaction(transaction);
             }}
-            onDelete={(transaction) => {
-              if (transaction.isReconciled) return;
-              setDeleteConfirmTransaction(transaction);
+            onBalanceChange={setBalanceOverride}
+            onDeleteSuccess={(message) => {
+              setSuccessMessage(message);
+              onDataUpdate?.();
+              setTimeout(() => setSuccessMessage(null), 5000);
+            }}
+            onDeleteError={(message) => {
+              setSuccessMessage(message);
+              setRefreshTrigger((prev) => prev + 1);
+              setTimeout(() => setSuccessMessage(null), 5000);
             }}
           />
         </div>
@@ -741,38 +684,6 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
             setTimeout(() => setSuccessMessage(null), 5000);
           }}
         />
-      )}
-
-      {deleteConfirmTransaction && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-bold text-brand-navy mb-2">Delete this transaction?</h3>
-            <p className="text-sm text-brand-gray mb-1">
-              {deleteConfirmTransaction.description}
-            </p>
-            <p className="text-sm text-brand-gray mb-6">
-              {isLinkedCheckingDeleteType(deleteConfirmTransaction.type)
-                ? getCheckingDeleteConfirmationMessage(deleteConfirmTransaction)
-                : 'This cannot be undone.'}
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirmTransaction(null)}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2.5 px-4 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => handleConfirmDelete(deleteConfirmTransaction)}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
-              >
-                Yes, Delete
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {showImportHistory && (
@@ -1734,20 +1645,29 @@ function TransactionLedger({
   refreshTrigger,
   onDuplicateResolved,
   onEdit,
-  onDelete
+  onBalanceChange,
+  onDeleteSuccess,
+  onDeleteError,
 }: {
   accountId: string;
   transactions: CheckingTransaction[];
   refreshTrigger: number;
   onDuplicateResolved: (message: string) => void;
   onEdit: (t: CheckingTransaction) => void;
-  onDelete: (t: CheckingTransaction) => void;
+  onBalanceChange?: (balance: number) => void;
+  onDeleteSuccess?: (message: string) => void;
+  onDeleteError?: (message: string) => void;
 }) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const scrollPositionRef = useRef(0);
+  const [ledgerTransactions, setLedgerTransactions] = useState<CheckingTransaction[]>(transactions);
   const [showAll, setShowAll] = useState(false);
   const [fadingIds, setFadingIds] = useState<Set<string>>(new Set());
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const displayLimit = 10;
+
+  useEffect(() => {
+    setLedgerTransactions(transactions);
+    setConfirmDeleteId(null);
+  }, [accountId, refreshTrigger, transactions]);
 
   const duplicateFlags = useMemo(
     () => StorageService.getImportDuplicateFlags(accountId),
@@ -1765,9 +1685,14 @@ function TransactionLedger({
     [duplicateFlags]
   );
 
+  const startingBalance = useMemo(() => {
+    const account = StorageService.getCheckingAccounts().find((a) => a.id === accountId);
+    return account?.startingBalance ?? 0;
+  }, [accountId, refreshTrigger]);
+
   const exportCSV = () => {
     const headers = ['Date', 'Type', 'Category', 'Subcategory', 'Description', 'Amount', 'Balance'];
-    const rows = transactions.map(t => [
+    const rows = ledgerTransactions.map(t => [
       t.date,
       t.type === 'debt_payment' ? 'Debt Payment' : t.type.charAt(0).toUpperCase() + t.type.slice(1),
       t.category || '',
@@ -1777,10 +1702,10 @@ function TransactionLedger({
       `$${t.balance.toFixed(2)}`
     ]);
 
-    const totalDeposits = transactions.filter(t => t.type === 'deposit').reduce((sum, t) => sum + t.amount, 0);
-    const totalWithdrawals = transactions.filter(t => t.type === 'withdrawal').reduce((sum, t) => sum + t.amount, 0);
-    const totalDebtPayments = transactions.filter(t => t.type === 'debt_payment').reduce((sum, t) => sum + t.amount, 0);
-    const currentBalance = transactions.length > 0 ? transactions[transactions.length - 1].balance : 0;
+    const totalDeposits = ledgerTransactions.filter(t => t.type === 'deposit').reduce((sum, t) => sum + t.amount, 0);
+    const totalWithdrawals = ledgerTransactions.filter(t => t.type === 'withdrawal').reduce((sum, t) => sum + t.amount, 0);
+    const totalDebtPayments = ledgerTransactions.filter(t => t.type === 'debt_payment').reduce((sum, t) => sum + t.amount, 0);
+    const currentBalance = ledgerTransactions.length > 0 ? ledgerTransactions[ledgerTransactions.length - 1].balance : 0;
 
     rows.push([]);
     rows.push(['Summary', '', '', '', '', '', '']);
@@ -1799,7 +1724,7 @@ function TransactionLedger({
     URL.revokeObjectURL(url);
   };
 
-  const sortedTransactions = [...transactions].sort((a, b) =>
+  const sortedTransactions = [...ledgerTransactions].sort((a, b) =>
     CalculationService.compareDateStrings(b.date, a.date)
   );
 
@@ -1807,20 +1732,91 @@ function TransactionLedger({
     ? sortedTransactions
     : sortedTransactions.slice(0, displayLimit);
 
-  useEffect(() => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = scrollPositionRef.current;
+  const removeFromLocalState = (transactionId: string) => {
+    setLedgerTransactions((prev) => {
+      const filtered = prev.filter((t) => t.id !== transactionId);
+      const recalculated = recalculateCheckingBalances(filtered, startingBalance);
+      const newBalance = recalculated.length > 0
+        ? recalculated[recalculated.length - 1].balance
+        : startingBalance;
+      onBalanceChange?.(newBalance);
+      return recalculated;
+    });
+  };
+
+  const persistDelete = async (
+    transaction: CheckingTransaction,
+    deleteHelocToo: boolean
+  ): Promise<string> => {
+    if (transaction.linkedHelocTransactionId) {
+      if (deleteHelocToo) {
+        const filteredHeloc = JSON.parse(
+          localStorage.getItem('novo_heloc_transactions') || '[]'
+        ).filter((t: { id: string }) => t.id !== transaction.linkedHelocTransactionId);
+
+        const homeEquity = JSON.parse(localStorage.getItem('novo_home_equity') || '{}');
+        const helocBalance = homeEquity.helocBalance || 0;
+        let runningBalance = helocBalance;
+        filteredHeloc.forEach((txn: { type: string; amount: number; balance: number }) => {
+          if (txn.type === 'draw' || txn.type === 'interest') {
+            runningBalance += txn.amount;
+          } else {
+            runningBalance -= txn.amount;
+          }
+          runningBalance = Math.max(0, runningBalance);
+          txn.balance = Math.round(runningBalance * 100) / 100;
+        });
+
+        localStorage.setItem('novo_heloc_transactions', JSON.stringify(filteredHeloc));
+      }
+
+      const removed = StorageService.deleteTransaction(accountId, transaction.id);
+      if (removed === 0) {
+        throw new Error('Transaction could not be found.');
+      }
+      return deleteHelocToo
+        ? '✓ Both linked transactions deleted. Balances updated.'
+        : '✓ Checking transaction deleted. HELOC transaction kept.';
     }
-  }, [transactions, duplicateFlags, fadingIds]);
+
+    if (isLinkedCheckingDeleteType(transaction.type)) {
+      const result = deleteCheckingTransactionWithLinkedReversal(accountId, transaction.id);
+      return result.message;
+    }
+
+    const removed = StorageService.deleteTransaction(accountId, transaction.id);
+    if (removed === 0) {
+      throw new Error('Transaction could not be found.');
+    }
+    return '✓ Transaction deleted. Balances updated.';
+  };
+
+  const executeDelete = (transaction: CheckingTransaction, deleteHelocToo = false) => {
+    setConfirmDeleteId(null);
+    setFadingIds((prev) => new Set(prev).add(transaction.id));
+
+    window.setTimeout(() => {
+      removeFromLocalState(transaction.id);
+      setFadingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(transaction.id);
+        return next;
+      });
+
+      void persistDelete(transaction, deleteHelocToo)
+        .then((message) => onDeleteSuccess?.(message))
+        .catch((err) => {
+          onDeleteError?.(err instanceof Error ? err.message : 'Delete failed. Please try again.');
+        });
+    }, 150);
+  };
 
   const handleKeepBoth = (importedTransactionId: string) => {
-    scrollPositionRef.current = scrollContainerRef.current?.scrollTop || 0;
     StorageService.resolveImportDuplicateFlag(accountId, importedTransactionId, 'keep_both');
     onDuplicateResolved('Both transactions kept');
   };
 
   const handleRemoveImported = (importedTransactionId: string) => {
-    scrollPositionRef.current = scrollContainerRef.current?.scrollTop || 0;
     setFadingIds((prev) => new Set(prev).add(importedTransactionId));
     window.setTimeout(() => {
       StorageService.resolveImportDuplicateFlag(accountId, importedTransactionId, 'remove_imported');
@@ -1837,7 +1833,7 @@ function TransactionLedger({
     <div className="bg-white border border-brand-gray-border rounded-lg overflow-hidden">
       <div className="flex justify-between items-center px-4 py-3 border-b border-brand-gray-border">
         <h3 className="text-sm font-medium text-brand-navy">Transaction history</h3>
-        {transactions.length > 0 && (
+        {ledgerTransactions.length > 0 && (
           <button
             type="button"
             onClick={exportCSV}
@@ -1848,19 +1844,24 @@ function TransactionLedger({
         )}
       </div>
 
-      {transactions.length === 0 ? (
+      {ledgerTransactions.length === 0 ? (
         <p className="text-brand-gray text-sm text-center py-10 px-4">
           No transactions yet. Use quick actions above to record your first entry.
         </p>
       ) : (
         <>
-          <ul ref={scrollContainerRef} className="max-h-[60vh] overflow-y-auto">
+          <ul
+            key="transaction-ledger-list"
+            className="divide-y divide-brand-gray-border/80"
+            style={{ overflowY: 'auto', maxHeight: '60vh' }}
+          >
             {visibleTransactions.map((transaction) => {
               const meta = getTransactionDisplayMeta(transaction);
               const TxIcon = meta.Icon;
               const importedFlag = flagByImportedId.get(transaction.id);
               const isMatch = matchIds.has(transaction.id);
               const isFading = fadingIds.has(transaction.id);
+              const isConfirming = confirmDeleteId === transaction.id;
               const importedIndex = sortedTransactions.findIndex((t) => t.id === transaction.id);
               const matchIndex = importedFlag
                 ? sortedTransactions.findIndex((t) => t.id === importedFlag.existingTransactionId)
@@ -1868,22 +1869,24 @@ function TransactionLedger({
               const matchIsBelow = matchIndex > importedIndex;
 
               return (
-                <li key={transaction.id} className="border-b border-brand-gray-border/80 last:border-b-0">
+                <li key={transaction.id}>
                   {importedFlag && !isFading && (
                     <div className="px-4 pt-2 text-[11px] font-medium text-amber-700 bg-amber-50 border-l-4 border-amber-400">
                       ⚠️ Possible duplicate of the entry {matchIsBelow ? 'below' : 'above'}
                     </div>
                   )}
                   <div
-                    className={`flex items-center gap-3 px-4 py-3 hover:bg-brand-gray-light/50 group transition-opacity duration-300 ${
-                      isFading ? 'opacity-0' : 'opacity-100'
-                    } ${
+                    className={`flex items-center gap-3 px-4 py-3 hover:bg-brand-gray-light/50 group ${
                       importedFlag
                         ? 'border-l-4 border-amber-400 bg-amber-50/40'
                         : isMatch
                           ? 'border-l-4 border-brand-blue bg-blue-50/40'
                           : ''
                     }`}
+                    style={{
+                      opacity: isFading ? 0 : 1,
+                      transition: 'opacity 150ms',
+                    }}
                   >
                     <div className={`w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 ${meta.iconBg}`}>
                       <TxIcon className={`w-4 h-4 ${meta.iconColor}`} />
@@ -1938,7 +1941,7 @@ function TransactionLedger({
                           </button>
                           <button
                             type="button"
-                            onClick={() => onDelete(transaction)}
+                            onClick={() => setConfirmDeleteId(transaction.id)}
                             className="p-1.5 text-brand-gray hover:text-red-600 hover:bg-red-50 rounded"
                             title="Delete"
                           >
@@ -1948,6 +1951,80 @@ function TransactionLedger({
                       )}
                     </div>
                   </div>
+                  {isConfirming && (
+                    <div className="px-4 pb-3 pt-1 bg-gray-50 border-t border-brand-gray-border/50 text-xs">
+                      {transaction.linkedHelocTransactionId ? (
+                        <>
+                          <p className="text-brand-gray mb-2">
+                            This transaction is linked to a HELOC transaction.
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => executeDelete(transaction, true)}
+                              className="font-semibold text-red-600 hover:underline"
+                            >
+                              Delete Both
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => executeDelete(transaction, false)}
+                              className="font-semibold text-red-600 hover:underline"
+                            >
+                              Checking Only
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="font-semibold text-brand-gray hover:underline"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </>
+                      ) : isLinkedCheckingDeleteType(transaction.type) ? (
+                        <>
+                          <p className="text-brand-gray mb-2">
+                            {getCheckingDeleteConfirmationMessage(transaction)}
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => executeDelete(transaction)}
+                              className="font-semibold text-red-600 hover:underline"
+                            >
+                              Yes
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="font-semibold text-brand-gray hover:underline"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-brand-gray">Are you sure?</span>
+                          <button
+                            type="button"
+                            onClick={() => executeDelete(transaction)}
+                            className="font-semibold text-red-600 hover:underline"
+                          >
+                            Yes
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="font-semibold text-brand-gray hover:underline"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </li>
               );
             })}
