@@ -1,4 +1,5 @@
 import { recalculateCheckingBalances } from '../utils/savingsTransactions';
+import { CalculationService } from './calculations';
 import type {
   Debt,
   Transaction,
@@ -35,6 +36,7 @@ const STORAGE_KEYS = {
   UNIFIED_PAYMENTS: 'novo_unified_payments',
   ACCOUNT_TYPE: 'novo_account_type',
   IMPORT_BATCHES: 'novo_import_batches',
+  IMPORT_DUPLICATE_FLAGS: 'novo_import_duplicate_flags',
 };
 
 export type ImportBatchRecord = {
@@ -53,6 +55,28 @@ export type ImportBatchRecord = {
 export type LegacyDuplicatePair = {
   manual: CheckingTransaction & { source?: 'import' | 'manual'; batchId?: string };
   imported: CheckingTransaction & { source?: 'import' | 'manual'; batchId?: string };
+};
+
+export type ImportDuplicateLevel = 'definite' | 'probable' | 'possible' | 'none';
+
+export type ImportDuplicateFlag = {
+  importedTransactionId: string;
+  existingTransactionId: string;
+  level: 'probable' | 'possible';
+};
+
+export type SmartImportMatch = {
+  parsedId: string;
+  level: ImportDuplicateLevel;
+  existingTransactionId?: string;
+};
+
+export type ParsedImportTransaction = {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  type: CheckingTransaction['type'];
 };
 
 type ExtendedCheckingTransaction = CheckingTransaction & {
@@ -97,6 +121,49 @@ function isLikelyImportedTransaction(tx: ExtendedCheckingTransaction): boolean {
   if (tx.id.startsWith('import_') || tx.id.startsWith('cc_payment_')) return true;
   if (tx.originalDescription && tx.originalDescription !== tx.description) return true;
   return false;
+}
+
+function datesWithinTwoDays(a: string, b: string): boolean {
+  const diff = Math.abs(
+    CalculationService.parseLocalDate(a).getTime() - CalculationService.parseLocalDate(b).getTime()
+  );
+  return diff <= 2 * 24 * 60 * 60 * 1000;
+}
+
+function descriptionWordsOverlap(a: string, b: string): boolean {
+  const wordsA = normalizeDescriptionForMatch(a).split(' ').filter((word) => word.length > 2);
+  const wordsB = normalizeDescriptionForMatch(b).split(' ').filter((word) => word.length > 2);
+  if (wordsA.length === 0 || wordsB.length === 0) return false;
+  return wordsA.some((word) => wordsB.includes(word));
+}
+
+function classifySingleImportTransaction(
+  parsed: ParsedImportTransaction,
+  existing: CheckingTransaction[]
+): SmartImportMatch {
+  let bestLevel: ImportDuplicateLevel = 'none';
+  let matchedId: string | undefined;
+
+  for (const existingTx of existing) {
+    if (Math.abs(parsed.amount - existingTx.amount) > 0.001) continue;
+
+    const sameDate = datesWithinTwoDays(parsed.date, existingTx.date);
+    const descMatch = descriptionWordsOverlap(parsed.description, existingTx.description);
+
+    if (sameDate && descMatch) {
+      return { parsedId: parsed.id, level: 'definite', existingTransactionId: existingTx.id };
+    }
+
+    if (sameDate && (bestLevel === 'none' || bestLevel === 'possible')) {
+      bestLevel = 'probable';
+      matchedId = existingTx.id;
+    } else if (bestLevel === 'none') {
+      bestLevel = 'possible';
+      matchedId = existingTx.id;
+    }
+  }
+
+  return { parsedId: parsed.id, level: bestLevel, existingTransactionId: matchedId };
 }
 
 export const StorageService = {
@@ -632,6 +699,73 @@ export const StorageService = {
     this.saveCheckingTransactionsForAccount(accountId, recalculated);
     this.syncCheckingAccountBalance(accountId, recalculated);
     return removedCount;
+  },
+
+  clearCheckingTransactionsForAccount(accountId: string): void {
+    localStorage.removeItem(`novo_checking_transactions_${accountId}`);
+    localStorage.removeItem(`novo_checking_transactions_account_${accountId}`);
+    if (accountId === 'default_checking') {
+      localStorage.removeItem('novo_checking_transactions');
+    }
+    const account = this.getCheckingAccounts().find((a) => a.id === accountId);
+    if (account) {
+      this.syncCheckingAccountBalance(accountId, []);
+    }
+  },
+
+  classifyImportTransactions(
+    parsed: ParsedImportTransaction[],
+    existing: CheckingTransaction[]
+  ): SmartImportMatch[] {
+    return parsed.map((item) => classifySingleImportTransaction(item, existing));
+  },
+
+  getImportDuplicateFlags(accountId: string): ImportDuplicateFlag[] {
+    const stored = localStorage.getItem(STORAGE_KEYS.IMPORT_DUPLICATE_FLAGS);
+    if (!stored) return [];
+    const all = JSON.parse(stored) as Record<string, ImportDuplicateFlag[]>;
+    return all[accountId] ?? [];
+  },
+
+  saveImportDuplicateFlags(accountId: string, flags: ImportDuplicateFlag[]): void {
+    const stored = localStorage.getItem(STORAGE_KEYS.IMPORT_DUPLICATE_FLAGS);
+    const all: Record<string, ImportDuplicateFlag[]> = stored ? JSON.parse(stored) : {};
+    if (flags.length === 0) {
+      delete all[accountId];
+    } else {
+      all[accountId] = flags;
+    }
+    localStorage.setItem(STORAGE_KEYS.IMPORT_DUPLICATE_FLAGS, JSON.stringify(all));
+  },
+
+  addImportDuplicateFlags(accountId: string, flags: ImportDuplicateFlag[]): void {
+    const existing = this.getImportDuplicateFlags(accountId);
+    const merged = [...existing];
+    for (const flag of flags) {
+      if (!merged.some((f) => f.importedTransactionId === flag.importedTransactionId)) {
+        merged.push(flag);
+      }
+    }
+    this.saveImportDuplicateFlags(accountId, merged);
+  },
+
+  resolveImportDuplicateFlag(
+    accountId: string,
+    importedTransactionId: string,
+    action: 'keep_both' | 'remove_imported'
+  ): void {
+    const flags = this.getImportDuplicateFlags(accountId);
+    const flag = flags.find((f) => f.importedTransactionId === importedTransactionId);
+    if (!flag) return;
+
+    if (action === 'remove_imported') {
+      this.deleteTransaction(accountId, importedTransactionId);
+    }
+
+    this.saveImportDuplicateFlags(
+      accountId,
+      flags.filter((f) => f.importedTransactionId !== importedTransactionId)
+    );
   },
 
   reconcileAccount(accountId: string, balance: number): void {

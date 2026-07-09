@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { Upload, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
-import { StorageService } from '../services/storage';
+import { StorageService, type ImportDuplicateFlag, type SmartImportMatch } from '../services/storage';
 import type { Debt, CheckingTransaction } from '../types';
 
 interface ParsedTransaction {
@@ -19,6 +19,21 @@ interface StatementBalanceMeta {
   beginningBalance?: number;
   endingBalance?: number;
 }
+
+type ImportStep =
+  | 'upload'
+  | 'balance_conflict'
+  | 'preview'
+  | 'import_choice'
+  | 'replace_confirm'
+  | 'smart_summary'
+  | 'smart_review'
+  | 'credit_card_confirm'
+  | 'importing';
+
+type ImportMode = 'normal' | 'smart' | 'replace' | 'add_anyway';
+
+type BalanceConflictChoice = 'keep' | 'update';
 
 type StatementType = 'checking' | 'credit_card' | 'savings' | 'unknown';
 
@@ -152,6 +167,52 @@ function analyzeStatementBalanceEntries(
   return {
     transactions: filtered,
     meta: { beginningBalance, endingBalance },
+  };
+}
+
+function evaluateStartingBalanceConflict(
+  accountStartingBalance: number,
+  statementBeginningBalance?: number
+): {
+  infoMessage: string;
+  needsConflictStep: boolean;
+  resolvedStartingBalance: number;
+  shouldUpdateStartingBalance: boolean;
+} {
+  if (statementBeginningBalance == null) {
+    return {
+      infoMessage: '',
+      needsConflictStep: false,
+      resolvedStartingBalance: accountStartingBalance,
+      shouldUpdateStartingBalance: false,
+    };
+  }
+
+  const hasExistingStartingBalance = Math.abs(accountStartingBalance) > 0.001;
+
+  if (!hasExistingStartingBalance) {
+    return {
+      infoMessage: `ℹ️ Starting balance set to ${CalculationService.formatCurrency(statementBeginningBalance)} from statement`,
+      needsConflictStep: false,
+      resolvedStartingBalance: statementBeginningBalance,
+      shouldUpdateStartingBalance: true,
+    };
+  }
+
+  if (Math.abs(accountStartingBalance - statementBeginningBalance) <= 0.02) {
+    return {
+      infoMessage: `ℹ️ Beginning balance of ${CalculationService.formatCurrency(statementBeginningBalance)} excluded from import (already set on your account)`,
+      needsConflictStep: false,
+      resolvedStartingBalance: accountStartingBalance,
+      shouldUpdateStartingBalance: false,
+    };
+  }
+
+  return {
+    infoMessage: '',
+    needsConflictStep: true,
+    resolvedStartingBalance: accountStartingBalance,
+    shouldUpdateStartingBalance: false,
   };
 }
 
@@ -451,7 +512,7 @@ export default function StatementUploadModal({
   startingBalance,
   defaultCheckingAccountId,
 }: StatementUploadModalProps) {
-  const [step, setStep] = useState<'upload' | 'preview' | 'credit_card_confirm' | 'importing'>('upload');
+  const [step, setStep] = useState<ImportStep>('upload');
   const [checkingAccounts, setCheckingAccounts] = useState(() => StorageService.getCheckingAccounts());
   const [selectedCheckingAccountId, setSelectedCheckingAccountId] = useState(() => {
     const accounts = StorageService.getCheckingAccounts();
@@ -472,7 +533,87 @@ export default function StatementUploadModal({
   const [newDebtMinPayment, setNewDebtMinPayment] = useState('');
   const [newDebtRate, setNewDebtRate] = useState('');
   const [statementBalances, setStatementBalances] = useState<StatementBalanceMeta>({});
+  const [balanceInfoMessage, setBalanceInfoMessage] = useState('');
+  const [balanceConflictChoice, setBalanceConflictChoice] = useState<BalanceConflictChoice | null>(null);
+  const [importMode, setImportMode] = useState<ImportMode>('normal');
+  const [smartClassifications, setSmartClassifications] = useState<SmartImportMatch[]>([]);
+  const [existingTransactionCount, setExistingTransactionCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const selectedAccount = checkingAccounts.find((a) => a.id === selectedCheckingAccountId);
+  const accountName = selectedAccount?.name || 'Checking Account';
+
+  const getApprovedTransactions = () => transactions.filter((t) => t.approved);
+
+  const getSmartCounts = () => {
+    const approved = getApprovedTransactions();
+    const definite = smartClassifications.filter((m) => m.level === 'definite').length;
+    const flagged = smartClassifications.filter(
+      (m) => m.level === 'probable' || m.level === 'possible'
+    ).length;
+    const fresh = smartClassifications.filter((m) => m.level === 'none').length;
+    return { definite, flagged, fresh, total: approved.length };
+  };
+
+  const applyBalanceResolution = (choice?: BalanceConflictChoice) => {
+    const accountStartingBalance = selectedAccount?.startingBalance ?? startingBalance;
+    const evaluation = evaluateStartingBalanceConflict(
+      accountStartingBalance,
+      statementBalances.beginningBalance
+    );
+
+    if (evaluation.needsConflictStep && choice) {
+      setBalanceConflictChoice(choice);
+      if (choice === 'update' && statementBalances.beginningBalance != null) {
+        setBalanceInfoMessage(
+          `ℹ️ Starting balance set to ${CalculationService.formatCurrency(statementBalances.beginningBalance)} from statement`
+        );
+      } else {
+        setBalanceInfoMessage(
+          `ℹ️ Beginning balance of ${CalculationService.formatCurrency(statementBalances.beginningBalance ?? 0)} excluded from import (already set on your account)`
+        );
+      }
+      return;
+    }
+
+    setBalanceInfoMessage(evaluation.infoMessage);
+    if (evaluation.shouldUpdateStartingBalance && selectedAccount) {
+      const updatedAccounts = checkingAccounts.map((a) =>
+        a.id === selectedCheckingAccountId
+          ? { ...a, startingBalance: evaluation.resolvedStartingBalance }
+          : a
+      );
+      setCheckingAccounts(updatedAccounts);
+      StorageService.saveCheckingAccounts(updatedAccounts);
+    }
+  };
+
+  const goToCheckingPreview = (parsed: ParsedTransaction[], meta: StatementBalanceMeta) => {
+    setStatementBalances(meta);
+    setTransactions(parsed);
+    const account =
+      StorageService.getCheckingAccounts().find((a) => a.id === selectedCheckingAccountId) ||
+      selectedAccount;
+    const accountStartingBalance = account?.startingBalance ?? startingBalance;
+    const evaluation = evaluateStartingBalanceConflict(accountStartingBalance, meta.beginningBalance);
+
+    if (evaluation.needsConflictStep) {
+      setStep('balance_conflict');
+      return;
+    }
+
+    if (evaluation.shouldUpdateStartingBalance && account) {
+      const updatedAccounts = checkingAccounts.map((a) =>
+        a.id === selectedCheckingAccountId
+          ? { ...a, startingBalance: evaluation.resolvedStartingBalance }
+          : a
+      );
+      setCheckingAccounts(updatedAccounts);
+      StorageService.saveCheckingAccounts(updatedAccounts);
+    }
+    setBalanceInfoMessage(evaluation.infoMessage);
+    setStep('preview');
+  };
 
   const handleFile = async (file: File) => {
     setError(null);
@@ -509,7 +650,6 @@ export default function StatementUploadModal({
 
       const analyzed = analyzeStatementBalanceEntries(parsed);
       parsed = analyzed.transactions;
-      setStatementBalances(analyzed.meta);
 
       if (parsed.length === 0) {
         throw new Error('No transactions found. Check that the file contains transaction data.');
@@ -526,11 +666,11 @@ export default function StatementUploadModal({
         setCreditCardDebts(debts);
         setSelectedDebtId(matched?.id || '');
         setTransactions(parsed);
+        setStatementBalances(analyzed.meta);
         setStep('credit_card_confirm');
       } else {
         setDetectionResult(detection);
-        setTransactions(parsed);
-        setStep('preview');
+        goToCheckingPreview(parsed, analyzed.meta);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to parse file');
@@ -546,45 +686,63 @@ export default function StatementUploadModal({
     if (file) handleFile(file);
   };
 
-  const handleImport = () => {
+  const performImport = (
+    transactionsToImport: ParsedTransaction[],
+    options: {
+      mode: ImportMode;
+      duplicateFlags?: ImportDuplicateFlag[];
+      closeOnComplete?: boolean;
+    }
+  ) => {
     const batchId = `import_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const batchTimestamp = new Date().toISOString();
     if (!selectedCheckingAccountId) {
       alert('Please select a checking account to import into');
       return;
     }
+
     setStep('importing');
-    const approved = transactions.filter(t => t.approved);
-    const approvedWithBatch = approved.map((t) => ({
+
+    const account = checkingAccounts.find((a) => a.id === selectedCheckingAccountId);
+    let accountStartingBalance = account?.startingBalance ?? startingBalance;
+
+    if (options.mode === 'replace') {
+      StorageService.clearCheckingTransactionsForAccount(selectedCheckingAccountId);
+    }
+
+    if (statementBalances.beginningBalance != null) {
+      const evaluation = evaluateStartingBalanceConflict(
+        accountStartingBalance,
+        statementBalances.beginningBalance
+      );
+      const shouldUpdate =
+        evaluation.shouldUpdateStartingBalance ||
+        balanceConflictChoice === 'update';
+
+      if (shouldUpdate && account) {
+        const updatedAccounts = checkingAccounts.map((a) =>
+          a.id === selectedCheckingAccountId
+            ? { ...a, startingBalance: statementBalances.beginningBalance! }
+            : a
+        );
+        setCheckingAccounts(updatedAccounts);
+        StorageService.saveCheckingAccounts(updatedAccounts);
+        accountStartingBalance = statementBalances.beginningBalance!;
+      }
+    }
+
+    const approvedWithBatch = transactionsToImport.map((t) => ({
       ...t,
       originalDescription: t.originalDescription || t.description,
       source: 'import' as const,
       batchId,
       batchTimestamp,
     }));
-    const account = checkingAccounts.find(a => a.id === selectedCheckingAccountId);
-    let accountStartingBalance = account?.startingBalance ?? startingBalance;
-    const statementBeginningBalance = statementBalances.beginningBalance;
 
-    if (statementBeginningBalance != null) {
-      const hasExistingStartingBalance = Math.abs(accountStartingBalance) > 0.001;
-      const shouldUpdateStartingBalance = !hasExistingStartingBalance || confirm(
-        `Update starting balance to ${CalculationService.formatCurrency(statementBeginningBalance)} from this statement?`
-      );
-
-      if (shouldUpdateStartingBalance && account) {
-        const updatedAccounts = checkingAccounts.map((a) =>
-          a.id === selectedCheckingAccountId
-            ? { ...a, startingBalance: statementBeginningBalance }
-            : a
-        );
-        setCheckingAccounts(updatedAccounts);
-        StorageService.saveCheckingAccounts(updatedAccounts);
-        accountStartingBalance = statementBeginningBalance;
-      }
-    }
-
-    const existing = StorageService.getCheckingTransactionsForAccount(selectedCheckingAccountId);
+    const existing =
+      options.mode === 'replace'
+        ? []
+        : StorageService.getCheckingTransactionsForAccount(selectedCheckingAccountId);
     const combined = recalculateImportedBalances(existing, approvedWithBatch, accountStartingBalance);
     const withAccountId = combined.map((t: { accountId?: string; isReconciled?: boolean }) => ({
       ...t,
@@ -593,6 +751,11 @@ export default function StatementUploadModal({
     }));
     StorageService.saveCheckingTransactionsForAccount(selectedCheckingAccountId, withAccountId);
     StorageService.syncCheckingAccountBalance(selectedCheckingAccountId, withAccountId as CheckingTransaction[]);
+
+    if (options.duplicateFlags && options.duplicateFlags.length > 0) {
+      StorageService.addImportDuplicateFlags(selectedCheckingAccountId, options.duplicateFlags);
+    }
+
     const importedDates = approvedWithBatch.map((t) => t.date).sort();
     const totalDebits = approvedWithBatch
       .filter((t) => t.type !== 'deposit')
@@ -630,8 +793,114 @@ export default function StatementUploadModal({
       }
     }
 
-    onSuccess(`✓ Imported ${approved.length} transactions from ${fileName}.${mismatchWarning}`);
+    const importedCount = approvedWithBatch.length;
+    const message = `✓ Imported ${importedCount} transaction${importedCount === 1 ? '' : 's'} from ${fileName}.${mismatchWarning}`;
+
+    if (options.closeOnComplete === false) {
+      setStep('smart_review');
+      return message;
+    }
+
+    onSuccess(message);
   };
+
+  const importSmartNewTransactions = () => {
+    const approved = getApprovedTransactions();
+    const newTransactions = approved.filter((tx) => {
+      const match = smartClassifications.find((c) => c.parsedId === tx.id);
+      return match?.level === 'none';
+    });
+
+    if (newTransactions.length > 0) {
+      performImport(newTransactions, { mode: 'smart', closeOnComplete: false });
+    }
+
+    const flaggedCount = smartClassifications.filter(
+      (c) => c.level === 'probable' || c.level === 'possible'
+    ).length;
+
+    if (flaggedCount > 0) {
+      setStep('smart_review');
+      return;
+    }
+
+    onSuccess(
+      `✓ Imported ${newTransactions.length} transaction${newTransactions.length === 1 ? '' : 's'} from ${fileName}.`
+    );
+  };
+
+  const importAllFlaggedTransactions = () => {
+    const approved = getApprovedTransactions();
+    const flaggedParsed = approved.filter((tx) => {
+      const match = smartClassifications.find((c) => c.parsedId === tx.id);
+      return match?.level === 'probable' || match?.level === 'possible';
+    });
+
+    const toImport = flaggedParsed.map((tx) => ({
+      ...tx,
+      id: `import_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    }));
+
+    const flags: ImportDuplicateFlag[] = flaggedParsed
+      .map((tx, index) => {
+        const match = smartClassifications.find((c) => c.parsedId === tx.id);
+        if (
+          !match?.existingTransactionId ||
+          (match.level !== 'probable' && match.level !== 'possible')
+        ) {
+          return null;
+        }
+        return {
+          importedTransactionId: toImport[index].id,
+          existingTransactionId: match.existingTransactionId,
+          level: match.level,
+        };
+      })
+      .filter((flag): flag is ImportDuplicateFlag => flag !== null);
+
+    performImport(toImport, {
+      mode: 'smart',
+      duplicateFlags: flags,
+      closeOnComplete: true,
+    });
+  };
+
+  const startSmartImport = () => {
+    const existing = StorageService.getCheckingTransactionsForAccount(selectedCheckingAccountId);
+    const approved = getApprovedTransactions();
+    const classifications = StorageService.classifyImportTransactions(
+      approved.map((t) => ({
+        id: t.id,
+        date: t.date,
+        description: t.description,
+        amount: t.amount,
+        type: t.type,
+      })),
+      existing
+    );
+    setSmartClassifications(classifications);
+    setImportMode('smart');
+    setStep('smart_summary');
+  };
+
+  const requestImport = () => {
+    if (!selectedCheckingAccountId) {
+      alert('Please select a checking account to import into');
+      return;
+    }
+
+    const existing = StorageService.getCheckingTransactionsForAccount(selectedCheckingAccountId);
+    if (existing.length > 0) {
+      setExistingTransactionCount(existing.length);
+      setStep('import_choice');
+      return;
+    }
+
+    setImportMode('normal');
+    performImport(getApprovedTransactions(), { mode: 'normal' });
+  };
+
+  const handleImport = requestImport;
 
   const toggleApproved = (id: string) => {
     setTransactions(prev => prev.map(t => t.id === id ? { ...t, approved: !t.approved } : t));
@@ -946,6 +1215,266 @@ export default function StatementUploadModal({
             </div>
           )}
 
+          {step === 'balance_conflict' && (
+            <div className="space-y-4">
+              <div className="border border-amber-200 bg-amber-50 rounded-lg p-4">
+                <p className="text-sm font-bold text-brand-navy mb-2">⚠️ Balance conflict detected</p>
+                <p className="text-sm text-brand-gray">
+                  Your account starting balance:{' '}
+                  <strong>{CalculationService.formatCurrency(selectedAccount?.startingBalance ?? startingBalance)}</strong>
+                </p>
+                <p className="text-sm text-brand-gray mt-1">
+                  This statement&apos;s beginning balance:{' '}
+                  <strong>{CalculationService.formatCurrency(statementBalances.beginningBalance ?? 0)}</strong>
+                </p>
+                <p className="text-sm text-brand-gray mt-3">Which should we use?</p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    applyBalanceResolution('keep');
+                    setStep('preview');
+                  }}
+                  className="flex-1 bg-white border border-brand-gray-border hover:border-brand-navy text-brand-navy font-semibold py-3 rounded-lg transition-colors"
+                >
+                  Keep my existing balance
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    applyBalanceResolution('update');
+                    if (statementBalances.beginningBalance != null && selectedAccount) {
+                      const updatedAccounts = checkingAccounts.map((a) =>
+                        a.id === selectedCheckingAccountId
+                          ? { ...a, startingBalance: statementBalances.beginningBalance! }
+                          : a
+                      );
+                      setCheckingAccounts(updatedAccounts);
+                      StorageService.saveCheckingAccounts(updatedAccounts);
+                    }
+                    setStep('preview');
+                  }}
+                  className="flex-1 bg-brand-navy hover:bg-brand-navy-dark text-white font-semibold py-3 rounded-lg transition-colors"
+                >
+                  Update to statement balance
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 'import_choice' && (
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-lg font-bold text-brand-navy">This account already has transactions</h4>
+                <p className="text-sm text-brand-gray mt-1">
+                  We found {existingTransactionCount} existing transaction
+                  {existingTransactionCount === 1 ? '' : 's'} in {accountName}. How would you like to handle the import?
+                </p>
+              </div>
+
+              <div className="border-2 border-brand-navy rounded-xl p-4 space-y-3 bg-brand-gray-light/30">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">🔄</span>
+                  <div>
+                    <p className="font-semibold text-brand-navy">Smart Import</p>
+                    <p className="text-sm text-brand-gray mt-1">
+                      We&apos;ll compare the statement against your existing entries and only add what&apos;s missing.
+                      Duplicates are flagged for your review.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={startSmartImport}
+                  className="w-full bg-brand-navy hover:bg-brand-navy-dark text-white font-semibold py-2.5 rounded-lg transition-colors"
+                >
+                  Smart Import
+                </button>
+              </div>
+
+              <div className="border border-brand-gray-border rounded-xl p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">🗑️</span>
+                  <div>
+                    <p className="font-semibold text-brand-navy">Replace All</p>
+                    <p className="text-sm text-brand-gray mt-1">
+                      Clear all existing transactions for this account and start fresh with this statement.
+                      Your other accounts are not affected.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setStep('replace_confirm')}
+                  className="w-full border border-brand-orange text-brand-orange hover:bg-orange-50 font-semibold py-2.5 rounded-lg transition-colors"
+                >
+                  Replace &amp; Import
+                </button>
+              </div>
+
+              <div className="border border-brand-gray-border rounded-xl p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">➕</span>
+                  <div>
+                    <p className="font-semibold text-brand-navy">Add Anyway</p>
+                    <p className="text-sm text-brand-gray mt-1">
+                      Import everything as-is. This may create duplicates if you&apos;ve already entered these
+                      transactions manually.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportMode('add_anyway');
+                    performImport(getApprovedTransactions(), { mode: 'add_anyway' });
+                  }}
+                  className="w-full border border-brand-gray-border text-brand-gray hover:bg-brand-gray-light font-semibold py-2.5 rounded-lg transition-colors"
+                >
+                  Add Anyway
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setStep('preview')}
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2.5 rounded-lg transition-colors"
+              >
+                Back
+              </button>
+            </div>
+          )}
+
+          {step === 'replace_confirm' && (
+            <div className="space-y-4">
+              <div className="border border-red-200 bg-red-50 rounded-lg p-4">
+                <p className="text-sm font-semibold text-red-800">
+                  This will permanently delete {existingTransactionCount} existing transaction
+                  {existingTransactionCount === 1 ? '' : 's'}. Are you sure?
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStep('import_choice')}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-3 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImportMode('replace');
+                    performImport(getApprovedTransactions(), { mode: 'replace' });
+                  }}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition-colors"
+                >
+                  Yes, Replace All
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 'smart_summary' && (
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-lg font-bold text-brand-navy">Smart Import Summary</h4>
+                {balanceInfoMessage && (
+                  <p className="text-sm text-brand-gray mt-2">{balanceInfoMessage}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm text-green-700 font-medium">
+                  ✅ {getSmartCounts().definite} transaction{getSmartCounts().definite === 1 ? '' : 's'} already in NOVO — will be skipped
+                </p>
+                <p className="text-sm text-brand-navy font-medium">
+                  ➕ {getSmartCounts().fresh} new transaction{getSmartCounts().fresh === 1 ? '' : 's'} to add
+                </p>
+                <p className="text-sm text-amber-700 font-medium">
+                  ⚠️ {getSmartCounts().flagged} need your review
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={importSmartNewTransactions}
+                  disabled={getSmartCounts().fresh === 0}
+                  className="flex-1 bg-brand-navy hover:bg-brand-navy-dark disabled:opacity-50 text-white font-semibold py-3 rounded-lg transition-colors"
+                >
+                  Import {getSmartCounts().fresh} New Transaction{getSmartCounts().fresh === 1 ? '' : 's'}
+                </button>
+                {getSmartCounts().flagged > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setStep('smart_review')}
+                    className="flex-1 border border-brand-orange text-brand-orange hover:bg-orange-50 font-semibold py-3 rounded-lg transition-colors"
+                  >
+                    Review {getSmartCounts().flagged} flagged items first
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setStep('import_choice')}
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2.5 rounded-lg transition-colors"
+              >
+                Back
+              </button>
+            </div>
+          )}
+
+          {step === 'smart_review' && (
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-lg font-bold text-brand-navy">Review Flagged Items</h4>
+                <p className="text-sm text-brand-gray mt-1">
+                  These transactions may duplicate existing entries. Import them to review inline in your transaction list.
+                </p>
+              </div>
+
+              <div className="border border-gray-200 rounded-lg overflow-hidden max-h-[40vh] overflow-y-auto">
+                {getApprovedTransactions()
+                  .filter((tx) => {
+                    const match = smartClassifications.find((c) => c.parsedId === tx.id);
+                    return match?.level === 'probable' || match?.level === 'possible';
+                  })
+                  .map((tx) => {
+                    const match = smartClassifications.find((c) => c.parsedId === tx.id);
+                    return (
+                      <div key={tx.id} className="px-4 py-3 border-b border-gray-100 last:border-b-0">
+                        <p className="text-sm font-medium text-brand-navy">{tx.description}</p>
+                        <p className="text-xs text-brand-gray mt-0.5">
+                          {CalculationService.formatLocalDateShort(tx.date)} ·{' '}
+                          {CalculationService.formatCurrency(tx.amount)} ·{' '}
+                          {match?.level === 'probable' ? 'Probable duplicate' : 'Possible duplicate'}
+                        </p>
+                      </div>
+                    );
+                  })}
+              </div>
+
+              <button
+                type="button"
+                onClick={importAllFlaggedTransactions}
+                className="w-full bg-brand-orange hover:bg-brand-orange-dark text-white font-semibold py-3 rounded-lg transition-colors"
+              >
+                Import All Flagged for Review
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSuccess(`✓ Smart import complete for ${fileName}.`)}
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2.5 rounded-lg transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          )}
+
           {step === 'preview' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -967,6 +1496,12 @@ export default function StatementUploadModal({
                 </div>
                 <span className="text-sm font-medium text-brand-orange">{approvedCount} selected</span>
               </div>
+
+              {balanceInfoMessage && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-900">{balanceInfoMessage}</p>
+                </div>
+              )}
 
               {detectionResult?.type !== 'credit_card' && (
                 <div className="mb-4">

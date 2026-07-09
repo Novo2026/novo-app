@@ -189,6 +189,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
   const [showReconcilePanel, setShowReconcilePanel] = useState(false);
   const [summaryPeriod, setSummaryPeriod] = useState<SummaryPeriod>('month');
   const [allAccountsCombined, setAllAccountsCombined] = useState(false);
+  const [ledgerToast, setLedgerToast] = useState<string | null>(null);
 
   useEffect(() => {
     const accts = StorageService.getCheckingAccounts();
@@ -572,7 +573,15 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
           </div>
 
           <TransactionLedger
+            accountId={selectedAccountId}
             transactions={transactions}
+            refreshTrigger={refreshTrigger}
+            onDuplicateResolved={(message) => {
+              setLedgerToast(message);
+              setRefreshTrigger((prev) => prev + 1);
+              onDataUpdate?.();
+              setTimeout(() => setLedgerToast(null), 2000);
+            }}
             onEdit={(transaction) => {
               if (transaction.isReconciled) return;
               setEditingLedgerTransaction(transaction);
@@ -874,6 +883,12 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {ledgerToast && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[80] bg-green-700 text-white text-sm font-medium px-4 py-2.5 rounded-lg shadow-lg">
+          {ledgerToast}
         </div>
       )}
     </div>
@@ -1720,16 +1735,41 @@ function EditTransactionModal({
 }
 
 function TransactionLedger({
+  accountId,
   transactions,
+  refreshTrigger,
+  onDuplicateResolved,
   onEdit,
   onDelete
 }: {
+  accountId: string;
   transactions: CheckingTransaction[];
+  refreshTrigger: number;
+  onDuplicateResolved: (message: string) => void;
   onEdit: (t: CheckingTransaction) => void;
   onDelete: (t: CheckingTransaction) => void;
 }) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollPositionRef = useRef(0);
   const [showAll, setShowAll] = useState(false);
+  const [fadingIds, setFadingIds] = useState<Set<string>>(new Set());
   const displayLimit = 10;
+
+  const duplicateFlags = useMemo(
+    () => StorageService.getImportDuplicateFlags(accountId),
+    [accountId, refreshTrigger]
+  );
+
+  const flagByImportedId = useMemo(() => {
+    const map = new Map<string, (typeof duplicateFlags)[number]>();
+    duplicateFlags.forEach((flag) => map.set(flag.importedTransactionId, flag));
+    return map;
+  }, [duplicateFlags]);
+
+  const matchIds = useMemo(
+    () => new Set(duplicateFlags.map((flag) => flag.existingTransactionId)),
+    [duplicateFlags]
+  );
 
   const exportCSV = () => {
     const headers = ['Date', 'Type', 'Category', 'Subcategory', 'Description', 'Amount', 'Balance'];
@@ -1773,6 +1813,32 @@ function TransactionLedger({
     ? sortedTransactions
     : sortedTransactions.slice(0, displayLimit);
 
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollPositionRef.current;
+    }
+  }, [transactions, duplicateFlags, fadingIds]);
+
+  const handleKeepBoth = (importedTransactionId: string) => {
+    scrollPositionRef.current = scrollContainerRef.current?.scrollTop || 0;
+    StorageService.resolveImportDuplicateFlag(accountId, importedTransactionId, 'keep_both');
+    onDuplicateResolved('Both transactions kept');
+  };
+
+  const handleRemoveImported = (importedTransactionId: string) => {
+    scrollPositionRef.current = scrollContainerRef.current?.scrollTop || 0;
+    setFadingIds((prev) => new Set(prev).add(importedTransactionId));
+    window.setTimeout(() => {
+      StorageService.resolveImportDuplicateFlag(accountId, importedTransactionId, 'remove_imported');
+      setFadingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(importedTransactionId);
+        return next;
+      });
+      onDuplicateResolved('Transaction removed');
+    }, 300);
+  };
+
   return (
     <div className="bg-white border border-brand-gray-border rounded-lg overflow-hidden">
       <div className="flex justify-between items-center px-4 py-3 border-b border-brand-gray-border">
@@ -1794,58 +1860,99 @@ function TransactionLedger({
         </p>
       ) : (
         <>
-          <ul>
+          <ul ref={scrollContainerRef} className="max-h-[60vh] overflow-y-auto">
             {visibleTransactions.map((transaction) => {
               const meta = getTransactionDisplayMeta(transaction);
               const TxIcon = meta.Icon;
+              const importedFlag = flagByImportedId.get(transaction.id);
+              const isMatch = matchIds.has(transaction.id);
+              const isFading = fadingIds.has(transaction.id);
+              const importedIndex = sortedTransactions.findIndex((t) => t.id === transaction.id);
+              const matchIndex = importedFlag
+                ? sortedTransactions.findIndex((t) => t.id === importedFlag.existingTransactionId)
+                : -1;
+              const matchIsBelow = matchIndex > importedIndex;
+
               return (
-                <li
-                  key={transaction.id}
-                  className="flex items-center gap-3 px-4 py-3 border-b border-brand-gray-border/80 last:border-b-0 hover:bg-brand-gray-light/50 group"
-                >
-                  <div className={`w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 ${meta.iconBg}`}>
-                    <TxIcon className={`w-4 h-4 ${meta.iconColor}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] text-brand-navy truncate">{transaction.description}</p>
-                    <p className="text-[11px] text-brand-gray">
-                      {CalculationService.formatLocalDateShort(transaction.date)} · {meta.typeLabel}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className={`text-[13px] font-medium ${meta.isPositive ? 'text-green-700' : 'text-red-700'}`}>
-                      {meta.isPositive ? '+' : '-'}
-                      {CalculationService.formatCurrency(transaction.amount)}
-                    </p>
-                    <p className="text-[11px] text-brand-gray">
-                      {CalculationService.formatCurrency(transaction.balance)}
-                    </p>
-                  </div>
-                  <div className="shrink-0">
-                    {transaction.isReconciled ? (
-                      <div className="p-1.5 text-brand-gray" title="Reconciled — locked">
-                        <Lock className="w-3.5 h-3.5" />
-                      </div>
-                    ) : (
-                      <div className="flex gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                        <button
-                          type="button"
-                          onClick={() => onEdit(transaction)}
-                          className="p-1.5 text-brand-gray hover:text-brand-navy hover:bg-brand-gray-light rounded"
-                          title="Edit"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDelete(transaction)}
-                          className="p-1.5 text-brand-gray hover:text-red-600 hover:bg-red-50 rounded"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
+                <li key={transaction.id} className="border-b border-brand-gray-border/80 last:border-b-0">
+                  {importedFlag && !isFading && (
+                    <div className="px-4 pt-2 text-[11px] font-medium text-amber-700 bg-amber-50 border-l-4 border-amber-400">
+                      ⚠️ Possible duplicate of the entry {matchIsBelow ? 'below' : 'above'}
+                    </div>
+                  )}
+                  <div
+                    className={`flex items-center gap-3 px-4 py-3 hover:bg-brand-gray-light/50 group transition-opacity duration-300 ${
+                      isFading ? 'opacity-0' : 'opacity-100'
+                    } ${
+                      importedFlag
+                        ? 'border-l-4 border-amber-400 bg-amber-50/40'
+                        : isMatch
+                          ? 'border-l-4 border-brand-blue bg-blue-50/40'
+                          : ''
+                    }`}
+                  >
+                    <div className={`w-[30px] h-[30px] rounded-full flex items-center justify-center shrink-0 ${meta.iconBg}`}>
+                      <TxIcon className={`w-4 h-4 ${meta.iconColor}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] text-brand-navy truncate">{transaction.description}</p>
+                      <p className="text-[11px] text-brand-gray">
+                        {CalculationService.formatLocalDateShort(transaction.date)} · {meta.typeLabel}
+                      </p>
+                      {importedFlag && !transaction.isReconciled && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <button
+                            type="button"
+                            onClick={() => handleKeepBoth(transaction.id)}
+                            className="text-[11px] font-semibold px-2.5 py-1 rounded border border-brand-gray-border text-brand-navy hover:bg-white"
+                          >
+                            Keep Both
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImported(transaction.id)}
+                            className="text-[11px] font-semibold px-2.5 py-1 rounded border border-red-300 text-red-600 hover:bg-red-50"
+                          >
+                            Remove This
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className={`text-[13px] font-medium ${meta.isPositive ? 'text-green-700' : 'text-red-700'}`}>
+                        {meta.isPositive ? '+' : '-'}
+                        {CalculationService.formatCurrency(transaction.amount)}
+                      </p>
+                      <p className="text-[11px] text-brand-gray">
+                        {CalculationService.formatCurrency(transaction.balance)}
+                      </p>
+                    </div>
+                    <div className="shrink-0">
+                      {transaction.isReconciled ? (
+                        <div className="p-1.5 text-brand-gray" title="Reconciled — locked">
+                          <Lock className="w-3.5 h-3.5" />
+                        </div>
+                      ) : (
+                        <div className="flex gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={() => onEdit(transaction)}
+                            className="p-1.5 text-brand-gray hover:text-brand-navy hover:bg-brand-gray-light rounded"
+                            title="Edit"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDelete(transaction)}
+                            className="p-1.5 text-brand-gray hover:text-red-600 hover:bg-red-50 rounded"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </li>
               );
