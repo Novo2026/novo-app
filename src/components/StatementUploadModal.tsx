@@ -612,7 +612,28 @@ export default function StatementUploadModal({
       StorageService.saveCheckingAccounts(updatedAccounts);
     }
     setBalanceInfoMessage(evaluation.infoMessage);
+    resolveStepForAccount(selectedCheckingAccountId);
+  };
+
+  const resolveStepForAccount = (accountId: string) => {
+    if (!accountId) {
+      setStep('preview');
+      return;
+    }
+
+    setSelectedCheckingAccountId(accountId);
+    const existing = StorageService.getCheckingTransactionsForAccount(accountId);
+    if (existing.length > 0) {
+      setExistingTransactionCount(existing.length);
+      setStep('import_choice');
+      return;
+    }
+
     setStep('preview');
+  };
+
+  const handleAccountSelect = (accountId: string) => {
+    resolveStepForAccount(accountId);
   };
 
   const handleFile = async (file: File) => {
@@ -886,13 +907,6 @@ export default function StatementUploadModal({
   const requestImport = () => {
     if (!selectedCheckingAccountId) {
       alert('Please select a checking account to import into');
-      return;
-    }
-
-    const existing = StorageService.getCheckingTransactionsForAccount(selectedCheckingAccountId);
-    if (existing.length > 0) {
-      setExistingTransactionCount(existing.length);
-      setStep('import_choice');
       return;
     }
 
@@ -1234,7 +1248,7 @@ export default function StatementUploadModal({
                   type="button"
                   onClick={() => {
                     applyBalanceResolution('keep');
-                    setStep('preview');
+                    resolveStepForAccount(selectedCheckingAccountId);
                   }}
                   className="flex-1 bg-white border border-brand-gray-border hover:border-brand-navy text-brand-navy font-semibold py-3 rounded-lg transition-colors"
                 >
@@ -1253,7 +1267,7 @@ export default function StatementUploadModal({
                       setCheckingAccounts(updatedAccounts);
                       StorageService.saveCheckingAccounts(updatedAccounts);
                     }
-                    setStep('preview');
+                    resolveStepForAccount(selectedCheckingAccountId);
                   }}
                   className="flex-1 bg-brand-navy hover:bg-brand-navy-dark text-white font-semibold py-3 rounded-lg transition-colors"
                 >
@@ -1511,7 +1525,7 @@ export default function StatementUploadModal({
                       <button
                         key={account.id}
                         type="button"
-                        onClick={() => setSelectedCheckingAccountId(account.id)}
+                        onClick={() => handleAccountSelect(account.id)}
                         className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
                           selectedCheckingAccountId === account.id
                             ? 'bg-brand-navy text-white border-brand-navy'
