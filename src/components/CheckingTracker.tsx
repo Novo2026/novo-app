@@ -1134,37 +1134,52 @@ function LegacyImportCleanupModal({
   onClose: () => void;
   onComplete: () => void;
 }) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const scrollPosRef = useRef(0);
-  const [pairs, setPairs] = useState<LegacyDuplicatePair[]>(() =>
-    StorageService.findLegacyImportDuplicatePairs(accountId)
-  );
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollPositionRef = useRef<number>(0);
+  const expandedKeysRef = useRef<Set<string>>(new Set());
+  const [duplicates, setDuplicates] = useState<LegacyDuplicatePair[]>(() => {
+    const initial = StorageService.findLegacyImportDuplicatePairs(accountId);
+    initial.forEach((pair) => {
+      expandedKeysRef.current.add(`${pair.manual.id}-${pair.imported.id}`);
+    });
+    return initial;
+  });
   const [removingKeys, setRemovingKeys] = useState<Set<string>>(new Set());
   const [allResolved, setAllResolved] = useState(false);
+  const [expandVersion, setExpandVersion] = useState(0);
 
   const getPairKey = (pair: LegacyDuplicatePair) => `${pair.manual.id}-${pair.imported.id}`;
 
-  const remainingCount = pairs.filter((pair) => !removingKeys.has(getPairKey(pair))).length;
+  const remainingCount = duplicates.filter((pair) => !removingKeys.has(getPairKey(pair))).length;
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollPosRef.current;
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollPositionRef.current;
     }
-  }, [pairs, removingKeys]);
+  }, [duplicates]);
+
+  const togglePairExpanded = (key: string) => {
+    scrollPositionRef.current = scrollContainerRef.current?.scrollTop || 0;
+    if (expandedKeysRef.current.has(key)) {
+      expandedKeysRef.current.delete(key);
+    } else {
+      expandedKeysRef.current.add(key);
+    }
+    setExpandVersion((version) => version + 1);
+  };
 
   const handleRemoveImport = (pair: LegacyDuplicatePair) => {
     const key = getPairKey(pair);
     if (removingKeys.has(key)) return;
 
-    if (scrollRef.current) {
-      scrollPosRef.current = scrollRef.current.scrollTop;
-    }
+    scrollPositionRef.current = scrollContainerRef.current?.scrollTop || 0;
 
     StorageService.removeCheckingTransactionsByIds(accountId, [pair.imported.id]);
     setRemovingKeys((prev) => new Set(prev).add(key));
 
     window.setTimeout(() => {
-      setPairs((prev) => {
+      scrollPositionRef.current = scrollContainerRef.current?.scrollTop || 0;
+      setDuplicates((prev) => {
         const next = prev.filter((item) => getPairKey(item) !== key);
         if (next.length === 0) {
           setAllResolved(true);
@@ -1176,6 +1191,7 @@ function LegacyImportCleanupModal({
         next.delete(key);
         return next;
       });
+      expandedKeysRef.current.delete(key);
     }, 1000);
   };
 
@@ -1223,54 +1239,83 @@ function LegacyImportCleanupModal({
             </button>
           </div>
         ) : (
-          <div ref={scrollRef} className="p-5 space-y-5 overflow-y-auto flex-1 min-h-0">
-            {pairs.length === 0 ? (
+          <div
+            ref={scrollContainerRef}
+            style={{ overflowY: 'auto', maxHeight: '60vh' }}
+            className="p-5 space-y-5"
+          >
+            {duplicates.length === 0 ? (
               <p className="text-sm text-brand-gray text-center py-8">
                 No duplicate transactions remain for this account.
               </p>
             ) : (
-              pairs.map((pair) => {
+              duplicates.map((pair) => {
                 const key = getPairKey(pair);
                 const isRemoving = removingKeys.has(key);
+                const isExpanded = expandedKeysRef.current.has(key);
                 return (
                   <div
                     key={key}
-                    className={`space-y-3 transition-opacity duration-300 ${
+                    className={`border border-brand-gray-border rounded-lg overflow-hidden transition-opacity duration-300 ${
                       isRemoving ? 'opacity-60' : ''
                     }`}
                   >
-                    {isRemoving && (
-                      <div className="flex items-center gap-2 text-green-700 text-xs font-medium">
-                        <CheckCircle2 className="w-4 h-4 shrink-0" />
-                        Removed — updating list…
+                    <button
+                      type="button"
+                      onClick={() => togglePairExpanded(key)}
+                      disabled={isRemoving}
+                      className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-brand-gray-light/40 hover:bg-brand-gray-light/70 text-left disabled:cursor-not-allowed"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-medium text-brand-navy truncate">
+                          {pair.manual.description}
+                        </p>
+                        <p className="text-[11px] text-brand-gray">
+                          {CalculationService.formatLocalDateShort(pair.manual.date)} ·{' '}
+                          {CalculationService.formatCurrency(pair.manual.amount)}
+                        </p>
+                      </div>
+                      <span className="text-xs text-brand-gray shrink-0">
+                        {isExpanded ? 'Collapse' : 'Expand'}
+                      </span>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="p-4 space-y-3 border-t border-brand-gray-border">
+                        {isRemoving && (
+                          <div className="flex items-center gap-2 text-green-700 text-xs font-medium">
+                            <CheckCircle2 className="w-4 h-4 shrink-0" />
+                            Removed — updating list…
+                          </div>
+                        )}
+                        <div
+                          className={`flex flex-col sm:flex-row gap-3 ${
+                            isRemoving ? 'line-through decoration-brand-gray' : ''
+                          }`}
+                        >
+                          <DuplicateTransactionCard transaction={pair.manual} label="Manual entry" />
+                          <DuplicateTransactionCard transaction={pair.imported} label="Imported copy" />
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImport(pair)}
+                            disabled={isRemoving}
+                            className="flex-1 bg-brand-navy hover:bg-brand-navy-dark disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
+                          >
+                            Keep Manual Entry
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImport(pair)}
+                            disabled={isRemoving}
+                            className="flex-1 text-red-600 border border-red-300 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
+                          >
+                            Remove Import
+                          </button>
+                        </div>
                       </div>
                     )}
-                    <div
-                      className={`flex flex-col sm:flex-row gap-3 ${
-                        isRemoving ? 'line-through decoration-brand-gray' : ''
-                      }`}
-                    >
-                      <DuplicateTransactionCard transaction={pair.manual} label="Manual entry" />
-                      <DuplicateTransactionCard transaction={pair.imported} label="Imported copy" />
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveImport(pair)}
-                        disabled={isRemoving}
-                        className="flex-1 bg-brand-navy hover:bg-brand-navy-dark disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
-                      >
-                        Keep Manual Entry
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveImport(pair)}
-                        disabled={isRemoving}
-                        className="flex-1 text-red-600 border border-red-300 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
-                      >
-                        Remove Import
-                      </button>
-                    </div>
                   </div>
                 );
               })
