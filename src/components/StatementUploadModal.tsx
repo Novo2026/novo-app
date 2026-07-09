@@ -15,6 +15,11 @@ interface ParsedTransaction {
   approved: boolean;
 }
 
+interface StatementBalanceMeta {
+  beginningBalance?: number;
+  endingBalance?: number;
+}
+
 type StatementType = 'checking' | 'credit_card' | 'savings' | 'unknown';
 
 interface StatementDetectionResult {
@@ -104,6 +109,50 @@ function parseCSV(text: string): ParsedTransaction[] {
   }
 
   return results;
+}
+
+function analyzeStatementBalanceEntries(
+  parsedTransactions: ParsedTransaction[]
+): { transactions: ParsedTransaction[]; meta: StatementBalanceMeta } {
+  let beginningBalance: number | undefined;
+  let endingBalance: number | undefined;
+
+  const filtered = parsedTransactions.filter((tx, index) => {
+    const lower = tx.description.toLowerCase();
+    const isBeginning =
+      lower.includes('beginning balance') ||
+      lower.includes('starting balance') ||
+      lower.includes('opening balance') ||
+      lower.includes('balance forward') ||
+      lower.includes('prior balance');
+    const isEnding =
+      lower.includes('ending balance') ||
+      lower.includes('closing balance') ||
+      lower.includes('new balance');
+
+    // Some statements emit the opening balance as the first ledger row.
+    const isFirstRowOpeningBalance =
+      index === 0 &&
+      lower.includes('balance') &&
+      (lower.includes('opening') || lower.includes('beginning') || lower.includes('starting'));
+
+    if (isBeginning || isFirstRowOpeningBalance) {
+      beginningBalance = tx.amount;
+      return false;
+    }
+
+    if (isEnding) {
+      endingBalance = tx.amount;
+      return false;
+    }
+
+    return true;
+  });
+
+  return {
+    transactions: filtered,
+    meta: { beginningBalance, endingBalance },
+  };
 }
 
 async function detectStatementType(file: File, base64: string): Promise<StatementDetectionResult> {
@@ -422,6 +471,7 @@ export default function StatementUploadModal({
   const [newDebtBalance, setNewDebtBalance] = useState('');
   const [newDebtMinPayment, setNewDebtMinPayment] = useState('');
   const [newDebtRate, setNewDebtRate] = useState('');
+  const [statementBalances, setStatementBalances] = useState<StatementBalanceMeta>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (file: File) => {
@@ -456,6 +506,10 @@ export default function StatementUploadModal({
       } else {
         parsed = await parsePDFWithAI(file);
       }
+
+      const analyzed = analyzeStatementBalanceEntries(parsed);
+      parsed = analyzed.transactions;
+      setStatementBalances(analyzed.meta);
 
       if (parsed.length === 0) {
         throw new Error('No transactions found. Check that the file contains transaction data.');
@@ -509,7 +563,27 @@ export default function StatementUploadModal({
       batchTimestamp,
     }));
     const account = checkingAccounts.find(a => a.id === selectedCheckingAccountId);
-    const accountStartingBalance = account?.startingBalance ?? startingBalance;
+    let accountStartingBalance = account?.startingBalance ?? startingBalance;
+    const statementBeginningBalance = statementBalances.beginningBalance;
+
+    if (statementBeginningBalance != null) {
+      const hasExistingStartingBalance = Math.abs(accountStartingBalance) > 0.001;
+      const shouldUpdateStartingBalance = !hasExistingStartingBalance || confirm(
+        `Update starting balance to ${CalculationService.formatCurrency(statementBeginningBalance)} from this statement?`
+      );
+
+      if (shouldUpdateStartingBalance && account) {
+        const updatedAccounts = checkingAccounts.map((a) =>
+          a.id === selectedCheckingAccountId
+            ? { ...a, startingBalance: statementBeginningBalance }
+            : a
+        );
+        setCheckingAccounts(updatedAccounts);
+        StorageService.saveCheckingAccounts(updatedAccounts);
+        accountStartingBalance = statementBeginningBalance;
+      }
+    }
+
     const existing = StorageService.getCheckingTransactionsForAccount(selectedCheckingAccountId);
     const combined = recalculateImportedBalances(existing, approvedWithBatch, accountStartingBalance);
     const withAccountId = combined.map((t: { accountId?: string; isReconciled?: boolean }) => ({
@@ -538,7 +612,25 @@ export default function StatementUploadModal({
       totalCredits,
       status: 'active',
     });
-    onSuccess(`✓ Imported ${approved.length} transactions from ${fileName}`);
+
+    let mismatchWarning = '';
+    if (
+      statementBalances.beginningBalance != null &&
+      statementBalances.endingBalance != null
+    ) {
+      const added = approvedWithBatch
+        .filter((t) => t.type === 'deposit')
+        .reduce((sum, t) => sum + t.amount, 0);
+      const subtracted = approvedWithBatch
+        .filter((t) => t.type !== 'deposit')
+        .reduce((sum, t) => sum + t.amount, 0);
+      const projectedEnding = statementBalances.beginningBalance + added - subtracted;
+      if (Math.abs(projectedEnding - statementBalances.endingBalance) > 0.02) {
+        mismatchWarning = ' Balance mismatch detected — please verify your transactions.';
+      }
+    }
+
+    onSuccess(`✓ Imported ${approved.length} transactions from ${fileName}.${mismatchWarning}`);
   };
 
   const toggleApproved = (id: string) => {
