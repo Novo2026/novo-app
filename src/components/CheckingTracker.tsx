@@ -72,9 +72,13 @@ const ACCOUNT_DOT_COLORS = [
 
 type SummaryPeriod = 'month' | 'ytd' | 'annual';
 
-function getCheckingAccountBalance(accountId: string, startingBalance: number): number {
+function getCheckingAccountBalance(
+  accountId: string,
+  startingBalance: number,
+  storedCurrentBalance?: number
+): number {
   const txs = StorageService.getCheckingTransactionsForAccount(accountId);
-  if (txs.length === 0) return startingBalance;
+  if (txs.length === 0) return storedCurrentBalance ?? startingBalance;
   return txs[txs.length - 1].balance;
 }
 
@@ -255,7 +259,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
   const currentBalance = balanceOverride ?? (
     transactions.length > 0
       ? transactions[transactions.length - 1].balance
-      : startingBalance
+      : (selectedAccount?.currentBalance ?? startingBalance)
   );
   const canTransferToChecking = accounts.length > 1;
 
@@ -269,8 +273,12 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
     : 0;
 
   const allAccountSummaries = useMemo(() => {
-    return accounts.map((account, index) => {
-      const balance = getCheckingAccountBalance(account.id, account.startingBalance);
+      return accounts.map((account, index) => {
+      const balance = getCheckingAccountBalance(
+        account.id,
+        account.startingBalance,
+        account.currentBalance
+      );
       return { account, balance, dotColor: ACCOUNT_DOT_COLORS[index % ACCOUNT_DOT_COLORS.length] };
     });
   }, [accounts, refreshTrigger]);
@@ -297,7 +305,11 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
     <div className="space-y-5">
       <div className="flex items-stretch gap-3 flex-wrap sm:flex-nowrap">
         {accounts.map((account) => {
-          const balance = getCheckingAccountBalance(account.id, account.startingBalance);
+          const balance = getCheckingAccountBalance(
+            account.id,
+            account.startingBalance,
+            account.currentBalance
+          );
           const isActive = selectedAccountId === account.id;
           return (
             <div
@@ -475,17 +487,19 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
                   icon={DollarSign}
                   label="Set Balance"
                   onClick={() => {
-                    const balance = prompt('Enter your starting balance:', startingBalance.toString());
+                    const balance = prompt('Enter your current balance:', currentBalance.toString());
                     if (balance !== null && selectedAccountId) {
+                      const newBalance = parseFloat(balance) || 0;
                       const updatedAccounts = StorageService.getCheckingAccounts().map((a) =>
                         a.id === selectedAccountId
-                          ? { ...a, startingBalance: parseFloat(balance) || 0 }
+                          ? { ...a, currentBalance: newBalance }
                           : a
                       );
                       StorageService.saveCheckingAccounts(updatedAccounts);
                       setAccounts(updatedAccounts);
-                      setSuccessMessage(`✓ Starting balance updated to ${CalculationService.formatCurrency(parseFloat(balance))}`);
-                      setRefreshTrigger((prev) => prev + 1);
+                      setBalanceOverride(newBalance);
+                      setSuccessMessage(`✓ Balance updated to ${CalculationService.formatCurrency(newBalance)}`);
+                      onDataUpdate?.();
                       setTimeout(() => setSuccessMessage(null), 5000);
                     }
                   }}
@@ -3078,7 +3092,11 @@ function TransferToCheckingModal({
   const otherCheckingAccounts = checkingAccounts.filter(a => a.id !== sourceAccountId);
   const destinationAccount = otherCheckingAccounts.find(a => a.id === destinationAccountId);
   const destinationBalance = destinationAccountId && destinationAccount
-    ? getCheckingAccountBalance(destinationAccountId, destinationAccount.startingBalance)
+    ? getCheckingAccountBalance(
+        destinationAccountId,
+        destinationAccount.startingBalance,
+        destinationAccount.currentBalance
+      )
     : 0;
 
   const transferAmount = parseFloat(amount) || 0;
@@ -3189,7 +3207,7 @@ function TransferToCheckingModal({
               <option value="">Choose account...</option>
               {otherCheckingAccounts.map(a => (
                 <option key={a.id} value={a.id}>
-                  {a.name}{a.bankName ? ` · ${a.bankName}` : ''} — Balance: {CalculationService.formatCurrency(getCheckingAccountBalance(a.id, a.startingBalance))}
+                  {a.name}{a.bankName ? ` · ${a.bankName}` : ''} — Balance: {CalculationService.formatCurrency(getCheckingAccountBalance(a.id, a.startingBalance, a.currentBalance))}
                 </option>
               ))}
             </select>

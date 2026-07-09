@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { Upload, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
 import { StorageService, type ImportDuplicateFlag, type SmartImportMatch } from '../services/storage';
-import type { Debt, CheckingTransaction } from '../types';
+import type { Debt, CheckingTransaction, CheckingAccount } from '../types';
 
 interface ParsedTransaction {
   id: string;
@@ -13,11 +13,20 @@ interface ParsedTransaction {
   type: 'deposit' | 'withdrawal' | 'debt_payment';
   category?: string;
   approved: boolean;
+  debit?: number;
+  credit?: number;
+  runningBalance?: number;
 }
 
 interface StatementBalanceMeta {
   beginningBalance?: number;
   endingBalance?: number;
+}
+
+interface StatementSummaryMeta {
+  summaryBeginningBalance?: number;
+  summaryEndingBalance?: number;
+  statementStartDate?: string;
 }
 
 type ImportStep =
@@ -42,6 +51,9 @@ interface StatementDetectionResult {
   accountName: string;
   lastFourDigits?: string;
   statementBalance?: number;
+  beginningBalance?: number;
+  endingBalance?: number;
+  statementStartDate?: string;
   minimumPayment?: number;
   dueDate?: string;
   confidence: 'high' | 'low';
@@ -94,22 +106,37 @@ function parseCSV(text: string): ParsedTransaction[] {
     const date = cols[0];
     const description = cols[1];
     let amount = 0;
+    let debit = 0;
+    let credit = 0;
+    let runningBalance: number | undefined;
 
-    if (cols.length >= 4 && (cols[2] !== '' || cols[3] !== '')) {
-      const debit = parseFloat(cols[2].replace(/[^0-9.-]/g, '')) || 0;
-      const credit = parseFloat(cols[3].replace(/[^0-9.-]/g, '')) || 0;
-      amount = credit > 0 ? credit : -debit;
+    if (cols.length >= 5) {
+      debit = Math.abs(parseFloat(cols[2].replace(/[^0-9.-]/g, '')) || 0);
+      credit = Math.abs(parseFloat(cols[3].replace(/[^0-9.-]/g, '')) || 0);
+      const balanceValue = parseFloat(cols[4].replace(/[^0-9.-]/g, ''));
+      runningBalance = Number.isFinite(balanceValue) ? Math.abs(balanceValue) : undefined;
+      amount = credit > 0 ? credit : debit > 0 ? -debit : 0;
+    } else if (cols.length >= 4 && (cols[2] !== '' || cols[3] !== '')) {
+      debit = Math.abs(parseFloat(cols[2].replace(/[^0-9.-]/g, '')) || 0);
+      credit = Math.abs(parseFloat(cols[3].replace(/[^0-9.-]/g, '')) || 0);
+      amount = credit > 0 ? credit : debit > 0 ? -debit : 0;
     } else {
       amount = parseFloat(cols[2].replace(/[^0-9.-]/g, '')) || 0;
     }
 
-    if (!date || !description || amount === 0) continue;
+    if (!date || !description) continue;
+
+    const isBalanceOnlyRow =
+      matchesBeginningBalanceDescription(description) ||
+      matchesEndingBalanceDescription(description);
+
+    if (amount === 0 && runningBalance == null && !isBalanceOnlyRow) continue;
 
     const dateObj = new Date(date);
     if (isNaN(dateObj.getTime())) continue;
     const normalizedDate = dateObj.toISOString().split('T')[0];
 
-    const type = detectType(description, amount);
+    const type = amount === 0 ? 'deposit' : detectType(description, amount);
 
     results.push({
       id: `import_${Date.now()}_${i}`,
@@ -120,44 +147,116 @@ function parseCSV(text: string): ParsedTransaction[] {
       type,
       category: type === 'withdrawal' ? 'Essential Expense' : undefined,
       approved: true,
+      debit,
+      credit,
+      runningBalance,
     });
   }
 
   return results;
 }
 
+const BEGINNING_BALANCE_PHRASES = [
+  'beginning balance',
+  'starting balance',
+  'opening balance',
+  'beg balance',
+  'start bal',
+  'prev balance',
+  'previous balance',
+  'balance forward',
+  'prior balance',
+];
+
+function matchesBeginningBalanceDescription(description: string): boolean {
+  const lower = description.toLowerCase().trim();
+  return BEGINNING_BALANCE_PHRASES.some((phrase) => lower.includes(phrase));
+}
+
+function matchesEndingBalanceDescription(description: string): boolean {
+  const lower = description.toLowerCase();
+  return (
+    lower.includes('ending balance') ||
+    lower.includes('closing balance') ||
+    lower.includes('new balance')
+  );
+}
+
+function getBeginningBalanceAmount(tx: ParsedTransaction): number | undefined {
+  const debit = tx.debit ?? 0;
+  const credit = tx.credit ?? 0;
+
+  if (tx.runningBalance != null && debit === 0 && credit === 0) {
+    return tx.runningBalance;
+  }
+
+  if (tx.amount > 0) {
+    return tx.amount;
+  }
+
+  if (tx.runningBalance != null && tx.runningBalance > 0) {
+    return tx.runningBalance;
+  }
+
+  return undefined;
+}
+
 function analyzeStatementBalanceEntries(
-  parsedTransactions: ParsedTransaction[]
+  parsedTransactions: ParsedTransaction[],
+  summary: StatementSummaryMeta = {}
 ): { transactions: ParsedTransaction[]; meta: StatementBalanceMeta } {
-  let beginningBalance: number | undefined;
-  let endingBalance: number | undefined;
+  let beginningBalance = summary.summaryBeginningBalance;
+  let endingBalance = summary.summaryEndingBalance;
+
+  const formatDIndex =
+    summary.summaryBeginningBalance != null
+      ? parsedTransactions.findIndex((tx) => {
+          const debit = tx.debit ?? 0;
+          const credit = tx.credit ?? 0;
+          const balanceAmount = tx.runningBalance ?? tx.amount;
+          return (
+            debit === 0 &&
+            credit === 0 &&
+            Math.abs(balanceAmount - summary.summaryBeginningBalance!) <= 0.02
+          );
+        })
+      : -1;
 
   const filtered = parsedTransactions.filter((tx, index) => {
-    const lower = tx.description.toLowerCase();
-    const isBeginning =
-      lower.includes('beginning balance') ||
-      lower.includes('starting balance') ||
-      lower.includes('opening balance') ||
-      lower.includes('balance forward') ||
-      lower.includes('prior balance');
-    const isEnding =
-      lower.includes('ending balance') ||
-      lower.includes('closing balance') ||
-      lower.includes('new balance');
+    const lower = tx.description.toLowerCase().trim();
+    const debit = tx.debit ?? 0;
+    const credit = tx.credit ?? 0;
 
-    // Some statements emit the opening balance as the first ledger row.
-    const isFirstRowOpeningBalance =
+    const isFormatA =
       index === 0 &&
-      lower.includes('balance') &&
-      (lower.includes('opening') || lower.includes('beginning') || lower.includes('starting'));
+      (lower === 'beginning balance' || lower === 'beginning bal' || matchesBeginningBalanceDescription(tx.description));
 
-    if (isBeginning || isFirstRowOpeningBalance) {
-      beginningBalance = tx.amount;
+    const isFormatB =
+      matchesBeginningBalanceDescription(tx.description) &&
+      debit === 0 &&
+      credit === 0 &&
+      tx.runningBalance != null &&
+      (summary.statementStartDate == null || tx.date === summary.statementStartDate);
+
+    const isFormatC = matchesBeginningBalanceDescription(tx.description);
+
+    const isFormatD = index === formatDIndex;
+
+    if (isFormatA || isFormatB || isFormatC || isFormatD) {
+      const amount = getBeginningBalanceAmount(tx);
+      if (amount != null) {
+        beginningBalance = amount;
+      } else if (summary.summaryBeginningBalance != null) {
+        beginningBalance = summary.summaryBeginningBalance;
+      }
       return false;
     }
 
-    if (isEnding) {
-      endingBalance = tx.amount;
+    if (matchesEndingBalanceDescription(tx.description)) {
+      const amount = getBeginningBalanceAmount(tx) ?? tx.amount;
+      if (amount > 0) {
+        endingBalance = amount;
+      }
       return false;
     }
 
@@ -256,6 +355,9 @@ async function detectStatementType(file: File, base64: string): Promise<Statemen
   "accountName": "the bank and account name e.g. Chase Sapphire Preferred or Chase Total Checking",
   "lastFourDigits": "last 4 digits of account/card number if visible, or null",
   "statementBalance": the current/new balance as a number if this is a credit card, or null,
+  "beginningBalance": the opening/beginning balance from the Activity Summary or account summary section as a number if visible, or null,
+  "endingBalance": the closing/ending balance from the Activity Summary or account summary section as a number if visible, or null,
+  "statementStartDate": "statement period start date in YYYY-MM-DD format if visible, or null",
   "minimumPayment": the minimum payment due as a number if visible, or null,
   "dueDate": "payment due date in YYYY-MM-DD format if visible, or null",
   "confidence": "high" if you are certain of the type, "low" if uncertain
@@ -421,9 +523,12 @@ async function parsePDFWithAI(file: File): Promise<ParsedTransaction[]> {
   "date": "YYYY-MM-DD",
   "description": "merchant or transaction name",
   "amount": 123.45,
-  "isDeposit": true or false
+  "isDeposit": true or false,
+  "debit": 0 or the debit/withdrawal amount as a positive number,
+  "credit": 0 or the credit/deposit amount as a positive number,
+  "runningBalance": the balance column value after this row as a number, or null
 }
-Amount should always be a positive number. isDeposit is true for credits/deposits, false for debits/withdrawals. Include every transaction you can find.`,
+Amount should always be a positive number for actual transactions. For balance-only rows such as "Beginning Balance" with no debit or credit, set amount to 0, isDeposit to false, debit to 0, credit to 0, and put the opening balance in runningBalance. isDeposit is true for credits/deposits, false for debits/withdrawals. Include every transaction you can find.`,
           },
         ],
       }],
@@ -435,7 +540,15 @@ Amount should always be a positive number. isDeposit is true for credits/deposit
   const data = await response.json();
   const text = data.content?.[0]?.text || '';
 
-  let parsed: { date: string; description: string; amount: number; isDeposit: boolean }[] = [];
+  let parsed: {
+    date: string;
+    description: string;
+    amount: number;
+    isDeposit: boolean;
+    debit?: number;
+    credit?: number;
+    runningBalance?: number | null;
+  }[] = [];
   try {
     const clean = text.replace(/```json|```/g, '').trim();
     parsed = JSON.parse(clean);
@@ -444,16 +557,29 @@ Amount should always be a positive number. isDeposit is true for credits/deposit
   }
 
   return parsed.map((item, i) => {
-    const type = detectType(item.description, item.isDeposit ? 1 : -1);
+    const debit = Math.abs(item.debit ?? 0);
+    const credit = Math.abs(item.credit ?? 0);
+    const runningBalance =
+      item.runningBalance != null && Number.isFinite(item.runningBalance)
+        ? Math.abs(item.runningBalance)
+        : undefined;
+    const amount = Math.abs(item.amount);
+    const type =
+      amount === 0 && matchesBeginningBalanceDescription(item.description)
+        ? 'deposit'
+        : detectType(item.description, item.isDeposit ? 1 : -1);
     return {
       id: `import_pdf_${Date.now()}_${i}`,
       date: item.date,
       description: item.description,
       originalDescription: item.description,
-      amount: Math.abs(item.amount),
+      amount,
       type,
       category: type === 'withdrawal' ? 'Essential Expense' : undefined,
       approved: true,
+      debit,
+      credit,
+      runningBalance,
     };
   });
 }
@@ -504,6 +630,38 @@ function recalculateImportedBalances(
   });
 
   return combined;
+}
+
+function calculateImportedAccountBalance(
+  accountStartingBalance: number,
+  transactions: CheckingTransaction[]
+): number {
+  const totalCredits = transactions
+    .filter((t) => t.type === 'deposit')
+    .reduce((sum, t) => sum + t.amount, 0);
+  const totalDebits = transactions
+    .filter((t) => t.type !== 'deposit')
+    .reduce((sum, t) => sum + t.amount, 0);
+  return Math.round((accountStartingBalance + totalCredits - totalDebits) * 100) / 100;
+}
+
+function saveImportedAccountCurrentBalance(
+  accountId: string,
+  accountStartingBalance: number,
+  transactions: CheckingTransaction[]
+): CheckingAccount[] {
+  const calculatedBalance = calculateImportedAccountBalance(accountStartingBalance, transactions);
+  const accounts = StorageService.getCheckingAccounts();
+  const idx = accounts.findIndex((a) => a.id === accountId);
+  if (idx === -1) return accounts;
+
+  const updatedAccounts = [...accounts];
+  updatedAccounts[idx] = {
+    ...updatedAccounts[idx],
+    currentBalance: calculatedBalance,
+  };
+  StorageService.saveCheckingAccounts(updatedAccounts);
+  return updatedAccounts;
 }
 
 export default function StatementUploadModal({
@@ -669,7 +827,11 @@ export default function StatementUploadModal({
         parsed = await parsePDFWithAI(file);
       }
 
-      const analyzed = analyzeStatementBalanceEntries(parsed);
+      const analyzed = analyzeStatementBalanceEntries(parsed, {
+        summaryBeginningBalance: detection.beginningBalance,
+        summaryEndingBalance: detection.endingBalance,
+        statementStartDate: detection.statementStartDate ?? undefined,
+      });
       parsed = analyzed.transactions;
 
       if (parsed.length === 0) {
@@ -771,7 +933,12 @@ export default function StatementUploadModal({
       isReconciled: t.isReconciled ?? false,
     }));
     StorageService.saveCheckingTransactionsForAccount(selectedCheckingAccountId, withAccountId);
-    StorageService.syncCheckingAccountBalance(selectedCheckingAccountId, withAccountId as CheckingTransaction[]);
+    const updatedAccounts = saveImportedAccountCurrentBalance(
+      selectedCheckingAccountId,
+      accountStartingBalance,
+      withAccountId as CheckingTransaction[]
+    );
+    setCheckingAccounts(updatedAccounts);
 
     if (options.duplicateFlags && options.duplicateFlags.length > 0) {
       StorageService.addImportDuplicateFlags(selectedCheckingAccountId, options.duplicateFlags);
