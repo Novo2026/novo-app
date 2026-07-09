@@ -33,6 +33,20 @@ const STORAGE_KEYS = {
   FEATURE_PREFERENCES: 'novo_feature_preferences',
   UNIFIED_PAYMENTS: 'novo_unified_payments',
   ACCOUNT_TYPE: 'novo_account_type',
+  IMPORT_BATCHES: 'novo_import_batches',
+};
+
+type ImportBatchRecord = {
+  batchId: string;
+  accountId: string;
+  accountName: string;
+  importedAt: string;
+  transactionCount: number;
+  dateRangeStart: string;
+  dateRangeEnd: string;
+  totalDebits: number;
+  totalCredits: number;
+  status: 'active' | 'undone';
 };
 
 export const StorageService = {
@@ -325,7 +339,13 @@ export const StorageService = {
   getCheckingTransactionsForAccount(accountId: string): CheckingTransaction[] {
     try {
       const stored = localStorage.getItem(`novo_checking_transactions_${accountId}`);
-      if (stored) return JSON.parse(stored);
+      if (stored) {
+        return JSON.parse(stored).map((t: CheckingTransaction & { source?: 'import' | 'manual'; originalDescription?: string }) => ({
+          ...t,
+          source: t.source ?? 'manual',
+          originalDescription: t.originalDescription ?? t.description,
+        }));
+      }
 
       if (accountId === 'default_checking') {
         const old = localStorage.getItem('novo_checking_transactions');
@@ -334,6 +354,8 @@ export const StorageService = {
             ...t,
             accountId: 'default_checking',
             isReconciled: t.isReconciled ?? false,
+            source: (t as CheckingTransaction & { source?: 'import' | 'manual' }).source ?? 'manual',
+            originalDescription: (t as CheckingTransaction & { originalDescription?: string }).originalDescription ?? t.description,
           }));
           this.saveCheckingTransactionsForAccount(accountId, transactions);
           return transactions;
@@ -344,7 +366,46 @@ export const StorageService = {
   },
 
   saveCheckingTransactionsForAccount(accountId: string, transactions: CheckingTransaction[]): void {
-    localStorage.setItem(`novo_checking_transactions_${accountId}`, JSON.stringify(transactions));
+    const normalized = transactions.map((t) => ({
+      ...t,
+      source: (t as CheckingTransaction & { source?: 'import' | 'manual' }).source ?? 'manual',
+      originalDescription: (t as CheckingTransaction & { originalDescription?: string }).originalDescription ?? t.description,
+    }));
+    localStorage.setItem(`novo_checking_transactions_${accountId}`, JSON.stringify(normalized));
+  },
+
+  saveBatchRecord(batch: ImportBatchRecord): void {
+    const existing = localStorage.getItem(STORAGE_KEYS.IMPORT_BATCHES);
+    const batches: ImportBatchRecord[] = existing ? JSON.parse(existing) : [];
+    batches.push(batch);
+    localStorage.setItem(STORAGE_KEYS.IMPORT_BATCHES, JSON.stringify(batches));
+  },
+
+  undoImportBatch(batchId: string, accountId: string): number {
+    const transactions = this.getCheckingTransactionsForAccount(accountId);
+    const filtered = transactions.filter(
+      (tx) => (tx as CheckingTransaction & { batchId?: string }).batchId !== batchId
+    );
+    const removedCount = transactions.length - filtered.length;
+    this.saveCheckingTransactionsForAccount(accountId, filtered);
+
+    const existing = localStorage.getItem(STORAGE_KEYS.IMPORT_BATCHES);
+    const batches: ImportBatchRecord[] = existing ? JSON.parse(existing) : [];
+    const updated = batches.map((batch) =>
+      batch.batchId === batchId ? { ...batch, status: 'undone' as const } : batch
+    );
+    localStorage.setItem(STORAGE_KEYS.IMPORT_BATCHES, JSON.stringify(updated));
+
+    return removedCount;
+  },
+
+  getImportBatches(accountId?: string): ImportBatchRecord[] {
+    const existing = localStorage.getItem(STORAGE_KEYS.IMPORT_BATCHES);
+    const batches: ImportBatchRecord[] = existing ? JSON.parse(existing) : [];
+    return batches
+      .filter((batch) => batch.status !== 'undone')
+      .filter((batch) => (accountId ? batch.accountId === accountId : true))
+      .sort((a, b) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime());
   },
 
   reconcileAccount(accountId: string, balance: number): void {

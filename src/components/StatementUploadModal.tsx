@@ -8,6 +8,7 @@ interface ParsedTransaction {
   id: string;
   date: string;
   description: string;
+  originalDescription: string;
   amount: number;
   type: 'deposit' | 'withdrawal' | 'debt_payment';
   category?: string;
@@ -94,6 +95,7 @@ function parseCSV(text: string): ParsedTransaction[] {
       id: `import_${Date.now()}_${i}`,
       date: normalizedDate,
       description,
+      originalDescription: description,
       amount: Math.abs(amount),
       type,
       category: type === 'withdrawal' ? 'Essential Expense' : undefined,
@@ -202,6 +204,9 @@ async function importCreditCardStatement(
   matchedDebt: Debt,
   detection: StatementDetectionResult
 ): Promise<void> {
+  const batchId = `import_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const batchTimestamp = new Date().toISOString();
+
   if (detection.statementBalance != null && detection.statementBalance >= 0) {
     const allDebts = StorageService.getDebts();
     const debtIndex = allDebts.findIndex(d => d.id === matchedDebt.id);
@@ -229,6 +234,10 @@ async function importCreditCardStatement(
       type: 'debt_payment' as const,
       amount: p.amount,
       description: `Payment — ${matchedDebt.accountName}`,
+      originalDescription: p.originalDescription || p.description,
+      source: 'import' as const,
+      batchId,
+      batchTimestamp,
       balance: 0,
       debtId: matchedDebt.id,
       isReconciled: false,
@@ -249,6 +258,22 @@ async function importCreditCardStatement(
     });
 
     StorageService.saveCheckingTransactionsForAccount(defaultAccountId, combined);
+
+    const paymentDates = newPaymentTxs.map((t) => t.date).sort();
+    const totalDebits = newPaymentTxs.reduce((sum, t) => sum + t.amount, 0);
+    const totalCredits = 0;
+    StorageService.saveBatchRecord({
+      batchId,
+      accountId: defaultAccountId,
+      accountName: defaultAccount?.name || 'Primary Checking',
+      importedAt: batchTimestamp,
+      transactionCount: newPaymentTxs.length,
+      dateRangeStart: paymentDates[0],
+      dateRangeEnd: paymentDates[paymentDates.length - 1],
+      totalDebits,
+      totalCredits,
+      status: 'active',
+    });
   }
 }
 
@@ -313,6 +338,7 @@ Amount should always be a positive number. isDeposit is true for credits/deposit
       id: `import_pdf_${Date.now()}_${i}`,
       date: item.date,
       description: item.description,
+      originalDescription: item.description,
       amount: Math.abs(item.amount),
       type,
       category: type === 'withdrawal' ? 'Essential Expense' : undefined,
@@ -328,8 +354,12 @@ function recalculateImportedBalances(
     type: string;
     amount: number;
     description: string;
+    originalDescription?: string;
     balance: number;
     category?: string;
+    source?: 'import' | 'manual';
+    batchId?: string;
+    batchTimestamp?: string;
   }[],
   newTransactions: ParsedTransaction[],
   startingBalance: number
@@ -342,8 +372,12 @@ function recalculateImportedBalances(
       type: t.type,
       amount: t.amount,
       description: t.description,
+      originalDescription: t.originalDescription || t.description,
       balance: 0,
       category: t.category,
+      source: (t as ParsedTransaction & { source?: 'import' | 'manual' }).source || 'import',
+      batchId: (t as ParsedTransaction & { batchId?: string }).batchId,
+      batchTimestamp: (t as ParsedTransaction & { batchTimestamp?: string }).batchTimestamp,
     })),
   ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
@@ -458,22 +492,50 @@ export default function StatementUploadModal({
   };
 
   const handleImport = () => {
+    const batchId = `import_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const batchTimestamp = new Date().toISOString();
     if (!selectedCheckingAccountId) {
       alert('Please select a checking account to import into');
       return;
     }
     setStep('importing');
     const approved = transactions.filter(t => t.approved);
+    const approvedWithBatch = approved.map((t) => ({
+      ...t,
+      originalDescription: t.originalDescription || t.description,
+      source: 'import' as const,
+      batchId,
+      batchTimestamp,
+    }));
     const account = checkingAccounts.find(a => a.id === selectedCheckingAccountId);
     const accountStartingBalance = account?.startingBalance ?? startingBalance;
     const existing = StorageService.getCheckingTransactionsForAccount(selectedCheckingAccountId);
-    const combined = recalculateImportedBalances(existing, approved, accountStartingBalance);
+    const combined = recalculateImportedBalances(existing, approvedWithBatch, accountStartingBalance);
     const withAccountId = combined.map((t: { accountId?: string; isReconciled?: boolean }) => ({
       ...t,
       accountId: selectedCheckingAccountId,
       isReconciled: t.isReconciled ?? false,
     }));
     StorageService.saveCheckingTransactionsForAccount(selectedCheckingAccountId, withAccountId);
+    const importedDates = approvedWithBatch.map((t) => t.date).sort();
+    const totalDebits = approvedWithBatch
+      .filter((t) => t.type !== 'deposit')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const totalCredits = approvedWithBatch
+      .filter((t) => t.type === 'deposit')
+      .reduce((sum, t) => sum + t.amount, 0);
+    StorageService.saveBatchRecord({
+      batchId,
+      accountId: selectedCheckingAccountId,
+      accountName: account?.name || 'Checking Account',
+      importedAt: batchTimestamp,
+      transactionCount: approvedWithBatch.length,
+      dateRangeStart: importedDates[0],
+      dateRangeEnd: importedDates[importedDates.length - 1],
+      totalDebits,
+      totalCredits,
+      status: 'active',
+    });
     onSuccess(`✓ Imported ${approved.length} transactions from ${fileName}`);
   };
 
