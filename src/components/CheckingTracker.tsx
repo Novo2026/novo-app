@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import StatementUploadModal from './StatementUploadModal';
 import { CalculationService } from '../services/calculations';
-import { StorageService, type ImportBatchRecord, type LegacyDuplicatePair } from '../services/storage';
+import { StorageService, type ImportBatchRecord, type LegacyDuplicatePair, type ReconciliationRecord } from '../services/storage';
 import DatePicker from './DatePicker';
 import PaymentLoggingGuidance from './PaymentLoggingGuidance';
 import type { CheckingAccount, CheckingTransaction } from '../types';
@@ -173,6 +173,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
   const [showModal, setShowModal] = useState(false);
   const [showStatementUpload, setShowStatementUpload] = useState(false);
   const [showImportHistory, setShowImportHistory] = useState(false);
+  const [showReconciliationHistory, setShowReconciliationHistory] = useState(false);
   const [undoConfirmBatch, setUndoConfirmBatch] = useState<ImportBatchRecord | null>(null);
   const [showLegacyCleanup, setShowLegacyCleanup] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -444,13 +445,20 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
                   hoverBgClass="hover:bg-gray-100"
                 />
               </div>
-              <div className="flex justify-end mb-2">
+              <div className="flex justify-end gap-3 mb-2">
                 <button
                   type="button"
                   onClick={() => setShowImportHistory(true)}
                   className="text-[11px] text-brand-navy hover:underline font-medium"
                 >
                   Import History
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowReconciliationHistory(true)}
+                  className="text-[11px] text-brand-navy hover:underline font-medium"
+                >
+                  Reconciliation History
                 </button>
               </div>
               <div className="grid grid-cols-4 gap-2">
@@ -716,6 +724,15 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
           }}
           onUndoBatch={(batch) => setUndoConfirmBatch(batch)}
           onOpenLegacyCleanup={() => setShowLegacyCleanup(true)}
+        />
+      )}
+
+      {showReconciliationHistory && (
+        <ReconciliationHistoryModal
+          accountId={selectedAccountId}
+          accountName={accounts.find((a) => a.id === selectedAccountId)?.name || 'Checking'}
+          refreshTrigger={refreshTrigger}
+          onClose={() => setShowReconciliationHistory(false)}
         />
       )}
 
@@ -999,6 +1016,144 @@ function DuplicateTransactionCard({
         {meta.isPositive ? '+' : '-'}
         {CalculationService.formatCurrency(transaction.amount)}
       </p>
+    </div>
+  );
+}
+
+function ReconciliationHistoryModal({
+  accountId,
+  accountName,
+  refreshTrigger,
+  onClose,
+}: {
+  accountId: string;
+  accountName: string;
+  refreshTrigger: number;
+  onClose: () => void;
+}) {
+  const records = useMemo(
+    () => StorageService.getReconciliationRecords(accountId),
+    [accountId, refreshTrigger]
+  );
+
+  const formatPeriod = (start: string, end: string) => {
+    const startDate = new Date(start + 'T12:00:00');
+    const endDate = new Date(end + 'T12:00:00');
+    const startLabel = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endLabel = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${startLabel} – ${endLabel}`;
+  };
+
+  const formatCompletedAt = (iso: string) => {
+    const date = new Date(iso);
+    return date.toLocaleString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-brand-gray-border">
+          <div>
+            <h3 className="text-lg font-bold text-brand-navy">Reconciliation History</h3>
+            <p className="text-xs text-brand-gray mt-0.5">{accountName}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-brand-gray hover:text-brand-navy text-xl leading-none px-2"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="p-5 space-y-3">
+          {records.length === 0 ? (
+            <div className="text-center py-10 px-4">
+              <p className="text-sm text-brand-gray">
+                No completed reconciliations yet for this account.
+              </p>
+            </div>
+          ) : (
+            records.map((record) => (
+              <ReconciliationRecordCard
+                key={record.id}
+                record={record}
+                formatPeriod={formatPeriod}
+                formatCompletedAt={formatCompletedAt}
+              />
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReconciliationRecordCard({
+  record,
+  formatPeriod,
+  formatCompletedAt,
+}: {
+  record: ReconciliationRecord;
+  formatPeriod: (start: string, end: string) => string;
+  formatCompletedAt: (iso: string) => string;
+}) {
+  const isBalanced = Math.abs(record.difference) < 0.02;
+
+  return (
+    <div className="border border-brand-gray-border rounded-lg p-4 bg-brand-gray-light/30">
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div>
+          <p className="text-sm font-semibold text-brand-navy">
+            Period: {formatPeriod(record.periodStart, record.periodEnd)}
+          </p>
+          <p className="text-xs text-brand-gray mt-0.5">
+            Completed: {formatCompletedAt(record.completedAt)}
+          </p>
+        </div>
+        <span
+          className={`text-[11px] font-semibold px-2 py-1 rounded-full shrink-0 ${
+            record.status === 'reconciled'
+              ? 'bg-emerald-50 text-emerald-700'
+              : 'bg-amber-50 text-amber-700'
+          }`}
+        >
+          {record.status === 'reconciled' ? 'Reconciled ✅' : 'Needs Review ⚠️'}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 text-xs mt-3">
+        <div>
+          <p className="text-brand-gray">Statement balance</p>
+          <p className="font-semibold text-brand-navy">
+            {CalculationService.formatCurrency(record.statementEndingBalance)}
+          </p>
+        </div>
+        <div>
+          <p className="text-brand-gray">NOVO balance</p>
+          <p className="font-semibold text-brand-navy">
+            {CalculationService.formatCurrency(record.novoCalculatedBalance)}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-brand-gray-border/60">
+        <p className="text-xs text-brand-gray">
+          {record.transactionCount} transaction{record.transactionCount === 1 ? '' : 's'}
+        </p>
+        <p className={`text-sm font-semibold ${isBalanced ? 'text-emerald-600' : 'text-red-600'}`}>
+          {isBalanced
+            ? CalculationService.formatCurrency(0)
+            : `${record.difference > 0 ? '+' : ''}${CalculationService.formatCurrency(record.difference)}`}
+        </p>
+      </div>
     </div>
   );
 }
@@ -1676,11 +1831,13 @@ function TransactionLedger({
   const [showAll, setShowAll] = useState(false);
   const [fadingIds, setFadingIds] = useState<Set<string>>(new Set());
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [unlockConfirmId, setUnlockConfirmId] = useState<string | null>(null);
   const displayLimit = 10;
 
   useEffect(() => {
     setLedgerTransactions(transactions);
     setConfirmDeleteId(null);
+    setUnlockConfirmId(null);
   }, [accountId, refreshTrigger, transactions]);
 
   const duplicateFlags = useMemo(
@@ -1843,6 +2000,16 @@ function TransactionLedger({
     }, 300);
   };
 
+  const handleUnlockAndEdit = (transaction: CheckingTransaction) => {
+    setUnlockConfirmId(null);
+    const updated = StorageService.unlockReconciledTransactionForEdit(accountId, transaction.id);
+    const unlocked = updated.find((t) => t.id === transaction.id);
+    if (unlocked) {
+      setLedgerTransactions(updated);
+      onEdit(unlocked);
+    }
+  };
+
   return (
     <div className="bg-white border border-brand-gray-border rounded-lg overflow-hidden">
       <div className="flex justify-between items-center px-4 py-3 border-b border-brand-gray-border">
@@ -1876,6 +2043,7 @@ function TransactionLedger({
               const isMatch = matchIds.has(transaction.id);
               const isFading = fadingIds.has(transaction.id);
               const isConfirming = confirmDeleteId === transaction.id;
+              const isUnlockConfirming = unlockConfirmId === transaction.id;
               const importedIndex = sortedTransactions.findIndex((t) => t.id === transaction.id);
               const matchIndex = importedFlag
                 ? sortedTransactions.findIndex((t) => t.id === importedFlag.existingTransactionId)
@@ -1895,7 +2063,9 @@ function TransactionLedger({
                         ? 'border-l-4 border-amber-400 bg-amber-50/40'
                         : isMatch
                           ? 'border-l-4 border-brand-blue bg-blue-50/40'
-                          : ''
+                          : transaction.isReconciled
+                            ? 'border-l-4 border-emerald-500'
+                            : ''
                     }`}
                     style={{
                       opacity: isFading ? 0 : 1,
@@ -1940,9 +2110,14 @@ function TransactionLedger({
                     </div>
                     <div className="shrink-0">
                       {transaction.isReconciled ? (
-                        <div className="p-1.5 text-brand-gray" title="Reconciled — locked">
+                        <button
+                          type="button"
+                          onClick={() => setUnlockConfirmId(transaction.id)}
+                          className="p-1.5 text-brand-gray hover:text-brand-navy hover:bg-brand-gray-light rounded"
+                          title="Reconciled — click to edit"
+                        >
                           <Lock className="w-3.5 h-3.5" />
-                        </div>
+                        </button>
                       ) : (
                         <div className="flex gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           <button
@@ -1965,6 +2140,29 @@ function TransactionLedger({
                       )}
                     </div>
                   </div>
+                  {isUnlockConfirming && (
+                    <div className="px-4 pb-3 pt-1 bg-gray-50 border-t border-brand-gray-border/50 text-xs">
+                      <p className="text-brand-gray mb-2">
+                        This transaction has been reconciled. Editing it will flag this period for re-review. Continue?
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleUnlockAndEdit(transaction)}
+                          className="font-semibold text-brand-navy hover:underline"
+                        >
+                          Yes, Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setUnlockConfirmId(null)}
+                          className="font-semibold text-brand-gray hover:underline"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {isConfirming && (
                     <div className="px-4 pb-3 pt-1 bg-gray-50 border-t border-brand-gray-border/50 text-xs">
                       {transaction.linkedHelocTransactionId ? (

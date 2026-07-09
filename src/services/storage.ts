@@ -71,6 +71,25 @@ export type SmartImportMatch = {
   existingTransactionId?: string;
 };
 
+export type ReconcileProgress = {
+  checkedTransactionIds: string[];
+  statementBalance: number;
+  startedAt: string;
+  lastSavedAt: string;
+};
+
+export type ReconciliationRecord = {
+  id: string;
+  completedAt: string;
+  statementEndingBalance: number;
+  novoCalculatedBalance: number;
+  difference: number;
+  transactionCount: number;
+  status: 'reconciled' | 'needs_review';
+  periodStart: string;
+  periodEnd: string;
+};
+
 export type ParsedImportTransaction = {
   id: string;
   date: string;
@@ -857,5 +876,73 @@ export const StorageService = {
 
     const deduped = Array.from(seen.values());
     this.saveUnifiedPayments(deduped);
+  },
+
+  saveReconcileProgress(accountId: string, progressData: ReconcileProgress): void {
+    localStorage.setItem(
+      `novo_reconcile_progress_${accountId}`,
+      JSON.stringify(progressData)
+    );
+  },
+
+  getReconcileProgress(accountId: string): ReconcileProgress | null {
+    try {
+      const stored = localStorage.getItem(`novo_reconcile_progress_${accountId}`);
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  },
+
+  clearReconcileProgress(accountId: string): void {
+    localStorage.removeItem(`novo_reconcile_progress_${accountId}`);
+  },
+
+  saveReconciliationRecord(accountId: string, record: ReconciliationRecord): void {
+    const existing = this.getReconciliationRecords(accountId);
+    localStorage.setItem(
+      `novo_reconciliation_records_${accountId}`,
+      JSON.stringify([record, ...existing])
+    );
+  },
+
+  getReconciliationRecords(accountId: string): ReconciliationRecord[] {
+    try {
+      const stored = localStorage.getItem(`novo_reconciliation_records_${accountId}`);
+      const records: ReconciliationRecord[] = stored ? JSON.parse(stored) : [];
+      return records.sort(
+        (a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
+      );
+    } catch {
+      return [];
+    }
+  },
+
+  markLatestReconciliationNeedsReview(accountId: string): void {
+    const records = this.getReconciliationRecords(accountId);
+    if (records.length === 0) return;
+
+    const updated = records.map((record, index) =>
+      index === 0 ? { ...record, status: 'needs_review' as const } : record
+    );
+    localStorage.setItem(
+      `novo_reconciliation_records_${accountId}`,
+      JSON.stringify(updated)
+    );
+  },
+
+  unlockReconciledTransactionForEdit(
+    accountId: string,
+    transactionId: string
+  ): CheckingTransaction[] {
+    const transactions = this.getCheckingTransactionsForAccount(accountId);
+    const updated = transactions.map((t) =>
+      t.id === transactionId
+        ? { ...t, isReconciled: false, reconciledAt: undefined }
+        : t
+    );
+    this.saveCheckingTransactionsForAccount(accountId, updated);
+    this.markLatestReconciliationNeedsReview(accountId);
+    return updated;
   },
 };

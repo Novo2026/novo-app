@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, Circle, X, AlertCircle, Trash2 } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
 import { StorageService } from '../services/storage';
@@ -47,12 +47,31 @@ export default function ReconcilePanel({
   onComplete,
 }: ReconcilePanelProps) {
   const transactionsRef = useRef<Transaction[]>(loadTransactionsForAccount(accountId));
+  const startedAtRef = useRef<string>(new Date().toISOString());
   const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set());
   const [deletingIds, setDeletingIds] = useState<Set<string>>(() => new Set());
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
   const [statementBalance, setStatementBalance] = useState('');
   const [showQuickConfirm, setShowQuickConfirm] = useState(false);
   const [filterUnchecked, setFilterUnchecked] = useState(false);
+  const [showResumeBanner, setShowResumeBanner] = useState(false);
+  const [savedProgress, setSavedProgress] = useState<ReturnType<typeof StorageService.getReconcileProgress>>(null);
+  const [canAutoSave, setCanAutoSave] = useState(false);
+  const [showProgressSaved, setShowProgressSaved] = useState(false);
+
+  useEffect(() => {
+    const progress = StorageService.getReconcileProgress(accountId);
+    if (progress && progress.checkedTransactionIds.length > 0) {
+      setSavedProgress(progress);
+      setShowResumeBanner(true);
+      setCanAutoSave(false);
+    } else {
+      setSavedProgress(null);
+      setShowResumeBanner(false);
+      setCanAutoSave(true);
+      startedAtRef.current = new Date().toISOString();
+    }
+  }, [accountId]);
 
   const unreconciledTransactions = transactionsRef.current.filter(
     (t) => !t.isReconciled && !deletedIds.has(t.id)
@@ -72,6 +91,26 @@ export default function ReconcilePanel({
     : null;
   const balanceMatches = balanceDiff !== null && balanceDiff < 0.02;
 
+  const persistProgress = useCallback(() => {
+    if (!canAutoSave) return;
+
+    StorageService.saveReconcileProgress(accountId, {
+      checkedTransactionIds: Array.from(checkedIds),
+      statementBalance: statementBalanceNum ?? 0,
+      startedAt: startedAtRef.current,
+      lastSavedAt: new Date().toISOString(),
+    });
+
+    setShowProgressSaved(true);
+    window.setTimeout(() => setShowProgressSaved(false), 1000);
+  }, [accountId, canAutoSave, checkedIds, statementBalanceNum]);
+
+  useEffect(() => {
+    if (!canAutoSave) return;
+    if (checkedIds.size === 0 && !statementBalance) return;
+    persistProgress();
+  }, [checkedIds, statementBalance, canAutoSave, persistProgress]);
+
   const persistSessionChanges = (reconciledIds: string[] = []) => {
     const account = StorageService.getCheckingAccounts().find((a) => a.id === accountId);
     const startingBalance = account?.startingBalance ?? 0;
@@ -89,6 +128,51 @@ export default function ReconcilePanel({
     StorageService.saveCheckingTransactionsForAccount(accountId, recalculated);
     StorageService.syncCheckingAccountBalance(accountId, recalculated);
     transactionsRef.current = recalculated as Transaction[];
+  };
+
+  const finalizeReconciliation = (reconciledIds: string[]) => {
+    const reconciledTxs = transactionsRef.current.filter((t) => reconciledIds.includes(t.id));
+    const dates = reconciledTxs.map((t) => t.date).sort();
+    const statementEnding = statementBalanceNum ?? currentBalance;
+    const difference = statementEnding - currentBalance;
+    const status = Math.abs(difference) < 0.02 ? 'reconciled' : 'needs_review';
+
+    StorageService.saveReconciliationRecord(accountId, {
+      id: `recon_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      completedAt: new Date().toISOString(),
+      statementEndingBalance: statementEnding,
+      novoCalculatedBalance: currentBalance,
+      difference,
+      transactionCount: reconciledIds.length,
+      status,
+      periodStart: dates[0] ?? new Date().toISOString().split('T')[0],
+      periodEnd: dates[dates.length - 1] ?? new Date().toISOString().split('T')[0],
+    });
+
+    StorageService.clearReconcileProgress(accountId);
+    persistSessionChanges(reconciledIds);
+    onComplete(reconciledIds, statementBalanceNum);
+  };
+
+  const handleResume = () => {
+    if (!savedProgress) return;
+    setCheckedIds(new Set(savedProgress.checkedTransactionIds));
+    setStatementBalance(
+      savedProgress.statementBalance > 0 ? savedProgress.statementBalance.toString() : ''
+    );
+    startedAtRef.current = savedProgress.startedAt;
+    setShowResumeBanner(false);
+    setCanAutoSave(true);
+  };
+
+  const handleStartFresh = () => {
+    StorageService.clearReconcileProgress(accountId);
+    setSavedProgress(null);
+    setShowResumeBanner(false);
+    setCheckedIds(new Set());
+    setStatementBalance('');
+    startedAtRef.current = new Date().toISOString();
+    setCanAutoSave(true);
   };
 
   const toggleTransaction = (id: string) => {
@@ -136,14 +220,12 @@ export default function ReconcilePanel({
   };
 
   const handleComplete = () => {
-    persistSessionChanges(Array.from(checkedIds));
-    onComplete(Array.from(checkedIds), statementBalanceNum);
+    finalizeReconciliation(Array.from(checkedIds));
   };
 
   const handleQuickReconcile = () => {
     const allIds = unreconciledTransactions.map((t) => t.id);
-    persistSessionChanges(allIds);
-    onComplete(allIds, statementBalanceNum);
+    finalizeReconciliation(allIds);
   };
 
   const typeColor = (type: string) => {
@@ -169,10 +251,41 @@ export default function ReconcilePanel({
                 : 'Never reconciled'}
             </p>
           </div>
-          <button onClick={handleSaveAndClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
+          <div className="flex items-center gap-2">
+            {showProgressSaved && (
+              <span className="text-xs text-brand-gray animate-pulse transition-opacity">
+                Progress saved
+              </span>
+            )}
+            <button onClick={handleSaveAndClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
         </div>
+
+        {showResumeBanner && savedProgress && (
+          <div className="px-6 py-3 bg-brand-orange/10 border-b border-brand-orange/20 flex-shrink-0">
+            <p className="text-sm text-brand-navy font-medium mb-2">
+              You have an unfinished reconciliation. Resume where you left off?
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleResume}
+                className="text-xs font-semibold bg-brand-navy text-white px-3 py-1.5 rounded-lg hover:bg-brand-navy-dark transition-colors"
+              >
+                Resume
+              </button>
+              <button
+                type="button"
+                onClick={handleStartFresh}
+                className="text-xs font-semibold text-brand-navy border border-brand-gray-border px-3 py-1.5 rounded-lg hover:bg-white transition-colors"
+              >
+                Start Fresh
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center gap-4 flex-wrap">
