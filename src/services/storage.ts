@@ -1,3 +1,4 @@
+import { recalculateCheckingBalances } from '../utils/savingsTransactions';
 import type {
   Debt,
   Transaction,
@@ -79,7 +80,91 @@ export const StorageService = {
     this.saveTransactions(transactions);
   },
 
-  deleteTransaction(transactionId: string): void {
+  syncCheckingAccountBalance(accountId: string, transactions: CheckingTransaction[]): void {
+    const accounts = this.getCheckingAccounts();
+    const idx = accounts.findIndex((a) => a.id === accountId);
+    if (idx === -1) return;
+
+    const account = accounts[idx];
+    const balance =
+      transactions.length > 0
+        ? transactions[transactions.length - 1].balance
+        : account.startingBalance;
+    accounts[idx] = { ...account, currentBalance: balance };
+    this.saveCheckingAccounts(accounts);
+  },
+
+  updateTransaction(
+    accountId: string,
+    transactionId: string,
+    updatedFields: Partial<CheckingTransaction>
+  ): CheckingTransaction[] {
+    const sourceAccount = this.getCheckingAccounts().find((a) => a.id === accountId);
+    const sourceStarting = sourceAccount?.startingBalance ?? 0;
+    const sourceTransactions = this.getCheckingTransactionsForAccount(accountId);
+    const index = sourceTransactions.findIndex((t) => t.id === transactionId);
+    if (index === -1) {
+      throw new Error('Transaction not found');
+    }
+
+    const existing = sourceTransactions[index];
+    if (existing.isReconciled) {
+      throw new Error('Cannot edit reconciled transactions');
+    }
+
+    const targetAccountId = updatedFields.accountId ?? accountId;
+    const merged: CheckingTransaction = {
+      ...existing,
+      ...updatedFields,
+      id: transactionId,
+      accountId: targetAccountId,
+      isReconciled: existing.isReconciled,
+      reconciledAt: existing.reconciledAt,
+    };
+
+    if (targetAccountId !== accountId) {
+      const fromFiltered = sourceTransactions.filter((t) => t.id !== transactionId);
+      const fromRecalculated = recalculateCheckingBalances(fromFiltered, sourceStarting);
+      this.saveCheckingTransactionsForAccount(accountId, fromRecalculated);
+      this.syncCheckingAccountBalance(accountId, fromRecalculated);
+
+      const targetAccount = this.getCheckingAccounts().find((a) => a.id === targetAccountId);
+      const targetStarting = targetAccount?.startingBalance ?? 0;
+      const toTransactions = [...this.getCheckingTransactionsForAccount(targetAccountId), merged];
+      const toRecalculated = recalculateCheckingBalances(toTransactions, targetStarting);
+      this.saveCheckingTransactionsForAccount(targetAccountId, toRecalculated);
+      this.syncCheckingAccountBalance(targetAccountId, toRecalculated);
+      return toRecalculated;
+    }
+
+    const updatedList = [...sourceTransactions];
+    updatedList[index] = merged;
+    const recalculated = recalculateCheckingBalances(updatedList, sourceStarting);
+    this.saveCheckingTransactionsForAccount(accountId, recalculated);
+    this.syncCheckingAccountBalance(accountId, recalculated);
+    return recalculated;
+  },
+
+  deleteTransaction(accountIdOrTransactionId: string, checkingTransactionId?: string): number | void {
+    if (checkingTransactionId !== undefined) {
+      const accountId = accountIdOrTransactionId;
+      const transactions = this.getCheckingTransactionsForAccount(accountId);
+      const target = transactions.find((t) => t.id === checkingTransactionId);
+      if (!target) return 0;
+      if (target.isReconciled) {
+        throw new Error('Cannot delete reconciled transactions');
+      }
+
+      const account = this.getCheckingAccounts().find((a) => a.id === accountId);
+      const startingBalance = account?.startingBalance ?? 0;
+      const filtered = transactions.filter((t) => t.id !== checkingTransactionId);
+      const recalculated = recalculateCheckingBalances(filtered, startingBalance);
+      this.saveCheckingTransactionsForAccount(accountId, recalculated);
+      this.syncCheckingAccountBalance(accountId, recalculated);
+      return 1;
+    }
+
+    const transactionId = accountIdOrTransactionId;
     const transactions = this.getTransactions();
     const txIndex = transactions.findIndex(t => t.id === transactionId);
     if (txIndex === -1) return;

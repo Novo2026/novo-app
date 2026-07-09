@@ -2,8 +2,9 @@ import { useState, useMemo, useEffect, type ComponentType } from 'react';
 import {
   Plus,
   Upload,
-  CreditCard as Edit2,
-  X,
+  Pencil,
+  Trash2,
+  Lock,
   DollarSign,
   CreditCard,
   Building2,
@@ -22,7 +23,6 @@ import PaymentLoggingGuidance from './PaymentLoggingGuidance';
 import type { CheckingAccount, CheckingTransaction } from '../types';
 import {
   deleteCheckingTransactionWithLinkedReversal,
-  deleteSimpleCheckingTransaction,
   getCheckingDeleteConfirmationMessage,
   isLinkedCheckingDeleteType,
 } from '../utils/linkedTransactionDelete';
@@ -171,6 +171,8 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
   const [showSavingsTransferModal, setShowSavingsTransferModal] = useState(false);
   const [showCheckingTransferModal, setShowCheckingTransferModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<CheckingTransaction | null>(null);
+  const [editingLedgerTransaction, setEditingLedgerTransaction] = useState<CheckingTransaction | null>(null);
+  const [deleteConfirmTransaction, setDeleteConfirmTransaction] = useState<CheckingTransaction | null>(null);
   const [modalType, setModalType] = useState<'deposit' | 'withdrawal' | 'debt_payment'>('deposit');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -256,6 +258,77 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
     setModalType(type);
     setEditingTransaction(transaction);
     setShowModal(true);
+  };
+
+  const handleConfirmDelete = (transaction: CheckingTransaction) => {
+    const runRefresh = (message: string) => {
+      setDeleteConfirmTransaction(null);
+      setSuccessMessage(message);
+      setRefreshTrigger((prev) => prev + 1);
+      onDataUpdate?.();
+      setTimeout(() => setSuccessMessage(null), 5000);
+    };
+
+    if (transaction.linkedHelocTransactionId) {
+      const choice = confirm(
+        'This transaction is linked to a HELOC transaction.\n\n' +
+        'Click OK to delete both transactions, or Cancel to delete only this one.'
+      );
+
+      try {
+        if (choice) {
+          const filteredHeloc = JSON.parse(
+            localStorage.getItem('novo_heloc_transactions') || '[]'
+          ).filter((t: { id: string }) => t.id !== transaction.linkedHelocTransactionId);
+
+          const homeEquity = JSON.parse(localStorage.getItem('novo_home_equity') || '{}');
+          const helocBalance = homeEquity.helocBalance || 0;
+          let runningBalance = helocBalance;
+          filteredHeloc.forEach((txn: { type: string; amount: number; balance: number }) => {
+            if (txn.type === 'draw' || txn.type === 'interest') {
+              runningBalance += txn.amount;
+            } else {
+              runningBalance -= txn.amount;
+            }
+            runningBalance = Math.max(0, runningBalance);
+            txn.balance = Math.round(runningBalance * 100) / 100;
+          });
+
+          localStorage.setItem('novo_heloc_transactions', JSON.stringify(filteredHeloc));
+        }
+
+        StorageService.deleteTransaction(selectedAccountId, transaction.id);
+        runRefresh(
+          choice
+            ? '✓ Both linked transactions deleted. Balances updated.'
+            : '✓ Checking transaction deleted. HELOC transaction kept.'
+        );
+      } catch (err) {
+        setSuccessMessage(err instanceof Error ? err.message : 'Delete failed. Please try again.');
+        setTimeout(() => setSuccessMessage(null), 5000);
+      }
+      return;
+    }
+
+    try {
+      if (isLinkedCheckingDeleteType(transaction.type)) {
+        const result = deleteCheckingTransactionWithLinkedReversal(
+          selectedAccountId,
+          transaction.id
+        );
+        runRefresh(result.message);
+        return;
+      }
+
+      const removed = StorageService.deleteTransaction(selectedAccountId, transaction.id);
+      if (removed === 0) {
+        throw new Error('Transaction could not be found.');
+      }
+      runRefresh('✓ Transaction deleted. Balances updated.');
+    } catch (err) {
+      setSuccessMessage(err instanceof Error ? err.message : 'Delete failed. Please try again.');
+      setTimeout(() => setSuccessMessage(null), 5000);
+    }
   };
 
   return (
@@ -444,84 +517,13 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
 
           <TransactionLedger
             transactions={transactions}
-            onEdit={(transaction) => openModal(transaction.type as 'deposit' | 'withdrawal' | 'debt_payment', transaction)}
-            onDelete={(id) => {
-              const transaction = transactions.find((t) => t.id === id);
-              if (!transaction) return;
-
-              if (transaction.linkedHelocTransactionId) {
-                const choice = confirm(
-                  'This transaction is linked to a HELOC transaction.\n\n' +
-                  'Click OK to delete both transactions, or Cancel to delete only this one.'
-                );
-
-                try {
-                  if (choice) {
-                    const filteredHeloc = JSON.parse(
-                      localStorage.getItem('novo_heloc_transactions') || '[]'
-                    ).filter((t: { id: string }) => t.id !== transaction.linkedHelocTransactionId);
-
-                    const homeEquity = JSON.parse(localStorage.getItem('novo_home_equity') || '{}');
-                    const helocBalance = homeEquity.helocBalance || 0;
-                    let runningBalance = helocBalance;
-                    filteredHeloc.forEach((txn: { type: string; amount: number; balance: number }) => {
-                      if (txn.type === 'draw' || txn.type === 'interest') {
-                        runningBalance += txn.amount;
-                      } else {
-                        runningBalance -= txn.amount;
-                      }
-                      runningBalance = Math.max(0, runningBalance);
-                      txn.balance = Math.round(runningBalance * 100) / 100;
-                    });
-
-                    localStorage.setItem('novo_heloc_transactions', JSON.stringify(filteredHeloc));
-                  }
-
-                  deleteSimpleCheckingTransaction(selectedAccountId, id);
-                  setSuccessMessage(
-                    choice
-                      ? '✓ Both linked transactions deleted. Balances updated.'
-                      : '✓ Checking transaction deleted. HELOC transaction kept.'
-                  );
-                } catch (err) {
-                  setSuccessMessage(
-                    err instanceof Error ? err.message : 'Delete failed. Please try again.'
-                  );
-                }
-              } else if (isLinkedCheckingDeleteType(transaction.type)) {
-                if (!confirm(getCheckingDeleteConfirmationMessage(transaction))) {
-                  return;
-                }
-
-                try {
-                  const result = deleteCheckingTransactionWithLinkedReversal(
-                    selectedAccountId,
-                    id
-                  );
-                  setSuccessMessage(result.message);
-                } catch (err) {
-                  setSuccessMessage(
-                    err instanceof Error ? err.message : 'Delete failed. Please try again.'
-                  );
-                }
-              } else {
-                if (!confirm(getCheckingDeleteConfirmationMessage(transaction))) {
-                  return;
-                }
-
-                try {
-                  deleteSimpleCheckingTransaction(selectedAccountId, id);
-                  setSuccessMessage('✓ Transaction deleted. Balances updated.');
-                } catch (err) {
-                  setSuccessMessage(
-                    err instanceof Error ? err.message : 'Delete failed. Please try again.'
-                  );
-                }
-              }
-
-              setRefreshTrigger((prev) => prev + 1);
-              onDataUpdate?.();
-              setTimeout(() => setSuccessMessage(null), 5000);
+            onEdit={(transaction) => {
+              if (transaction.isReconciled) return;
+              setEditingLedgerTransaction(transaction);
+            }}
+            onDelete={(transaction) => {
+              if (transaction.isReconciled) return;
+              setDeleteConfirmTransaction(transaction);
             }}
           />
         </div>
@@ -665,6 +667,53 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
             setShowReconcilePanel(false);
           }}
         />
+      )}
+
+      {editingLedgerTransaction && (
+        <EditTransactionModal
+          transaction={editingLedgerTransaction}
+          accounts={accounts}
+          onClose={() => setEditingLedgerTransaction(null)}
+          onSuccess={(message) => {
+            setEditingLedgerTransaction(null);
+            setSuccessMessage(message);
+            setRefreshTrigger((prev) => prev + 1);
+            onDataUpdate?.();
+            setTimeout(() => setSuccessMessage(null), 5000);
+          }}
+        />
+      )}
+
+      {deleteConfirmTransaction && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-bold text-brand-navy mb-2">Delete this transaction?</h3>
+            <p className="text-sm text-brand-gray mb-1">
+              {deleteConfirmTransaction.description}
+            </p>
+            <p className="text-sm text-brand-gray mb-6">
+              {isLinkedCheckingDeleteType(deleteConfirmTransaction.type)
+                ? getCheckingDeleteConfirmationMessage(deleteConfirmTransaction)
+                : 'This cannot be undone.'}
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmTransaction(null)}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2.5 px-4 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleConfirmDelete(deleteConfirmTransaction)}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -859,6 +908,269 @@ function getTransactionDisplayMeta(transaction: CheckingTransaction) {
   }
 }
 
+function isDepositTransactionType(type: CheckingTransaction['type']): boolean {
+  return (
+    type === 'deposit' ||
+    type === 'transfer_from_heloc' ||
+    type === 'transfer_from_checking' ||
+    type === 'transfer_from_savings'
+  );
+}
+
+function isTransferTransactionType(type: CheckingTransaction['type']): boolean {
+  return type.includes('transfer');
+}
+
+function getEditCategoryForTransaction(transaction: CheckingTransaction): string {
+  if (transaction.type === 'debt_payment') return 'Debt Payment';
+  if (isDepositTransactionType(transaction.type)) return 'Deposit';
+  if (isTransferTransactionType(transaction.type)) return 'Transfer';
+  if (transaction.category === 'Essential Expense') return 'Essential Expense';
+  if (transaction.category === 'Discretionary Expense') return 'Discretionary Expense';
+  return 'Other';
+}
+
+function buildTransactionFieldsFromEdit(
+  category: string,
+  isDeposit: boolean,
+  existing: CheckingTransaction
+): Pick<CheckingTransaction, 'type' | 'category'> {
+  if (category === 'Debt Payment') {
+    return { type: 'debt_payment', category: 'Debt Payment' };
+  }
+  if (category === 'Deposit' || isDeposit) {
+    return { type: 'deposit', category: undefined };
+  }
+  if (category === 'Transfer') {
+    return {
+      type: isTransferTransactionType(existing.type) ? existing.type : 'internal_transfer',
+      category: 'Transfer',
+    };
+  }
+  if (category === 'Essential Expense') {
+    return { type: 'withdrawal', category: 'Essential Expense' };
+  }
+  if (category === 'Discretionary Expense') {
+    return { type: 'withdrawal', category: 'Discretionary Expense' };
+  }
+  return { type: 'withdrawal', category: 'Other' };
+}
+
+const EDIT_TRANSACTION_CATEGORIES = [
+  'Essential Expense',
+  'Discretionary Expense',
+  'Debt Payment',
+  'Deposit',
+  'Transfer',
+  'Other',
+] as const;
+
+function EditTransactionModal({
+  transaction,
+  accounts,
+  onClose,
+  onSuccess,
+}: {
+  transaction: CheckingTransaction;
+  accounts: CheckingAccount[];
+  onClose: () => void;
+  onSuccess: (message: string) => void;
+}) {
+  const initialCategory = getEditCategoryForTransaction(transaction);
+  const [description, setDescription] = useState(transaction.description);
+  const [amount, setAmount] = useState(transaction.amount.toString());
+  const [isDeposit, setIsDeposit] = useState(isDepositTransactionType(transaction.type));
+  const [date, setDate] = useState(CalculationService.normalizeDateString(transaction.date));
+  const [category, setCategory] = useState(initialCategory);
+  const [accountId, setAccountId] = useState(transaction.accountId);
+  const [error, setError] = useState<string | null>(null);
+
+  const isDebtPayment = category === 'Debt Payment' || transaction.type === 'debt_payment';
+  const showDirectionToggle = !isDebtPayment && category !== 'Transfer';
+
+  const handleSave = () => {
+    setError(null);
+    const parsedAmount = parseFloat(amount);
+    if (!parsedAmount || parsedAmount <= 0) {
+      setError('Please enter a valid amount.');
+      return;
+    }
+
+    const paymentDate = CalculationService.normalizeDateString(date);
+    if (!paymentDate) {
+      setError('Please select a valid date.');
+      return;
+    }
+
+    try {
+      if (isDebtPayment) {
+        if (!transaction.debtId) {
+          setError('This debt payment is missing a linked debt.');
+          return;
+        }
+        if (accountId !== transaction.accountId) {
+          setError('To move a debt payment to another account, delete it and log a new payment on the target account.');
+          return;
+        }
+        const account = accounts.find((a) => a.id === accountId);
+        const result = recordDebtPaymentFromChecking({
+          accountId,
+          startingBalance: account?.startingBalance ?? 0,
+          debtId: transaction.debtId,
+          amount: parsedAmount,
+          date: paymentDate,
+          description: description.trim() || undefined,
+          editCheckingTransactionId: transaction.id,
+        });
+        const recalculated = StorageService.getCheckingTransactionsForAccount(accountId);
+        StorageService.syncCheckingAccountBalance(accountId, recalculated);
+        onSuccess(
+          `✓ Transaction updated. New balance: ${CalculationService.formatCurrency(result.updatedBalance)}`
+        );
+        return;
+      }
+
+      const typeFields = buildTransactionFieldsFromEdit(category, isDeposit, transaction);
+      StorageService.updateTransaction(transaction.accountId, transaction.id, {
+        ...typeFields,
+        description: description.trim() || transaction.description,
+        amount: parsedAmount,
+        date: paymentDate,
+        accountId,
+      });
+      onSuccess('✓ Transaction updated.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Save failed. Please try again.');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+        <h3 className="text-xl font-bold text-brand-navy mb-4">Edit Transaction</h3>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Amount</label>
+            {showDirectionToggle && (
+              <div className="flex gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setIsDeposit(true)}
+                  className={`flex-1 text-xs font-semibold py-1.5 rounded-full border ${
+                    isDeposit
+                      ? 'bg-brand-green text-white border-brand-green'
+                      : 'bg-white text-brand-gray border-brand-gray-border'
+                  }`}
+                >
+                  + Deposit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsDeposit(false)}
+                  className={`flex-1 text-xs font-semibold py-1.5 rounded-full border ${
+                    !isDeposit
+                      ? 'bg-brand-red text-white border-brand-red'
+                      : 'bg-white text-brand-gray border-brand-gray-border'
+                  }`}
+                >
+                  - Withdrawal
+                </button>
+              </div>
+            )}
+            <div className="relative">
+              <span className="absolute left-3 top-2 text-gray-600">$</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Date</label>
+            <DatePicker
+              value={date}
+              onChange={setDate}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
+            <select
+              value={category}
+              onChange={(e) => {
+                const next = e.target.value;
+                setCategory(next);
+                if (next === 'Deposit') setIsDeposit(true);
+                if (next === 'Debt Payment' || next === 'Transfer') setIsDeposit(false);
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+            >
+              {EDIT_TRANSACTION_CATEGORIES.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Account</label>
+            <select
+              value={accountId}
+              onChange={(e) => setAccountId(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-navy focus:border-transparent"
+            >
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {error && (
+            <p className="text-sm text-red-600">{error}</p>
+          )}
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2.5 px-4 rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            className="flex-1 bg-brand-navy hover:bg-brand-navy-dark text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TransactionLedger({
   transactions,
   onEdit,
@@ -866,7 +1178,7 @@ function TransactionLedger({
 }: {
   transactions: CheckingTransaction[];
   onEdit: (t: CheckingTransaction) => void;
-  onDelete: (id: string) => void;
+  onDelete: (t: CheckingTransaction) => void;
 }) {
   const [showAll, setShowAll] = useState(false);
   const displayLimit = 10;
@@ -961,23 +1273,31 @@ function TransactionLedger({
                       {CalculationService.formatCurrency(transaction.balance)}
                     </p>
                   </div>
-                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => onEdit(transaction)}
-                      className="p-1.5 text-brand-blue hover:bg-brand-blue-light rounded"
-                      title="Edit"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onDelete(transaction.id)}
-                      className="p-1.5 text-red-600 hover:bg-brand-red-light rounded"
-                      title="Delete"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
+                  <div className="shrink-0">
+                    {transaction.isReconciled ? (
+                      <div className="p-1.5 text-brand-gray" title="Reconciled — locked">
+                        <Lock className="w-3.5 h-3.5" />
+                      </div>
+                    ) : (
+                      <div className="flex gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => onEdit(transaction)}
+                          className="p-1.5 text-brand-gray hover:text-brand-navy hover:bg-brand-gray-light rounded"
+                          title="Edit"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onDelete(transaction)}
+                          className="p-1.5 text-brand-gray hover:text-red-600 hover:bg-red-50 rounded"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </li>
               );
