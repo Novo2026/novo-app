@@ -1,6 +1,9 @@
-import { useState, useMemo } from 'react';
-import { CheckCircle2, Circle, X, AlertCircle } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { CheckCircle2, Circle, X, AlertCircle, Trash2 } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
+import { StorageService } from '../services/storage';
+import { recalculateCheckingBalances } from '../utils/savingsTransactions';
+import type { CheckingTransaction } from '../types';
 
 interface Transaction {
   id: string;
@@ -22,6 +25,19 @@ interface ReconcilePanelProps {
   onComplete: (reconciledIds: string[], statementBalance: number | null) => void;
 }
 
+function loadTransactionsForAccount(accountId: string): Transaction[] {
+  try {
+    const stored = localStorage.getItem(`novo_checking_transactions_${accountId}`)
+      || localStorage.getItem('novo_checking_transactions')
+      || '[]';
+    return JSON.parse(stored).sort((a: Transaction, b: Transaction) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  } catch {
+    return [];
+  }
+}
+
 export default function ReconcilePanel({
   accountName,
   accountId,
@@ -30,25 +46,20 @@ export default function ReconcilePanel({
   onClose,
   onComplete,
 }: ReconcilePanelProps) {
-  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const transactionsRef = useRef<Transaction[]>(loadTransactionsForAccount(accountId));
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(() => new Set());
+  const [deletingIds, setDeletingIds] = useState<Set<string>>(() => new Set());
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
   const [statementBalance, setStatementBalance] = useState('');
   const [showQuickConfirm, setShowQuickConfirm] = useState(false);
   const [filterUnchecked, setFilterUnchecked] = useState(false);
 
-  const allTransactions: Transaction[] = useMemo(() => {
-    try {
-      const stored = localStorage.getItem(`novo_checking_transactions_${accountId}`)
-        || localStorage.getItem('novo_checking_transactions')
-        || '[]';
-      return JSON.parse(stored).sort((a: Transaction, b: Transaction) =>
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-    } catch { return []; }
-  }, [accountId]);
+  const unreconciledTransactions = transactionsRef.current.filter(
+    (t) => !t.isReconciled && !deletedIds.has(t.id)
+  );
 
-  const unreconciledTransactions = allTransactions.filter(t => !t.isReconciled);
   const displayTransactions = filterUnchecked
-    ? unreconciledTransactions.filter(t => !checkedIds.has(t.id))
+    ? unreconciledTransactions.filter((t) => !checkedIds.has(t.id))
     : unreconciledTransactions;
 
   const checkedCount = checkedIds.size;
@@ -61,8 +72,27 @@ export default function ReconcilePanel({
     : null;
   const balanceMatches = balanceDiff !== null && balanceDiff < 0.02;
 
+  const persistSessionChanges = (reconciledIds: string[] = []) => {
+    const account = StorageService.getCheckingAccounts().find((a) => a.id === accountId);
+    const startingBalance = account?.startingBalance ?? 0;
+    const reconciledSet = new Set(reconciledIds);
+
+    const updated = transactionsRef.current
+      .filter((t) => !deletedIds.has(t.id))
+      .map((t) =>
+        reconciledSet.has(t.id)
+          ? { ...t, isReconciled: true, reconciledAt: new Date().toISOString() }
+          : t
+      ) as CheckingTransaction[];
+
+    const recalculated = recalculateCheckingBalances(updated, startingBalance);
+    StorageService.saveCheckingTransactionsForAccount(accountId, recalculated);
+    StorageService.syncCheckingAccountBalance(accountId, recalculated);
+    transactionsRef.current = recalculated as Transaction[];
+  };
+
   const toggleTransaction = (id: string) => {
-    setCheckedIds(prev => {
+    setCheckedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -74,16 +104,45 @@ export default function ReconcilePanel({
     if (allChecked) {
       setCheckedIds(new Set());
     } else {
-      setCheckedIds(new Set(unreconciledTransactions.map(t => t.id)));
+      setCheckedIds(new Set(unreconciledTransactions.map((t) => t.id)));
     }
   };
 
+  const handleDelete = (id: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (deletingIds.has(id) || deletedIds.has(id)) return;
+
+    setDeletingIds((prev) => new Set(prev).add(id));
+    window.setTimeout(() => {
+      setDeletedIds((prev) => new Set(prev).add(id));
+      setDeletingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      setCheckedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }, 200);
+  };
+
+  const handleSaveAndClose = () => {
+    if (deletedIds.size > 0) {
+      persistSessionChanges();
+    }
+    onClose();
+  };
+
   const handleComplete = () => {
+    persistSessionChanges(Array.from(checkedIds));
     onComplete(Array.from(checkedIds), statementBalanceNum);
   };
 
   const handleQuickReconcile = () => {
-    const allIds = unreconciledTransactions.map(t => t.id);
+    const allIds = unreconciledTransactions.map((t) => t.id);
+    persistSessionChanges(allIds);
     onComplete(allIds, statementBalanceNum);
   };
 
@@ -110,7 +169,7 @@ export default function ReconcilePanel({
                 : 'Never reconciled'}
             </p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
+          <button onClick={handleSaveAndClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
@@ -176,7 +235,10 @@ export default function ReconcilePanel({
           </div>
         </div>
 
-        <div className="overflow-y-auto flex-1">
+        <div
+          className="flex-shrink-0 overflow-y-auto"
+          style={{ height: '65vh', overscrollBehavior: 'contain' }}
+        >
           {displayTransactions.length === 0 ? (
             <div className="text-center py-12">
               {totalCount === 0 ? (
@@ -195,39 +257,55 @@ export default function ReconcilePanel({
             </div>
           ) : (
             <div className="divide-y divide-gray-50">
-              {displayTransactions.map(tx => {
+              {displayTransactions.map((tx) => {
                 const isChecked = checkedIds.has(tx.id);
+                const isDeleting = deletingIds.has(tx.id);
                 return (
-                  <button
+                  <div
                     key={tx.id}
-                    onClick={() => toggleTransaction(tx.id)}
-                    className={`w-full px-6 py-3.5 flex items-center gap-4 text-left transition-colors ${
-                      isChecked ? 'bg-emerald-50/60' : 'hover:bg-gray-50'
+                    className={`reconcile-row flex items-center gap-2 ${
+                      isDeleting ? 'deleting' : ''
                     }`}
                   >
-                    <div className="flex-shrink-0">
-                      {isChecked
-                        ? <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                        : <Circle className="w-5 h-5 text-gray-300" />
-                      }
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium truncate ${isChecked ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
-                        {tx.description}
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-xs text-gray-400">
-                          {new Date(tx.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
-                        </p>
-                        {tx.category && (
-                          <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{tx.category}</span>
-                        )}
+                    <button
+                      onClick={() => toggleTransaction(tx.id)}
+                      className={`flex-1 px-6 py-3.5 flex items-center gap-4 text-left transition-colors ${
+                        isChecked ? 'bg-emerald-50/60' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex-shrink-0">
+                        {isChecked
+                          ? <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                          : <Circle className="w-5 h-5 text-gray-300" />
+                        }
                       </div>
-                    </div>
-                    <div className={`text-sm font-bold flex-shrink-0 ${isChecked ? 'text-gray-400' : typeColor(tx.type)}`}>
-                      {typeSign(tx.type)}{CalculationService.formatCurrency(tx.amount)}
-                    </div>
-                  </button>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${isChecked ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
+                          {tx.description}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-xs text-gray-400">
+                            {new Date(tx.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
+                          </p>
+                          {tx.category && (
+                            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{tx.category}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className={`text-sm font-bold flex-shrink-0 ${isChecked ? 'text-gray-400' : typeColor(tx.type)}`}>
+                        {typeSign(tx.type)}{CalculationService.formatCurrency(tx.amount)}
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(event) => handleDelete(tx.id, event)}
+                      className="mr-4 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg shrink-0"
+                      title="Delete transaction"
+                      aria-label={`Delete ${tx.description}`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -246,7 +324,7 @@ export default function ReconcilePanel({
           ) : (
             <div className="flex gap-3">
               <button
-                onClick={onClose}
+                onClick={handleSaveAndClose}
                 className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 rounded-xl transition-colors"
               >
                 Save & Close
@@ -280,6 +358,20 @@ export default function ReconcilePanel({
           )}
         </div>
       </div>
+
+      <style>{`
+        .reconcile-row {
+          overflow: hidden;
+          transition: opacity 0.2s ease, max-height 0.2s ease, padding 0.2s ease;
+          max-height: 120px;
+        }
+        .reconcile-row.deleting {
+          opacity: 0;
+          max-height: 0;
+          padding-top: 0;
+          padding-bottom: 0;
+        }
+      `}</style>
     </div>
   );
 }

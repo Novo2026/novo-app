@@ -706,19 +706,12 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
           accountId={selectedAccountId}
           currentBalance={currentBalance}
           lastReconciledAt={accounts.find(a => a.id === selectedAccountId)?.lastReconciledAt || null}
-          onClose={() => setShowReconcilePanel(false)}
+          onClose={() => {
+            setShowReconcilePanel(false);
+            setRefreshTrigger((prev) => prev + 1);
+            onDataUpdate?.();
+          }}
           onComplete={(reconciledIds, statementBalance) => {
-            const key = `novo_checking_transactions_${selectedAccountId}`;
-            const fallbackKey = 'novo_checking_transactions';
-            const stored = localStorage.getItem(key) || localStorage.getItem(fallbackKey) || '[]';
-            const transactions = JSON.parse(stored);
-            const updated = transactions.map((t: CheckingTransaction) =>
-              reconciledIds.includes(t.id)
-                ? { ...t, isReconciled: true, reconciledAt: new Date().toISOString() }
-                : t
-            );
-            localStorage.setItem(key, JSON.stringify(updated));
-
             const allAccounts = StorageService.getCheckingAccounts();
             const idx = allAccounts.findIndex(a => a.id === selectedAccountId);
             if (idx !== -1) {
@@ -729,6 +722,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
             }
 
             setRefreshTrigger(prev => prev + 1);
+            onDataUpdate?.();
             setShowReconcilePanel(false);
           }}
         />
