@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, type ComponentType } from 'react';
+import { useState, useMemo, useEffect, useRef, type ComponentType } from 'react';
 import {
   Plus,
   Upload,
@@ -14,6 +14,7 @@ import {
   ArrowLeftRight,
   Home,
   SlidersHorizontal,
+  CheckCircle2,
 } from 'lucide-react';
 import StatementUploadModal from './StatementUploadModal';
 import { CalculationService } from '../services/calculations';
@@ -795,12 +796,10 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
         <LegacyImportCleanupModal
           accountId={selectedAccountId}
           onClose={() => setShowLegacyCleanup(false)}
-          onComplete={(message) => {
+          onComplete={() => {
             setShowLegacyCleanup(false);
-            setSuccessMessage(message);
             setRefreshTrigger((prev) => prev + 1);
             onDataUpdate?.();
-            setTimeout(() => setSuccessMessage(null), 5000);
           }}
         />
       )}
@@ -1133,80 +1132,151 @@ function LegacyImportCleanupModal({
 }: {
   accountId: string;
   onClose: () => void;
-  onComplete: (message: string) => void;
+  onComplete: () => void;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollPosRef = useRef(0);
   const [pairs, setPairs] = useState<LegacyDuplicatePair[]>(() =>
     StorageService.findLegacyImportDuplicatePairs(accountId)
   );
+  const [removingKeys, setRemovingKeys] = useState<Set<string>>(new Set());
+  const [allResolved, setAllResolved] = useState(false);
+
+  const getPairKey = (pair: LegacyDuplicatePair) => `${pair.manual.id}-${pair.imported.id}`;
+
+  const remainingCount = pairs.filter((pair) => !removingKeys.has(getPairKey(pair))).length;
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollPosRef.current;
+    }
+  }, [pairs, removingKeys]);
 
   const handleRemoveImport = (pair: LegacyDuplicatePair) => {
-    const removed = StorageService.removeCheckingTransactionsByIds(accountId, [pair.imported.id]);
-    const nextPairs = pairs.filter(
-      (item) => item.imported.id !== pair.imported.id
-    );
-    setPairs(nextPairs);
+    const key = getPairKey(pair);
+    if (removingKeys.has(key)) return;
 
-    if (nextPairs.length === 0) {
-      onComplete(
-        removed > 0
-          ? `Cleanup complete. ${removed} duplicate transaction${removed === 1 ? '' : 's'} removed.`
-          : 'Cleanup complete.'
-      );
+    if (scrollRef.current) {
+      scrollPosRef.current = scrollRef.current.scrollTop;
     }
+
+    StorageService.removeCheckingTransactionsByIds(accountId, [pair.imported.id]);
+    setRemovingKeys((prev) => new Set(prev).add(key));
+
+    window.setTimeout(() => {
+      setPairs((prev) => {
+        const next = prev.filter((item) => getPairKey(item) !== key);
+        if (next.length === 0) {
+          setAllResolved(true);
+        }
+        return next;
+      });
+      setRemovingKeys((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }, 1000);
   };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
-      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b border-brand-gray-border">
+      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-5 border-b border-brand-gray-border shrink-0">
           <div>
             <h3 className="text-lg font-bold text-brand-navy">Legacy Import Cleanup</h3>
-            <p className="text-xs text-brand-gray mt-0.5">
-              Review duplicate pairs and remove imported copies
-            </p>
+            {!allResolved && (
+              <p className="text-xs font-medium text-brand-navy mt-1">
+                {remainingCount} duplicate{remainingCount === 1 ? '' : 's'} remaining
+              </p>
+            )}
+            {!allResolved && (
+              <p className="text-xs text-brand-gray mt-0.5">
+                Review duplicate pairs and remove imported copies
+              </p>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-brand-gray hover:text-brand-navy text-xl leading-none px-2"
-            aria-label="Close"
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="p-5 space-y-5">
-          {pairs.length === 0 ? (
-            <p className="text-sm text-brand-gray text-center py-8">
-              No duplicate transactions remain for this account.
-            </p>
-          ) : (
-            pairs.map((pair) => (
-              <div key={`${pair.manual.id}-${pair.imported.id}`} className="space-y-3">
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <DuplicateTransactionCard transaction={pair.manual} label="Manual entry" />
-                  <DuplicateTransactionCard transaction={pair.imported} label="Imported copy" />
-                </div>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveImport(pair)}
-                    className="flex-1 bg-brand-navy hover:bg-brand-navy-dark text-white text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
-                  >
-                    Keep Manual Entry
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveImport(pair)}
-                    className="flex-1 text-red-600 border border-red-300 hover:bg-red-50 text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
-                  >
-                    Remove Import
-                  </button>
-                </div>
-              </div>
-            ))
+          {!allResolved && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-brand-gray hover:text-brand-navy text-xl leading-none px-2"
+              aria-label="Close"
+            >
+              ×
+            </button>
           )}
         </div>
+
+        {allResolved ? (
+          <div className="p-8 text-center">
+            <CheckCircle2 className="w-12 h-12 text-green-600 mx-auto mb-4" />
+            <p className="text-sm text-brand-navy font-medium mb-6">
+              All duplicates resolved! Your account balance has been updated.
+            </p>
+            <button
+              type="button"
+              onClick={onComplete}
+              className="bg-brand-navy hover:bg-brand-navy-dark text-white text-sm font-semibold py-2.5 px-6 rounded-lg transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        ) : (
+          <div ref={scrollRef} className="p-5 space-y-5 overflow-y-auto flex-1 min-h-0">
+            {pairs.length === 0 ? (
+              <p className="text-sm text-brand-gray text-center py-8">
+                No duplicate transactions remain for this account.
+              </p>
+            ) : (
+              pairs.map((pair) => {
+                const key = getPairKey(pair);
+                const isRemoving = removingKeys.has(key);
+                return (
+                  <div
+                    key={key}
+                    className={`space-y-3 transition-opacity duration-300 ${
+                      isRemoving ? 'opacity-60' : ''
+                    }`}
+                  >
+                    {isRemoving && (
+                      <div className="flex items-center gap-2 text-green-700 text-xs font-medium">
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        Removed — updating list…
+                      </div>
+                    )}
+                    <div
+                      className={`flex flex-col sm:flex-row gap-3 ${
+                        isRemoving ? 'line-through decoration-brand-gray' : ''
+                      }`}
+                    >
+                      <DuplicateTransactionCard transaction={pair.manual} label="Manual entry" />
+                      <DuplicateTransactionCard transaction={pair.imported} label="Imported copy" />
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImport(pair)}
+                        disabled={isRemoving}
+                        className="flex-1 bg-brand-navy hover:bg-brand-navy-dark disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
+                      >
+                        Keep Manual Entry
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImport(pair)}
+                        disabled={isRemoving}
+                        className="flex-1 text-red-600 border border-red-300 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
+                      >
+                        Remove Import
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
