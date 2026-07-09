@@ -16,6 +16,7 @@ interface ParsedTransaction {
   debit?: number;
   credit?: number;
   runningBalance?: number;
+  accountSection?: string;
 }
 
 interface StatementBalanceMeta {
@@ -93,6 +94,41 @@ function detectType(description: string, amount: number): 'deposit' | 'withdrawa
     lower.includes('student') || lower.includes('chase pmt') || lower.includes('payment')
   ) return 'debt_payment';
   return 'withdrawal';
+}
+
+const EXCLUDED_ACCOUNT_SECTION_PATTERNS = [
+  '351',
+  '352',
+  '353',
+  '354',
+  '355',
+  '356',
+  'savings',
+  'ira',
+  'vacation',
+  'insurance',
+  'misc',
+  'tax relief',
+  'class of',
+  'house',
+];
+
+const KEEP_ACCOUNT_SECTION_PATTERNS = ['checking', 'draft', '601'];
+
+function filterCheckingSectionTransactions(transactions: ParsedTransaction[]): ParsedTransaction[] {
+  return transactions.filter((tx) => {
+    const section = tx.accountSection;
+    if (!section || section.toLowerCase() === 'unknown') {
+      return true;
+    }
+
+    const lower = section.toLowerCase();
+    if (EXCLUDED_ACCOUNT_SECTION_PATTERNS.some((pattern) => lower.includes(pattern))) {
+      return false;
+    }
+
+    return KEEP_ACCOUNT_SECTION_PATTERNS.some((pattern) => lower.includes(pattern));
+  });
 }
 
 function parseCSV(text: string): ParsedTransaction[] {
@@ -518,17 +554,32 @@ async function parsePDFWithAI(file: File): Promise<ParsedTransaction[]> {
           },
           {
             type: 'text',
-            text: `Extract all transactions from this bank statement. Return ONLY a JSON array, no other text, no markdown, no explanation. Each item must have these exact fields:
+            text: `This is a bank statement. It may contain multiple account sections (checking, savings, sub-accounts, etc).
+
+Your task:
+1. First identify all account sections in this statement
+2. Find the PRIMARY CHECKING or DRAFT account section — look for keywords like 'Checking', 'Draft', 'Share Draft', 'Everyday Checking', 'Classic Checking' in the section headers
+3. If multiple checking accounts exist, extract from ALL of them
+4. EXCLUDE these account types entirely: Savings, IRA, Money Market, CD, Tax Relief, Vacation, Insurance, Misc, Class Of, House, sub-savings accounts (these typically have 3-digit section numbers like 351, 352, 353 etc)
+5. Extract ONLY transactions from the checking section(s)
+
+For each transaction return ONLY a JSON array, no other text, no markdown:
 {
-  "date": "YYYY-MM-DD",
-  "description": "merchant or transaction name",
-  "amount": 123.45,
-  "isDeposit": true or false,
-  "debit": 0 or the debit/withdrawal amount as a positive number,
-  "credit": 0 or the credit/deposit amount as a positive number,
-  "runningBalance": the balance column value after this row as a number, or null
+  'date': 'YYYY-MM-DD',
+  'description': 'merchant or transaction name',
+  'amount': 123.45,
+  'isDeposit': true or false,
+  'debit': 0 or the debit/withdrawal amount as a positive number,
+  'credit': 0 or the credit/deposit amount as a positive number,
+  'runningBalance': the balance column value after this row as a number or null,
+  'accountSection': the section name or number this transaction came from
 }
-Amount should always be a positive number for actual transactions. For balance-only rows such as "Beginning Balance" with no debit or credit, set amount to 0, isDeposit to false, debit to 0, credit to 0, and put the opening balance in runningBalance. isDeposit is true for credits/deposits, false for debits/withdrawals. Include every transaction you can find.`,
+
+Amount should always be a positive number.
+Exclude beginning balance and ending balance rows.
+Exclude dividend entries.
+Exclude rows with no debit or credit amount.
+If you cannot identify a checking section, extract all transactions but flag each with accountSection name.`,
           },
         ],
       }],
@@ -548,6 +599,7 @@ Amount should always be a positive number for actual transactions. For balance-o
     debit?: number;
     credit?: number;
     runningBalance?: number | null;
+    accountSection?: string | null;
   }[] = [];
   try {
     const clean = text.replace(/```json|```/g, '').trim();
@@ -556,7 +608,7 @@ Amount should always be a positive number for actual transactions. For balance-o
     throw new Error('Could not read transactions from PDF. Try uploading a CSV instead.');
   }
 
-  return parsed.map((item, i) => {
+  const mapped = parsed.map((item, i) => {
     const debit = Math.abs(item.debit ?? 0);
     const credit = Math.abs(item.credit ?? 0);
     const runningBalance =
@@ -580,8 +632,11 @@ Amount should always be a positive number for actual transactions. For balance-o
       debit,
       credit,
       runningBalance,
+      accountSection: item.accountSection ?? undefined,
     };
   });
+
+  return filterCheckingSectionTransactions(mapped);
 }
 
 function recalculateImportedBalances(
