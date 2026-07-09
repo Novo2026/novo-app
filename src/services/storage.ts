@@ -37,7 +37,7 @@ const STORAGE_KEYS = {
   IMPORT_BATCHES: 'novo_import_batches',
 };
 
-type ImportBatchRecord = {
+export type ImportBatchRecord = {
   batchId: string;
   accountId: string;
   accountName: string;
@@ -49,6 +49,55 @@ type ImportBatchRecord = {
   totalCredits: number;
   status: 'active' | 'undone';
 };
+
+export type LegacyDuplicatePair = {
+  manual: CheckingTransaction & { source?: 'import' | 'manual'; batchId?: string };
+  imported: CheckingTransaction & { source?: 'import' | 'manual'; batchId?: string };
+};
+
+type ExtendedCheckingTransaction = CheckingTransaction & {
+  source?: 'import' | 'manual';
+  batchId?: string;
+  originalDescription?: string;
+};
+
+function normalizeDescriptionForMatch(description: string): string {
+  return description
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+function descriptionsAreSimilar(a: string, b: string): boolean {
+  const normalizedA = normalizeDescriptionForMatch(a);
+  const normalizedB = normalizeDescriptionForMatch(b);
+  if (normalizedA === normalizedB) return true;
+  if (
+    normalizedA.length >= 4 &&
+    normalizedB.length >= 4 &&
+    (normalizedA.includes(normalizedB) || normalizedB.includes(normalizedA))
+  ) {
+    return true;
+  }
+
+  const wordsA = new Set(normalizedA.split(' ').filter((word) => word.length > 2));
+  const wordsB = new Set(normalizedB.split(' ').filter((word) => word.length > 2));
+  let overlap = 0;
+  for (const word of wordsA) {
+    if (wordsB.has(word)) overlap += 1;
+  }
+  const minSize = Math.min(wordsA.size, wordsB.size);
+  return minSize > 0 && overlap / minSize >= 0.6;
+}
+
+function isLikelyImportedTransaction(tx: ExtendedCheckingTransaction): boolean {
+  if (tx.batchId) return true;
+  if (tx.source === 'import') return true;
+  if (tx.id.startsWith('import_') || tx.id.startsWith('cc_payment_')) return true;
+  if (tx.originalDescription && tx.originalDescription !== tx.description) return true;
+  return false;
+}
 
 export const StorageService = {
   saveAccountType(type: 'solo' | 'couple' | 'family'): void {
@@ -467,12 +516,20 @@ export const StorageService = {
   },
 
   undoImportBatch(batchId: string, accountId: string): number {
+    const account = this.getCheckingAccounts().find((a) => a.id === accountId);
+    const startingBalance = account?.startingBalance ?? 0;
     const transactions = this.getCheckingTransactionsForAccount(accountId);
+    const removedCount = transactions.filter(
+      (tx) =>
+        (tx as ExtendedCheckingTransaction).batchId === batchId && !tx.isReconciled
+    ).length;
     const filtered = transactions.filter(
-      (tx) => (tx as CheckingTransaction & { batchId?: string }).batchId !== batchId
+      (tx) =>
+        (tx as ExtendedCheckingTransaction).batchId !== batchId || tx.isReconciled
     );
-    const removedCount = transactions.length - filtered.length;
-    this.saveCheckingTransactionsForAccount(accountId, filtered);
+    const recalculated = recalculateCheckingBalances(filtered, startingBalance);
+    this.saveCheckingTransactionsForAccount(accountId, recalculated);
+    this.syncCheckingAccountBalance(accountId, recalculated);
 
     const existing = localStorage.getItem(STORAGE_KEYS.IMPORT_BATCHES);
     const batches: ImportBatchRecord[] = existing ? JSON.parse(existing) : [];
@@ -488,9 +545,73 @@ export const StorageService = {
     const existing = localStorage.getItem(STORAGE_KEYS.IMPORT_BATCHES);
     const batches: ImportBatchRecord[] = existing ? JSON.parse(existing) : [];
     return batches
-      .filter((batch) => batch.status !== 'undone')
       .filter((batch) => (accountId ? batch.accountId === accountId : true))
       .sort((a, b) => new Date(b.importedAt).getTime() - new Date(a.importedAt).getTime());
+  },
+
+  findLegacyImportDuplicatePairs(accountId: string): LegacyDuplicatePair[] {
+    const transactions = this.getCheckingTransactionsForAccount(accountId) as ExtendedCheckingTransaction[];
+    const pairs: LegacyDuplicatePair[] = [];
+    const usedIds = new Set<string>();
+
+    for (let i = 0; i < transactions.length; i += 1) {
+      const first = transactions[i];
+      if (usedIds.has(first.id)) continue;
+
+      for (let j = i + 1; j < transactions.length; j += 1) {
+        const second = transactions[j];
+        if (usedIds.has(second.id)) continue;
+        if (first.date !== second.date) continue;
+        if (Math.abs(first.amount - second.amount) > 0.001) continue;
+        if (first.type !== second.type) continue;
+        if (!descriptionsAreSimilar(first.description, second.description)) continue;
+
+        if (first.batchId && second.batchId) continue;
+
+        const firstImported = isLikelyImportedTransaction(first);
+        const secondImported = isLikelyImportedTransaction(second);
+
+        let manual: ExtendedCheckingTransaction;
+        let imported: ExtendedCheckingTransaction;
+
+        if (firstImported && !secondImported) {
+          imported = first;
+          manual = second;
+        } else if (secondImported && !firstImported) {
+          imported = second;
+          manual = first;
+        } else {
+          manual = first;
+          imported = second;
+        }
+
+        if (imported.isReconciled) continue;
+
+        pairs.push({ manual, imported });
+        usedIds.add(manual.id);
+        usedIds.add(imported.id);
+        break;
+      }
+    }
+
+    return pairs;
+  },
+
+  removeCheckingTransactionsByIds(accountId: string, transactionIds: string[]): number {
+    const account = this.getCheckingAccounts().find((a) => a.id === accountId);
+    const startingBalance = account?.startingBalance ?? 0;
+    const transactions = this.getCheckingTransactionsForAccount(accountId);
+    const idsToRemove = new Set(transactionIds);
+    const removedCount = transactions.filter(
+      (tx) => idsToRemove.has(tx.id) && !tx.isReconciled
+    ).length;
+    const filtered = transactions.filter(
+      (tx) => !idsToRemove.has(tx.id) || tx.isReconciled
+    );
+    const recalculated = recalculateCheckingBalances(filtered, startingBalance);
+    this.saveCheckingTransactionsForAccount(accountId, recalculated);
+    this.syncCheckingAccountBalance(accountId, recalculated);
+    return removedCount;
   },
 
   reconcileAccount(accountId: string, balance: number): void {

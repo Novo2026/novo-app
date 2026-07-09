@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { Upload, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
 import { StorageService } from '../services/storage';
-import type { Debt } from '../types';
+import type { Debt, CheckingTransaction } from '../types';
 
 interface ParsedTransaction {
   id: string;
@@ -258,6 +258,7 @@ async function importCreditCardStatement(
     });
 
     StorageService.saveCheckingTransactionsForAccount(defaultAccountId, combined);
+    StorageService.syncCheckingAccountBalance(defaultAccountId, combined as CheckingTransaction[]);
 
     const paymentDates = newPaymentTxs.map((t) => t.date).sort();
     const totalDebits = newPaymentTxs.reduce((sum, t) => sum + t.amount, 0);
@@ -517,6 +518,7 @@ export default function StatementUploadModal({
       isReconciled: t.isReconciled ?? false,
     }));
     StorageService.saveCheckingTransactionsForAccount(selectedCheckingAccountId, withAccountId);
+    StorageService.syncCheckingAccountBalance(selectedCheckingAccountId, withAccountId as CheckingTransaction[]);
     const importedDates = approvedWithBatch.map((t) => t.date).sort();
     const totalDebits = approvedWithBatch
       .filter((t) => t.type !== 'deposit')

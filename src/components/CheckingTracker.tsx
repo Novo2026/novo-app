@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import StatementUploadModal from './StatementUploadModal';
 import { CalculationService } from '../services/calculations';
-import { StorageService } from '../services/storage';
+import { StorageService, type ImportBatchRecord, type LegacyDuplicatePair } from '../services/storage';
 import DatePicker from './DatePicker';
 import PaymentLoggingGuidance from './PaymentLoggingGuidance';
 import type { CheckingAccount, CheckingTransaction } from '../types';
@@ -167,6 +167,9 @@ function QuickActionButton({
 export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
   const [showModal, setShowModal] = useState(false);
   const [showStatementUpload, setShowStatementUpload] = useState(false);
+  const [showImportHistory, setShowImportHistory] = useState(false);
+  const [undoConfirmBatch, setUndoConfirmBatch] = useState<ImportBatchRecord | null>(null);
+  const [showLegacyCleanup, setShowLegacyCleanup] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showSavingsTransferModal, setShowSavingsTransferModal] = useState(false);
   const [showCheckingTransferModal, setShowCheckingTransferModal] = useState(false);
@@ -410,7 +413,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
               <p className="text-[11px] uppercase font-semibold text-brand-navy tracking-[0.5px] mb-2">
                 Quick actions
               </p>
-              <div className="grid grid-cols-4 gap-2 mb-2">
+              <div className="grid grid-cols-4 gap-2 mb-1">
                 <QuickActionButton
                   icon={PlusCircle}
                   label="Deposit"
@@ -447,6 +450,15 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
                   bgClass="bg-gray-50"
                   hoverBgClass="hover:bg-gray-100"
                 />
+              </div>
+              <div className="flex justify-end mb-2">
+                <button
+                  type="button"
+                  onClick={() => setShowImportHistory(true)}
+                  className="text-[11px] text-brand-navy hover:underline font-medium"
+                >
+                  Import History
+                </button>
               </div>
               <div className="grid grid-cols-4 gap-2">
                 <QuickActionButton
@@ -715,6 +727,83 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
           </div>
         </div>
       )}
+
+      {showImportHistory && (
+        <ImportHistoryModal
+          accountId={selectedAccountId}
+          accountName={accounts.find((a) => a.id === selectedAccountId)?.name || 'Checking'}
+          refreshTrigger={refreshTrigger}
+          onClose={() => {
+            setShowImportHistory(false);
+            setUndoConfirmBatch(null);
+            setShowLegacyCleanup(false);
+          }}
+          onImportStatement={() => {
+            setShowImportHistory(false);
+            setShowStatementUpload(true);
+          }}
+          onUndoBatch={(batch) => setUndoConfirmBatch(batch)}
+          onOpenLegacyCleanup={() => setShowLegacyCleanup(true)}
+        />
+      )}
+
+      {undoConfirmBatch && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-bold text-brand-navy mb-2">Undo this import?</h3>
+            <p className="text-sm text-brand-gray mb-6">
+              This will remove {undoConfirmBatch.transactionCount} imported transaction
+              {undoConfirmBatch.transactionCount === 1 ? '' : 's'} from your account. This cannot be
+              undone. Are you sure?
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setUndoConfirmBatch(null)}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2.5 px-4 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    const removed = StorageService.undoImportBatch(
+                      undoConfirmBatch.batchId,
+                      undoConfirmBatch.accountId
+                    );
+                    setUndoConfirmBatch(null);
+                    setSuccessMessage(`Import removed. ${removed} transaction${removed === 1 ? '' : 's'} deleted.`);
+                    setRefreshTrigger((prev) => prev + 1);
+                    onDataUpdate?.();
+                    setTimeout(() => setSuccessMessage(null), 5000);
+                  } catch (err) {
+                    setSuccessMessage(err instanceof Error ? err.message : 'Undo failed. Please try again.');
+                    setTimeout(() => setSuccessMessage(null), 5000);
+                  }
+                }}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
+              >
+                Yes, Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLegacyCleanup && (
+        <LegacyImportCleanupModal
+          accountId={selectedAccountId}
+          onClose={() => setShowLegacyCleanup(false)}
+          onComplete={(message) => {
+            setShowLegacyCleanup(false);
+            setSuccessMessage(message);
+            setRefreshTrigger((prev) => prev + 1);
+            onDataUpdate?.();
+            setTimeout(() => setSuccessMessage(null), 5000);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -847,6 +936,277 @@ function MonthlySummarySidebar({
         <SummaryCard label="Debt payments" value={summary.debtPayments} bgClass="bg-purple-50" textClass="text-purple-700" />
         <SummaryCard label="To savings" value={summary.toSavings} bgClass="bg-amber-50" textClass="text-amber-700" />
         <SummaryCard label="Other" value={summary.other} bgClass="bg-brand-gray-light" textClass="text-brand-gray" />
+      </div>
+    </div>
+  );
+}
+
+function formatImportDateTime(isoString: string): string {
+  const date = new Date(isoString);
+  const datePart = date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  const timePart = date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  return `${datePart} at ${timePart}`;
+}
+
+function formatImportDateRange(start: string, end: string): string {
+  if (start === end) return CalculationService.formatDate(start);
+
+  const startDate = CalculationService.parseLocalDate(start);
+  const endDate = CalculationService.parseLocalDate(end);
+  const sameYear = startDate.getFullYear() === endDate.getFullYear();
+  const startLabel = startDate.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  });
+  const endLabel = endDate.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  return `${startLabel} – ${endLabel}`;
+}
+
+function DuplicateTransactionCard({
+  transaction,
+  label,
+}: {
+  transaction: CheckingTransaction;
+  label: string;
+}) {
+  const meta = getTransactionDisplayMeta(transaction);
+  return (
+    <div className="flex-1 min-w-0 border border-brand-gray-border rounded-lg p-3 bg-white">
+      <p className="text-[10px] uppercase font-semibold text-brand-gray tracking-wide mb-2">{label}</p>
+      <p className="text-[13px] font-medium text-brand-navy truncate">{transaction.description}</p>
+      <p className="text-[11px] text-brand-gray mt-1">
+        {CalculationService.formatLocalDateShort(transaction.date)} · {meta.typeLabel}
+      </p>
+      <p className={`text-[13px] font-medium mt-2 ${meta.isPositive ? 'text-green-700' : 'text-red-700'}`}>
+        {meta.isPositive ? '+' : '-'}
+        {CalculationService.formatCurrency(transaction.amount)}
+      </p>
+    </div>
+  );
+}
+
+function ImportHistoryModal({
+  accountId,
+  accountName,
+  refreshTrigger,
+  onClose,
+  onImportStatement,
+  onUndoBatch,
+  onOpenLegacyCleanup,
+}: {
+  accountId: string;
+  accountName: string;
+  refreshTrigger: number;
+  onClose: () => void;
+  onImportStatement: () => void;
+  onUndoBatch: (batch: ImportBatchRecord) => void;
+  onOpenLegacyCleanup: () => void;
+}) {
+  const batches = useMemo(
+    () => StorageService.getImportBatches(accountId),
+    [accountId, refreshTrigger]
+  );
+  const legacyDuplicates = useMemo(
+    () => StorageService.findLegacyImportDuplicatePairs(accountId),
+    [accountId, refreshTrigger]
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-brand-gray-border">
+          <div>
+            <h3 className="text-lg font-bold text-brand-navy">Import History</h3>
+            <p className="text-xs text-brand-gray mt-0.5">{accountName}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-brand-gray hover:text-brand-navy text-xl leading-none px-2"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {legacyDuplicates.length > 0 && (
+            <div className="border border-amber-200 bg-amber-50 rounded-lg p-4">
+              <p className="text-sm text-brand-navy font-medium mb-1">Legacy Import Cleanup</p>
+              <p className="text-xs text-brand-gray mb-3">
+                We found {legacyDuplicates.length} possible duplicate transaction
+                {legacyDuplicates.length === 1 ? '' : 's'} from a previous import. Review and remove
+                duplicates?
+              </p>
+              <button
+                type="button"
+                onClick={onOpenLegacyCleanup}
+                className="text-xs font-semibold text-brand-navy border border-brand-navy rounded-lg px-3 py-1.5 hover:bg-white transition-colors"
+              >
+                Review duplicates
+              </button>
+            </div>
+          )}
+
+          {batches.length === 0 ? (
+            <div className="text-center py-10 px-4">
+              <p className="text-sm text-brand-gray mb-4">
+                No statement imports yet for this account
+              </p>
+              <button
+                type="button"
+                onClick={onImportStatement}
+                className="bg-brand-navy hover:bg-brand-navy-dark text-white text-sm font-semibold py-2.5 px-4 rounded-lg transition-colors"
+              >
+                Import your first statement
+              </button>
+            </div>
+          ) : (
+            batches.map((batch) => (
+              <div
+                key={batch.batchId}
+                className="border border-brand-gray-border rounded-lg p-4 space-y-2"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-brand-navy">
+                      {formatImportDateTime(batch.importedAt)}
+                    </p>
+                    <p className="text-xs text-brand-gray mt-0.5">{batch.accountName}</p>
+                  </div>
+                  <span
+                    className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full shrink-0 ${
+                      batch.status === 'active'
+                        ? 'bg-green-100 text-green-800'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {batch.status === 'active' ? 'Active' : 'Undone'}
+                  </span>
+                </div>
+
+                <p className="text-xs text-brand-gray">
+                  {batch.transactionCount} transaction{batch.transactionCount === 1 ? '' : 's'}
+                </p>
+                <p className="text-xs text-brand-gray">
+                  {formatImportDateRange(batch.dateRangeStart, batch.dateRangeEnd)}
+                </p>
+                <p className="text-xs text-brand-gray">
+                  Debits {CalculationService.formatCurrency(batch.totalDebits)} · Credits{' '}
+                  {CalculationService.formatCurrency(batch.totalCredits)}
+                </p>
+
+                {batch.status === 'active' && (
+                  <button
+                    type="button"
+                    onClick={() => onUndoBatch(batch)}
+                    className="mt-2 text-xs font-semibold text-red-600 border border-red-300 rounded-lg px-3 py-1.5 hover:bg-red-50 transition-colors"
+                  >
+                    Undo Import
+                  </button>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LegacyImportCleanupModal({
+  accountId,
+  onClose,
+  onComplete,
+}: {
+  accountId: string;
+  onClose: () => void;
+  onComplete: (message: string) => void;
+}) {
+  const [pairs, setPairs] = useState<LegacyDuplicatePair[]>(() =>
+    StorageService.findLegacyImportDuplicatePairs(accountId)
+  );
+
+  const handleRemoveImport = (pair: LegacyDuplicatePair) => {
+    const removed = StorageService.removeCheckingTransactionsByIds(accountId, [pair.imported.id]);
+    const nextPairs = pairs.filter(
+      (item) => item.imported.id !== pair.imported.id
+    );
+    setPairs(nextPairs);
+
+    if (nextPairs.length === 0) {
+      onComplete(
+        removed > 0
+          ? `Cleanup complete. ${removed} duplicate transaction${removed === 1 ? '' : 's'} removed.`
+          : 'Cleanup complete.'
+      );
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[60]">
+      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-brand-gray-border">
+          <div>
+            <h3 className="text-lg font-bold text-brand-navy">Legacy Import Cleanup</h3>
+            <p className="text-xs text-brand-gray mt-0.5">
+              Review duplicate pairs and remove imported copies
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-brand-gray hover:text-brand-navy text-xl leading-none px-2"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="p-5 space-y-5">
+          {pairs.length === 0 ? (
+            <p className="text-sm text-brand-gray text-center py-8">
+              No duplicate transactions remain for this account.
+            </p>
+          ) : (
+            pairs.map((pair) => (
+              <div key={`${pair.manual.id}-${pair.imported.id}`} className="space-y-3">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <DuplicateTransactionCard transaction={pair.manual} label="Manual entry" />
+                  <DuplicateTransactionCard transaction={pair.imported} label="Imported copy" />
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImport(pair)}
+                    className="flex-1 bg-brand-navy hover:bg-brand-navy-dark text-white text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
+                  >
+                    Keep Manual Entry
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveImport(pair)}
+                    className="flex-1 text-red-600 border border-red-300 hover:bg-red-50 text-xs font-semibold py-2 px-3 rounded-lg transition-colors"
+                  >
+                    Remove Import
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
