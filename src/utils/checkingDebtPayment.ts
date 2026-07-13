@@ -93,7 +93,9 @@ function recalculateCheckingBalances(
   );
 
   return sorted.map((transaction) => {
-    if (
+    if (transaction.type === 'balance_adjustment') {
+      runningBalance += transaction.amount;
+    } else if (
       transaction.type === 'deposit' ||
       transaction.type === 'transfer_from_heloc' ||
       transaction.type === 'transfer_from_checking' ||

@@ -235,6 +235,7 @@ export type CheckingTransactionType =
   | 'transfer_from_heloc'
   | 'internal_transfer'
   | 'bill_payment'
+  | 'balance_adjustment'
   | 'other';
 
 export interface CheckingTransaction {

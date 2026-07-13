@@ -73,7 +73,10 @@ export function recalculateCheckingBalances(
   );
 
   return sorted.map((transaction) => {
-    if (
+    if (transaction.type === 'balance_adjustment') {
+      // Amount is signed: positive credit / negative debit
+      runningBalance += transaction.amount;
+    } else if (
       transaction.type === 'deposit' ||
       transaction.type === 'transfer_from_heloc' ||
       transaction.type === 'transfer_from_checking' ||

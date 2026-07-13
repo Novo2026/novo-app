@@ -675,7 +675,14 @@ function recalculateImportedBalances(
 
   let running = startingBalance;
   combined.forEach(tx => {
-    if (tx.type === 'deposit') {
+    if (tx.type === 'balance_adjustment') {
+      running += tx.amount;
+    } else if (
+      tx.type === 'deposit' ||
+      tx.type === 'transfer_from_heloc' ||
+      tx.type === 'transfer_from_checking' ||
+      tx.type === 'transfer_from_savings'
+    ) {
       running += tx.amount;
     } else {
       running -= tx.amount;
@@ -691,13 +698,11 @@ function calculateImportedAccountBalance(
   accountStartingBalance: number,
   transactions: CheckingTransaction[]
 ): number {
-  const totalCredits = transactions
-    .filter((t) => t.type === 'deposit')
-    .reduce((sum, t) => sum + t.amount, 0);
-  const totalDebits = transactions
-    .filter((t) => t.type !== 'deposit')
-    .reduce((sum, t) => sum + t.amount, 0);
-  return Math.round((accountStartingBalance + totalCredits - totalDebits) * 100) / 100;
+  if (transactions.length === 0) return accountStartingBalance;
+  const sorted = [...transactions].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+  );
+  return sorted[sorted.length - 1].balance;
 }
 
 function saveImportedAccountCurrentBalance(

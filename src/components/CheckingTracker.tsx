@@ -183,7 +183,6 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
   const [editingLedgerTransaction, setEditingLedgerTransaction] = useState<CheckingTransaction | null>(null);
   const [modalType, setModalType] = useState<'deposit' | 'withdrawal' | 'debt_payment'>('deposit');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [balanceOverride, setBalanceOverride] = useState<number | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<CheckingAccount[]>(() => StorageService.getCheckingAccounts());
   const [selectedAccountId, setSelectedAccountId] = useState<string>(() =>
@@ -253,15 +252,10 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
 
   const startingBalance = selectedAccount?.startingBalance ?? 0;
 
-  useEffect(() => {
-    setBalanceOverride(null);
-  }, [selectedAccountId, refreshTrigger]);
-
-  const currentBalance = balanceOverride ?? (
+  const currentBalance =
     transactions.length > 0
       ? transactions[transactions.length - 1].balance
-      : (selectedAccount?.currentBalance ?? startingBalance)
-  );
+      : (selectedAccount?.currentBalance ?? startingBalance);
   const canTransferToChecking = accounts.length > 1;
 
   const recentDeposits = transactions
@@ -495,21 +489,61 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
                   icon={DollarSign}
                   label="Set Balance"
                   onClick={() => {
-                    const balance = prompt('Enter your current balance:', currentBalance.toString());
-                    if (balance !== null && selectedAccountId) {
-                      const newBalance = parseFloat(balance) || 0;
-                      const updatedAccounts = StorageService.getCheckingAccounts().map((a) =>
-                        a.id === selectedAccountId
-                          ? { ...a, currentBalance: newBalance }
-                          : a
+                    if (!selectedAccountId) return;
+
+                    const balance = prompt(
+                      'Enter your current balance:',
+                      currentBalance.toString()
+                    );
+                    if (balance === null) return;
+
+                    const parsed = parseFloat(balance);
+                    const newBalance = Number.isNaN(parsed) ? 0 : parsed;
+                    const difference =
+                      Math.round((newBalance - currentBalance) * 100) / 100;
+
+                    if (difference === 0) {
+                      setSuccessMessage(
+                        `✓ Balance already ${CalculationService.formatCurrency(newBalance)}`
                       );
-                      StorageService.saveCheckingAccounts(updatedAccounts);
-                      setAccounts(updatedAccounts);
-                      setBalanceOverride(newBalance);
-                      setSuccessMessage(`✓ Balance updated to ${CalculationService.formatCurrency(newBalance)}`);
-                      onDataUpdate?.();
                       setTimeout(() => setSuccessMessage(null), 5000);
+                      return;
                     }
+
+                    const existing =
+                      StorageService.getCheckingTransactionsForAccount(selectedAccountId);
+                    const adjustment: CheckingTransaction = {
+                      id: `checking_adj_${Date.now()}`,
+                      accountId: selectedAccountId,
+                      date: CalculationService.getTodayDateString(),
+                      type: 'balance_adjustment',
+                      amount: difference,
+                      description: 'Manual Balance Adjustment',
+                      category: 'Balance Adjustment',
+                      balance: newBalance,
+                      isReconciled: false,
+                    };
+
+                    const recalculated = recalculateCheckingBalances(
+                      [...existing, adjustment],
+                      startingBalance
+                    );
+                    StorageService.saveCheckingTransactionsForAccount(
+                      selectedAccountId,
+                      recalculated
+                    );
+                    StorageService.syncCheckingAccountBalance(
+                      selectedAccountId,
+                      recalculated
+                    );
+
+                    setAccounts(StorageService.getCheckingAccounts());
+                    setRefreshTrigger((prev) => prev + 1);
+                    onDataUpdate?.();
+                    setSuccessMessage(
+                      `✓ Balance updated to ${CalculationService.formatCurrency(newBalance)}`
+                    );
+                    setTimeout(() => setSuccessMessage(null), 5000);
                   }}
                   textClass="text-brand-gray"
                   borderClass="border-brand-gray-border"
@@ -544,9 +578,9 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
               if (transaction.isReconciled) return;
               setEditingLedgerTransaction(transaction);
             }}
-            onBalanceChange={setBalanceOverride}
             onDeleteSuccess={(message) => {
               setSuccessMessage(message);
+              setRefreshTrigger((prev) => prev + 1);
               onDataUpdate?.();
               setTimeout(() => setSuccessMessage(null), 5000);
             }}
@@ -1534,6 +1568,14 @@ function getTransactionDisplayMeta(transaction: CheckingTransaction) {
         isPositive: false,
         typeLabel: 'To HELOC',
       };
+    case 'balance_adjustment':
+      return {
+        iconBg: 'bg-gray-100',
+        iconColor: 'text-brand-gray',
+        Icon: DollarSign,
+        isPositive: transaction.amount >= 0,
+        typeLabel: 'Balance Adjustment',
+      };
     default:
       return {
         iconBg: 'bg-red-100',
@@ -1560,6 +1602,7 @@ function isTransferTransactionType(type: CheckingTransaction['type']): boolean {
 
 function getEditCategoryForTransaction(transaction: CheckingTransaction): string {
   if (transaction.type === 'debt_payment') return 'Debt Payment';
+  if (transaction.type === 'balance_adjustment') return 'Balance Adjustment';
   if (isDepositTransactionType(transaction.type)) return 'Deposit';
   if (isTransferTransactionType(transaction.type)) return 'Transfer';
   if (transaction.category === 'Essential Expense') return 'Essential Expense';
@@ -1574,6 +1617,9 @@ function buildTransactionFieldsFromEdit(
 ): Pick<CheckingTransaction, 'type' | 'category'> {
   if (category === 'Debt Payment') {
     return { type: 'debt_payment', category: 'Debt Payment' };
+  }
+  if (category === 'Balance Adjustment') {
+    return { type: 'balance_adjustment', category: 'Balance Adjustment' };
   }
   if (category === 'Deposit' || isDeposit) {
     return { type: 'deposit', category: undefined };
@@ -1599,6 +1645,7 @@ const EDIT_TRANSACTION_CATEGORIES = [
   'Debt Payment',
   'Deposit',
   'Transfer',
+  'Balance Adjustment',
   'Other',
 ] as const;
 
@@ -1615,8 +1662,12 @@ function EditTransactionModal({
 }) {
   const initialCategory = getEditCategoryForTransaction(transaction);
   const [description, setDescription] = useState(transaction.description);
-  const [amount, setAmount] = useState(transaction.amount.toString());
-  const [isDeposit, setIsDeposit] = useState(isDepositTransactionType(transaction.type));
+  const [amount, setAmount] = useState(Math.abs(transaction.amount).toString());
+  const [isDeposit, setIsDeposit] = useState(
+    transaction.type === 'balance_adjustment'
+      ? transaction.amount >= 0
+      : isDepositTransactionType(transaction.type)
+  );
   const [date, setDate] = useState(CalculationService.normalizeDateString(transaction.date));
   const [category, setCategory] = useState(initialCategory);
   const [accountId, setAccountId] = useState(transaction.accountId);
@@ -1668,10 +1719,17 @@ function EditTransactionModal({
       }
 
       const typeFields = buildTransactionFieldsFromEdit(category, isDeposit, transaction);
+      const signedAmount =
+        typeFields.type === 'balance_adjustment'
+          ? isDeposit
+            ? parsedAmount
+            : -parsedAmount
+          : parsedAmount;
+
       StorageService.updateTransaction(transaction.accountId, transaction.id, {
         ...typeFields,
         description: description.trim() || transaction.description,
-        amount: parsedAmount,
+        amount: signedAmount,
         date: paymentDate,
         accountId,
       });
@@ -1814,7 +1872,6 @@ function TransactionLedger({
   refreshTrigger,
   onDuplicateResolved,
   onEdit,
-  onBalanceChange,
   onDeleteSuccess,
   onDeleteError,
 }: {
@@ -1823,7 +1880,6 @@ function TransactionLedger({
   refreshTrigger: number;
   onDuplicateResolved: (message: string) => void;
   onEdit: (t: CheckingTransaction) => void;
-  onBalanceChange?: (balance: number) => void;
   onDeleteSuccess?: (message: string) => void;
   onDeleteError?: (message: string) => void;
 }) {
@@ -1869,7 +1925,9 @@ function TransactionLedger({
       t.category || '',
       t.subcategory || '',
       t.description,
-      t.type === 'deposit' ? `+$${t.amount.toFixed(2)}` : `-$${t.amount.toFixed(2)}`,
+      t.type === 'deposit' || (t.type === 'balance_adjustment' && t.amount >= 0)
+        ? `+$${Math.abs(t.amount).toFixed(2)}`
+        : `-$${Math.abs(t.amount).toFixed(2)}`,
       `$${t.balance.toFixed(2)}`
     ]);
 
@@ -1907,10 +1965,6 @@ function TransactionLedger({
     setLedgerTransactions((prev) => {
       const filtered = prev.filter((t) => t.id !== transactionId);
       const recalculated = recalculateCheckingBalances(filtered, startingBalance);
-      const newBalance = recalculated.length > 0
-        ? recalculated[recalculated.length - 1].balance
-        : startingBalance;
-      onBalanceChange?.(newBalance);
       return recalculated;
     });
   };
@@ -2102,7 +2156,7 @@ function TransactionLedger({
                     <div className="text-right shrink-0">
                       <p className={`text-[13px] font-medium ${meta.isPositive ? 'text-green-700' : 'text-red-700'}`}>
                         {meta.isPositive ? '+' : '-'}
-                        {CalculationService.formatCurrency(transaction.amount)}
+                        {CalculationService.formatCurrency(Math.abs(transaction.amount))}
                       </p>
                       <p className="text-[11px] text-brand-gray">
                         {CalculationService.formatCurrency(transaction.balance)}
@@ -3486,7 +3540,9 @@ function recalculateBalances(transactions: CheckingTransaction[], startingBalanc
   let runningBalance = startingBalance;
 
   transactions.forEach(transaction => {
-    if (
+    if (transaction.type === 'balance_adjustment') {
+      runningBalance += transaction.amount;
+    } else if (
       transaction.type === 'deposit' ||
       transaction.type === 'transfer_from_heloc' ||
       transaction.type === 'transfer_from_checking' ||
