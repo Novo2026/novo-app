@@ -510,6 +510,15 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
                       return;
                     }
 
+                    const reconciliationHistory =
+                      StorageService.getReconciliationRecords(selectedAccountId);
+                    if (reconciliationHistory.length > 0) {
+                      const proceed = confirm(
+                        'This account has reconciled history. Manually overriding the balance may cause it to no longer match your last reconciliation. Continue?'
+                      );
+                      if (!proceed) return;
+                    }
+
                     const existing =
                       StorageService.getCheckingTransactionsForAccount(selectedAccountId);
                     const adjustment: CheckingTransaction = {
