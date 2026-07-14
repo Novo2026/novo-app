@@ -686,6 +686,7 @@ If you cannot identify a checking section, extract all transactions but flag eac
     accountSection?: string | null;
   }[] = [];
   try {
+    console.log('[PDF import] Raw Claude text before JSON.parse:', text);
     const clean = text.replace(/```json|```/g, '').trim();
     parsed = JSON.parse(clean);
   } catch {
