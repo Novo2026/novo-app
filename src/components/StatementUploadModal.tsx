@@ -670,7 +670,15 @@ If you cannot identify a checking section, extract all transactions but flag eac
     }),
   });
 
-  if (!response.ok) throw new Error('Failed to parse PDF');
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.log('[PDF import] API error', {
+      status: response.status,
+      statusText: response.statusText,
+      body: errorBody,
+    });
+    throw new Error('Failed to parse PDF');
+  }
 
   const data = await response.json();
   const text = data.content?.[0]?.text || '';
