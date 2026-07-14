@@ -3,6 +3,7 @@ import { Upload, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
 import { StorageService, type ImportDuplicateFlag, type SmartImportMatch } from '../services/storage';
 import type { Debt, CheckingTransaction, CheckingAccount } from '../types';
+import { recordDebtPaymentFromChecking } from '../utils/checkingDebtPayment';
 
 interface ParsedTransaction {
   id: string;
@@ -17,6 +18,9 @@ interface ParsedTransaction {
   credit?: number;
   runningBalance?: number;
   accountSection?: string;
+  /** Linked My Debts record when user confirms a debt payment during import review. */
+  debtId?: string;
+  debtName?: string;
 }
 
 interface StatementBalanceMeta {
@@ -101,6 +105,86 @@ function detectType(description: string, amount: number): 'deposit' | 'withdrawa
     lower.includes('student') || lower.includes('chase pmt') || lower.includes('payment')
   ) return 'debt_payment';
   return 'withdrawal';
+}
+
+const DEBT_MATCH_STOP_WORDS = new Set([
+  'pmt', 'payment', 'online', 'loan', 'the', 'and', 'inc', 'llc', 'bank', 'card',
+  'auto', 'pay', 'ach', 'web', 'from', 'to', 'for', 'acct', 'account', 'pymt',
+]);
+
+function normalizeDebtMatchText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function significantDebtTokens(value: string): string[] {
+  return normalizeDebtMatchText(value)
+    .split(' ')
+    .filter((word) => word.length >= 3 && !DEBT_MATCH_STOP_WORDS.has(word));
+}
+
+/** Fuzzy-match a bank memo to a My Debts accountName. Returns null if weak or ambiguous. */
+function findFuzzyDebtMatch(description: string, debts: Debt[]): Debt | null {
+  const active = debts.filter((d) => !d.isPaidOff && d.category !== 'HELOC');
+  if (active.length === 0) return null;
+
+  const descNorm = normalizeDebtMatchText(description);
+  let best: Debt | null = null;
+  let bestScore = 0;
+  let secondBest = 0;
+
+  for (const debt of active) {
+    const nameNorm = normalizeDebtMatchText(debt.accountName);
+    const nameTokens = significantDebtTokens(debt.accountName);
+    let score = 0;
+
+    if (nameNorm.length >= 4 && (descNorm.includes(nameNorm) || nameNorm.includes(descNorm))) {
+      score += 10;
+    }
+
+    for (const tok of nameTokens) {
+      if (descNorm.includes(tok)) {
+        score += tok.length >= 5 ? 4 : 2;
+      }
+    }
+
+    if (nameTokens[0] && nameTokens[0].length >= 4 && descNorm.includes(nameTokens[0])) {
+      score += 3;
+    }
+
+    if (score > bestScore) {
+      secondBest = bestScore;
+      bestScore = score;
+      best = debt;
+    } else if (score > secondBest) {
+      secondBest = score;
+    }
+  }
+
+  // Need a reasonably strong hit and a clear winner when multiple debts score.
+  if (bestScore < 5) return null;
+  if (secondBest > 0 && bestScore - secondBest < 2) return null;
+  return best;
+}
+
+function withDebtLinkGuess(tx: ParsedTransaction, debts: Debt[]): ParsedTransaction {
+  if (tx.type !== 'debt_payment') {
+    return { ...tx, debtId: undefined, debtName: undefined };
+  }
+  if (tx.debtId) {
+    const existing = debts.find((d) => d.id === tx.debtId && !d.isPaidOff);
+    if (existing) {
+      return { ...tx, debtId: existing.id, debtName: existing.accountName };
+    }
+  }
+  const match = findFuzzyDebtMatch(tx.description, debts);
+  if (!match) {
+    return { ...tx, debtId: undefined, debtName: undefined };
+  }
+  return { ...tx, debtId: match.id, debtName: match.accountName };
 }
 
 const EXCLUDED_ACCOUNT_SECTION_PATTERNS = [
@@ -769,6 +853,8 @@ function recalculateImportedBalances(
       source: (t as ParsedTransaction & { source?: 'import' | 'manual' }).source || 'import',
       batchId: (t as ParsedTransaction & { batchId?: string }).batchId,
       batchTimestamp: (t as ParsedTransaction & { batchTimestamp?: string }).batchTimestamp,
+      debtId: t.debtId,
+      debtName: t.debtName,
     })),
   ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
@@ -861,6 +947,9 @@ export default function StatementUploadModal({
   const [showImportOptions, setShowImportOptions] = useState(false);
   const [confirmReplace, setConfirmReplace] = useState(false);
   const [importResult, setImportResult] = useState<ImportResultSummary | null>(null);
+  const [linkableDebts, setLinkableDebts] = useState<Debt[]>(() =>
+    StorageService.getDebts().filter((d) => !d.isPaidOff && d.category !== 'HELOC')
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedAccount = checkingAccounts.find((a) => a.id === selectedCheckingAccountId);
@@ -878,6 +967,9 @@ export default function StatementUploadModal({
     setSelectedCheckingAccountId(accountId);
     setConfirmReplace(false);
     setShowImportOptions(false);
+
+    const debts = StorageService.getDebts().filter((d) => !d.isPaidOff && d.category !== 'HELOC');
+    setLinkableDebts(debts);
 
     const existing = accountId
       ? StorageService.getCheckingTransactionsForAccount(accountId)
@@ -905,8 +997,9 @@ export default function StatementUploadModal({
     setTransactions(
       parsed.map((t) => {
         const level = classifications.find((c) => c.parsedId === t.id)?.level ?? 'none';
+        const withLink = withDebtLinkGuess(t, debts);
         return {
-          ...t,
+          ...withLink,
           // New → checked; uncertain/matched → unchecked
           approved: level === 'none',
         };
@@ -1122,6 +1215,27 @@ export default function StatementUploadModal({
     );
     setCheckingAccounts(updatedAccounts);
 
+    // Link imported debt payments to My Debts via the same payment path as the quick action.
+    const linkedDebtPayments = approvedWithBatch.filter(
+      (t) => t.type === 'debt_payment' && t.debtId
+    );
+    for (const tx of linkedDebtPayments) {
+      try {
+        recordDebtPaymentFromChecking({
+          accountId: selectedCheckingAccountId,
+          startingBalance: accountStartingBalance,
+          debtId: tx.debtId!,
+          amount: tx.amount,
+          date: tx.date,
+          description: tx.originalDescription || tx.description,
+          editCheckingTransactionId: tx.id,
+          debtLedgerOnly: true,
+        });
+      } catch (err) {
+        console.error('[Statement import] Failed to apply debt payment to My Debts:', err);
+      }
+    }
+
     if (options.duplicateFlags && options.duplicateFlags.length > 0) {
       StorageService.addImportDuplicateFlags(selectedCheckingAccountId, options.duplicateFlags);
     }
@@ -1254,13 +1368,44 @@ export default function StatementUploadModal({
   };
 
   const updateCategory = (id: string, category: string) => {
-    setTransactions(prev => prev.map(t => {
-      if (t.id !== id) return t;
-      const type: 'deposit' | 'withdrawal' | 'debt_payment' =
-        category === 'deposit' ? 'deposit' :
-        category === 'Debt Payment' ? 'debt_payment' : 'withdrawal';
-      return { ...t, category: category === 'deposit' || category === 'Debt Payment' ? undefined : category, type };
-    }));
+    setTransactions((prev) =>
+      prev.map((t) => {
+        if (t.id !== id) return t;
+        const type: 'deposit' | 'withdrawal' | 'debt_payment' =
+          category === 'deposit'
+            ? 'deposit'
+            : category === 'Debt Payment'
+              ? 'debt_payment'
+              : 'withdrawal';
+        const next: ParsedTransaction = {
+          ...t,
+          category:
+            category === 'deposit' || category === 'Debt Payment' ? undefined : category,
+          type,
+        };
+        if (type !== 'debt_payment') {
+          return { ...next, debtId: undefined, debtName: undefined };
+        }
+        return withDebtLinkGuess(next, linkableDebts);
+      })
+    );
+  };
+
+  const updateDebtLink = (id: string, debtId: string) => {
+    setTransactions((prev) =>
+      prev.map((t) => {
+        if (t.id !== id) return t;
+        if (!debtId) {
+          return { ...t, debtId: undefined, debtName: undefined };
+        }
+        const debt = linkableDebts.find((d) => d.id === debtId);
+        return {
+          ...t,
+          debtId: debt?.id,
+          debtName: debt?.accountName,
+        };
+      })
+    );
   };
 
   return (
@@ -1764,23 +1909,50 @@ export default function StatementUploadModal({
                               <p className="text-xs text-gray-500 mt-1">Already in NOVO</p>
                             )}
                             {!isMatched && (
-                              <select
-                                value={
-                                  t.type === 'deposit'
-                                    ? 'deposit'
-                                    : t.type === 'debt_payment'
-                                      ? 'Debt Payment'
-                                      : t.category || 'Essential Expense'
-                                }
-                                onChange={(e) => updateCategory(t.id, e.target.value)}
-                                className="mt-2 text-xs border border-gray-200 rounded px-2 py-1 max-w-full"
-                              >
-                                {CATEGORY_OPTIONS.map((o) => (
-                                  <option key={o} value={o}>
-                                    {o}
-                                  </option>
-                                ))}
-                              </select>
+                              <>
+                                <select
+                                  value={
+                                    t.type === 'deposit'
+                                      ? 'deposit'
+                                      : t.type === 'debt_payment'
+                                        ? 'Debt Payment'
+                                        : t.category || 'Essential Expense'
+                                  }
+                                  onChange={(e) => updateCategory(t.id, e.target.value)}
+                                  className="mt-2 text-xs border border-gray-200 rounded px-2 py-1 max-w-full"
+                                >
+                                  {CATEGORY_OPTIONS.map((o) => (
+                                    <option key={o} value={o}>
+                                      {o}
+                                    </option>
+                                  ))}
+                                </select>
+                                {t.type === 'debt_payment' && (
+                                  <div className="mt-2 space-y-1">
+                                    <label className="block text-[11px] font-semibold text-gray-600">
+                                      Link to debt
+                                    </label>
+                                    <select
+                                      value={t.debtId || ''}
+                                      onChange={(e) => updateDebtLink(t.id, e.target.value)}
+                                      className="text-xs border border-gray-200 rounded px-2 py-1 w-full max-w-full"
+                                    >
+                                      <option value="">Not linked</option>
+                                      {linkableDebts.map((d) => (
+                                        <option key={d.id} value={d.id}>
+                                          {d.accountName} —{' '}
+                                          {CalculationService.formatCurrency(d.currentBalance)}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    {!t.debtId && (
+                                      <p className="text-[11px] text-gray-500">
+                                        Not linked to a debt — won&apos;t update My Debts
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                              </>
                             )}
                           </div>
                           <span

@@ -17,6 +17,12 @@ export interface RecordDebtPaymentParams {
   /** Amount applied to debt balance. Defaults to `amount` for non-mortgage payments. */
   balanceReductionAmount?: number;
   mortgageBreakdown?: MortgagePaymentBreakdown;
+  /**
+   * When true, the checking cash movement is already on the ledger (e.g. statement import).
+   * Only apply debt balance reduction + unified payment history — do not create/replace
+   * a checking transaction.
+   */
+  debtLedgerOnly?: boolean;
 }
 
 export interface RecordDebtPaymentResult {
@@ -113,6 +119,20 @@ function recalculateCheckingBalances(
   });
 }
 
+export function isCheckingDebtPaymentAlreadyRecorded(
+  debtId: string,
+  date: string,
+  amount: number
+): boolean {
+  const dateNorm = CalculationService.normalizeDateString(date) || date;
+  return StorageService.getUnifiedPayments().some((p) => {
+    if (p.source !== 'checking' || p.debtId !== debtId) return false;
+    if (Math.abs(p.amount - amount) > 0.02) return false;
+    const paymentDate = CalculationService.normalizeDateString(p.date) || p.date;
+    return paymentDate === dateNorm;
+  });
+}
+
 export function recordDebtPaymentFromChecking(
   params: RecordDebtPaymentParams
 ): RecordDebtPaymentResult {
@@ -125,6 +145,7 @@ export function recordDebtPaymentFromChecking(
     editCheckingTransactionId,
     editUnifiedPaymentId,
     mortgageBreakdown,
+    debtLedgerOnly,
   } = params;
 
   if (!accountId) {
@@ -176,48 +197,79 @@ export function recordDebtPaymentFromChecking(
   const priorDebtsSnapshot = JSON.stringify(allDebts);
   const priorUnifiedSnapshot = JSON.stringify(StorageService.getUnifiedPayments());
 
+  // Idempotent: same checking debt payment (date/amount/debt) already reduced My Debts.
+  if (debtLedgerOnly && isCheckingDebtPaymentAlreadyRecorded(debtId, paymentDate, amount)) {
+    const updatedBalance =
+      priorCheckingTransactions.length > 0
+        ? priorCheckingTransactions[priorCheckingTransactions.length - 1].balance
+        : startingBalance;
+    return {
+      checkingTransactions: priorCheckingTransactions,
+      updatedBalance,
+      unifiedPaymentId: '',
+    };
+  }
+
   const checkingTxId = editCheckingTransactionId || `checking_${Date.now()}`;
   const unifiedPaymentId = editUnifiedPaymentId || `payment_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
 
   try {
-    const existingChecking = editCheckingTransactionId
-      ? priorCheckingTransactions.find((t) => t.id === editCheckingTransactionId)
-      : undefined;
+    let recalculatedChecking = priorCheckingTransactions;
 
-    const updatedCheckingTransactions = editCheckingTransactionId
-      ? priorCheckingTransactions.map((t) =>
-          t.id === editCheckingTransactionId
-            ? buildCheckingDebtPaymentTransaction({
-                id: checkingTxId,
-                accountId,
-                date: paymentDate,
-                amount,
-                description: paymentDescription,
-                debtId: debt.id,
-                debtName: debt.accountName,
-                isReconciled: existingChecking?.isReconciled,
-                reconciledAt: existingChecking?.reconciledAt,
-              })
-            : t
-        )
-      : [
-          ...priorCheckingTransactions,
-          buildCheckingDebtPaymentTransaction({
-            id: checkingTxId,
-            accountId,
-            date: paymentDate,
-            amount,
-            description: paymentDescription,
-            debtId: debt.id,
-            debtName: debt.accountName,
-          }),
-        ];
+    if (!debtLedgerOnly) {
+      const existingChecking = editCheckingTransactionId
+        ? priorCheckingTransactions.find((t) => t.id === editCheckingTransactionId)
+        : undefined;
 
-    const recalculatedChecking = recalculateCheckingBalances(
-      updatedCheckingTransactions,
-      startingBalance
-    );
-    StorageService.saveCheckingTransactionsForAccount(accountId, recalculatedChecking);
+      const updatedCheckingTransactions = editCheckingTransactionId
+        ? priorCheckingTransactions.map((t) =>
+            t.id === editCheckingTransactionId
+              ? buildCheckingDebtPaymentTransaction({
+                  id: checkingTxId,
+                  accountId,
+                  date: paymentDate,
+                  amount,
+                  description: paymentDescription,
+                  debtId: debt.id,
+                  debtName: debt.accountName,
+                  isReconciled: existingChecking?.isReconciled,
+                  reconciledAt: existingChecking?.reconciledAt,
+                })
+              : t
+          )
+        : [
+            ...priorCheckingTransactions,
+            buildCheckingDebtPaymentTransaction({
+              id: checkingTxId,
+              accountId,
+              date: paymentDate,
+              amount,
+              description: paymentDescription,
+              debtId: debt.id,
+              debtName: debt.accountName,
+            }),
+          ];
+
+      recalculatedChecking = recalculateCheckingBalances(
+        updatedCheckingTransactions,
+        startingBalance
+      );
+      StorageService.saveCheckingTransactionsForAccount(accountId, recalculatedChecking);
+    } else if (editCheckingTransactionId) {
+      // Ensure imported row carries the debt link without rewriting the cash ledger.
+      recalculatedChecking = priorCheckingTransactions.map((t) =>
+        t.id === editCheckingTransactionId
+          ? {
+              ...t,
+              type: 'debt_payment' as const,
+              category: 'Debt Payment',
+              debtId: debt.id,
+              debtName: debt.accountName,
+            }
+          : t
+      );
+      StorageService.saveCheckingTransactionsForAccount(accountId, recalculatedChecking);
+    }
 
     const updatedDebts = [...allDebts];
     updatedDebts[debtIndex] = {
