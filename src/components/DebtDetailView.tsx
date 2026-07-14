@@ -12,7 +12,7 @@ import {
   hasProjectedPayoffMetadata,
   isInstallmentLoanCategory,
 } from '../utils/installmentLoan';
-import type { Debt, Transaction } from '../types';
+import type { Debt, Transaction, UnifiedPayment } from '../types';
 
 interface DebtDetailViewProps {
   debt: Debt;
@@ -20,16 +20,116 @@ interface DebtDetailViewProps {
   onDataUpdate: () => void;
 }
 
+/** Normalized row for Payment History (legacy Transaction + UnifiedPayment). */
+type PaymentHistoryEntry = {
+  id: string;
+  legacyId?: string;
+  unifiedId?: string;
+  date: string;
+  type: 'payment' | 'charge' | 'refinance';
+  amount: number;
+  previousBalance: number;
+  interestCharged: number;
+  principalPaid: number;
+  newBalance: number;
+  notes?: string;
+  sourceLabel: string;
+};
+
+function paymentHistoryDedupeKey(date: string, amount: number, type: string): string {
+  const dateNorm = CalculationService.normalizeDateString(date) || date.slice(0, 10);
+  return `${dateNorm}|${Math.round(amount * 100)}|${type}`;
+}
+
+function sourceLabelFromTransaction(t: Transaction): string {
+  if (t.paidWithHELOC || t.source === 'heloc') return 'via HELOC';
+  if (t.source === 'checking') return 'via checking';
+  if (t.source === 'direct') return 'manual entry';
+  return 'manual entry';
+}
+
+function sourceLabelFromUnified(p: UnifiedPayment): string {
+  if (p.source === 'checking') return 'via checking';
+  if (p.source === 'heloc') return 'via HELOC';
+  return 'manual entry';
+}
+
+function legacyToHistoryEntry(t: Transaction): PaymentHistoryEntry {
+  return {
+    id: t.id,
+    legacyId: t.id,
+    date: t.date,
+    type: t.type,
+    amount: t.amount,
+    previousBalance: t.previousBalance,
+    interestCharged: t.interestCharged,
+    principalPaid: t.principalPaid,
+    newBalance: t.newBalance,
+    notes: t.notes,
+    sourceLabel: sourceLabelFromTransaction(t),
+  };
+}
+
+function unifiedToHistoryEntry(p: UnifiedPayment): PaymentHistoryEntry {
+  return {
+    id: p.id,
+    unifiedId: p.id,
+    date: p.date,
+    type: 'payment',
+    amount: p.amount,
+    previousBalance: p.previousBalance,
+    interestCharged: p.interestCharged,
+    principalPaid: p.principalPaid,
+    newBalance: p.newBalance,
+    notes: p.description,
+    sourceLabel: sourceLabelFromUnified(p),
+  };
+}
+
+/**
+ * Merge legacy novo_payments + novo_unified_payments for one debt.
+ * Prefer unified when the same payment exists in both (richer fields / current write path).
+ */
+function getMergedPaymentHistory(debtId: string): PaymentHistoryEntry[] {
+  const legacy = StorageService.getTransactions().filter((t) => t.debtId === debtId);
+  const unified = StorageService.getUnifiedPayments().filter((p) => p.debtId === debtId);
+
+  const byKey = new Map<string, PaymentHistoryEntry>();
+
+  for (const t of legacy) {
+    const entry = legacyToHistoryEntry(t);
+    byKey.set(paymentHistoryDedupeKey(entry.date, entry.amount, entry.type), entry);
+  }
+
+  for (const p of unified) {
+    const entry = unifiedToHistoryEntry(p);
+    const key = paymentHistoryDedupeKey(entry.date, entry.amount, entry.type);
+    const existing = byKey.get(key);
+    if (existing) {
+      // Prefer unified data; keep legacy id so delete can still clear novo_payments.
+      byKey.set(key, {
+        ...entry,
+        legacyId: existing.legacyId,
+        notes: entry.notes || existing.notes,
+      });
+    } else {
+      byKey.set(key, entry);
+    }
+  }
+
+  return Array.from(byKey.values()).sort((a, b) =>
+    CalculationService.compareDateStrings(a.date, b.date)
+  );
+}
+
 export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetailViewProps) {
-  const [pendingDelete, setPendingDelete] = useState<Transaction | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PaymentHistoryEntry | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState(false);
 
   const formatApr = (rate: number): string =>
     rate.toFixed(debt.category === 'Mortgage' ? 3 : 2);
 
-  const transactions = StorageService.getTransactions()
-    .filter(t => t.debtId === debt.id)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const transactions = getMergedPaymentHistory(debt.id);
 
   const paidOff = debt.startingBalance - debt.currentBalance;
   const progress = (paidOff / debt.startingBalance) * 100;
@@ -44,7 +144,37 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
 
   const handleConfirmDelete = () => {
     if (!pendingDelete) return;
-    StorageService.deleteTransaction(pendingDelete.id);
+
+    if (pendingDelete.legacyId) {
+      StorageService.deleteTransaction(pendingDelete.legacyId);
+    }
+
+    if (
+      pendingDelete.unifiedId &&
+      pendingDelete.unifiedId !== pendingDelete.legacyId
+    ) {
+      StorageService.deleteUnifiedPayment(pendingDelete.unifiedId);
+    }
+
+    // Unified-only rows aren't covered by deleteTransaction's balance rewind.
+    if (!pendingDelete.legacyId && pendingDelete.unifiedId) {
+      const debts = StorageService.getDebts();
+      const idx = debts.findIndex((d) => d.id === debt.id);
+      if (
+        idx !== -1 &&
+        Math.abs(debts[idx].currentBalance - pendingDelete.newBalance) < 0.02
+      ) {
+        const restored = pendingDelete.previousBalance;
+        debts[idx] = {
+          ...debts[idx],
+          currentBalance: restored,
+          isPaidOff: restored <= 0.001,
+          paidOffDate: restored <= 0.001 ? debts[idx].paidOffDate : undefined,
+        };
+        StorageService.saveDebts(debts);
+      }
+    }
+
     setPendingDelete(null);
     setDeleteSuccess(true);
     setTimeout(() => setDeleteSuccess(false), 3000);
@@ -52,10 +182,11 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
   };
 
   const handleExport = () => {
-    const headers = ['Date', 'Type', 'Previous Balance', 'Interest', 'Principal', 'Payment/Charge', 'New Balance', 'Notes'];
+    const headers = ['Date', 'Type', 'Source', 'Previous Balance', 'Interest', 'Principal', 'Payment/Charge', 'New Balance', 'Notes'];
     const rows = transactions.map(t => [
       t.date,
       t.type,
+      t.sourceLabel,
       t.previousBalance.toFixed(2),
       t.interestCharged.toFixed(2),
       t.principalPaid.toFixed(2),
@@ -293,6 +424,7 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
                 <tr className="border-b-2 border-gray-200">
                   <th className="text-left py-3 px-2 text-sm font-semibold text-gray-700">Date</th>
                   <th className="text-left py-3 px-2 text-sm font-semibold text-gray-700">Type</th>
+                  <th className="text-left py-3 px-2 text-sm font-semibold text-gray-700">Source</th>
                   <th className="text-right py-3 px-2 text-sm font-semibold text-gray-700">Previous Balance</th>
                   <th className="text-right py-3 px-2 text-sm font-semibold text-gray-700">Interest</th>
                   <th className="text-right py-3 px-2 text-sm font-semibold text-gray-700">Principal</th>
@@ -317,6 +449,9 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
                           {isRefinance && <RefreshCw className="w-3 h-3" />}
                           <span>{isRefinance ? 'refinance' : t.type}</span>
                         </span>
+                      </td>
+                      <td className="py-3 px-2 text-xs text-gray-500 whitespace-nowrap">
+                        {isRefinance ? '—' : t.sourceLabel}
                       </td>
                       <td className="py-3 px-2 text-sm text-right text-gray-800 font-mono">
                         {CalculationService.formatCurrencyDetailed(t.previousBalance)}
