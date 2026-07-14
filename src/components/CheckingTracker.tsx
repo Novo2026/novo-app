@@ -196,6 +196,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
   const [ledgerToast, setLedgerToast] = useState<string | null>(null);
 
   useEffect(() => {
+    StorageService.backfillLegacyReconciliationRecords();
     const accts = StorageService.getCheckingAccounts();
     setAccounts(accts);
     setSelectedAccountId((current) => {
@@ -1163,12 +1164,16 @@ function ReconciliationRecordCard({
         </div>
         <span
           className={`text-[11px] font-semibold px-2 py-1 rounded-full shrink-0 ${
-            record.status === 'reconciled'
-              ? 'bg-emerald-50 text-emerald-700'
-              : 'bg-amber-50 text-amber-700'
+            record.status === 'needs_review'
+              ? 'bg-amber-50 text-amber-700'
+              : 'bg-emerald-50 text-emerald-700'
           }`}
         >
-          {record.status === 'reconciled' ? 'Reconciled ✅' : 'Needs Review ⚠️'}
+          {record.status === 'reconciled_legacy'
+            ? 'Reconciled (legacy)'
+            : record.status === 'needs_review'
+              ? 'Needs Review ⚠️'
+              : 'Reconciled ✅'}
         </span>
       </div>
 

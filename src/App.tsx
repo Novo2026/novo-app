@@ -70,6 +70,7 @@ function App() {
 
   const bootstrapFromStorage = () => {
     StorageService.deduplicatePayments();
+    StorageService.backfillLegacyReconciliationRecords();
     loadData();
     checkOnboarding();
     loadFeaturePreferences();

@@ -85,7 +85,7 @@ export type ReconciliationRecord = {
   novoCalculatedBalance: number;
   difference: number;
   transactionCount: number;
-  status: 'reconciled' | 'needs_review';
+  status: 'reconciled' | 'needs_review' | 'reconciled_legacy';
   periodStart: string;
   periodEnd: string;
 };
@@ -797,12 +797,32 @@ export const StorageService = {
       this.saveCheckingAccounts(accounts);
     }
     const transactions = this.getCheckingTransactionsForAccount(accountId);
+    const reconciledAt = new Date().toISOString();
     const updated = transactions.map(t => ({
       ...t,
       isReconciled: true,
-      reconciledAt: new Date().toISOString(),
+      reconciledAt,
     }));
     this.saveCheckingTransactionsForAccount(accountId, updated);
+
+    const dates = updated.map((t) => t.date).sort();
+    const novoCalculatedBalance =
+      updated.length > 0
+        ? updated[updated.length - 1].balance
+        : (accounts[idx]?.startingBalance ?? balance);
+    const difference = Math.round((balance - novoCalculatedBalance) * 100) / 100;
+
+    this.saveReconciliationRecord(accountId, {
+      id: `recon_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      completedAt: reconciledAt,
+      statementEndingBalance: balance,
+      novoCalculatedBalance,
+      difference,
+      transactionCount: updated.length,
+      status: 'reconciled',
+      periodStart: dates[0] ?? reconciledAt.split('T')[0],
+      periodEnd: dates[dates.length - 1] ?? reconciledAt.split('T')[0],
+    });
   },
 
   unreconcileAccount(accountId: string): void {
@@ -929,6 +949,53 @@ export const StorageService = {
       `novo_reconciliation_records_${accountId}`,
       JSON.stringify(updated)
     );
+  },
+
+  /**
+   * Idempotent backfill: for accounts with lastReconciledAt but no history
+   * record on that calendar day, create a "Reconciled (legacy)" entry.
+   * Returns the number of records created.
+   */
+  backfillLegacyReconciliationRecords(): number {
+    let created = 0;
+    const accounts = this.getCheckingAccounts();
+
+    for (const account of accounts) {
+      if (!account.lastReconciledAt) continue;
+
+      const records = this.getReconciliationRecords(account.id);
+      const reconDay = account.lastReconciledAt.slice(0, 10);
+      const hasMatchingDay = records.some(
+        (r) => r.completedAt.slice(0, 10) === reconDay
+      );
+      if (hasMatchingDay) continue;
+
+      const transactions = this.getCheckingTransactionsForAccount(account.id);
+      const dates = transactions.map((t) => t.date).sort();
+      const statementBalance =
+        account.lastReconciledBalance ?? account.currentBalance ?? account.startingBalance ?? 0;
+      const novoCalculatedBalance =
+        transactions.length > 0
+          ? transactions[transactions.length - 1].balance
+          : (account.startingBalance ?? statementBalance);
+      const difference =
+        Math.round((statementBalance - novoCalculatedBalance) * 100) / 100;
+
+      this.saveReconciliationRecord(account.id, {
+        id: `recon_legacy_${account.id}_${reconDay}`,
+        completedAt: account.lastReconciledAt,
+        statementEndingBalance: statementBalance,
+        novoCalculatedBalance,
+        difference,
+        transactionCount: transactions.filter((t) => t.isReconciled).length || transactions.length,
+        status: 'reconciled_legacy',
+        periodStart: dates[0] ?? reconDay,
+        periodEnd: dates[dates.length - 1] ?? reconDay,
+      });
+      created += 1;
+    }
+
+    return created;
   },
 
   unlockReconciledTransactionForEdit(
