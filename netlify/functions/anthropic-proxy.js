@@ -41,7 +41,7 @@ exports.handler = async function(event, context) {
 
     const requestParams = {
       model: model || 'claude-haiku-4-5-20251001',
-      max_tokens: Math.min(max_tokens || 4096, 8192),
+      max_tokens: Math.min(max_tokens || 4096, 16000),
       messages,
     };
 

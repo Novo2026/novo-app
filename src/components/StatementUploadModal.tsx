@@ -628,7 +628,7 @@ async function parsePDFWithAI(file: File): Promise<ParsedTransaction[]> {
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 4096,
+      max_tokens: 16000,
       messages: [{
         role: 'user',
         content: [
@@ -686,11 +686,17 @@ If you cannot identify a checking section, extract all transactions but flag eac
     accountSection?: string | null;
   }[] = [];
   try {
-    console.log('[PDF import] Raw Claude text before JSON.parse:', text);
     const clean = text.replace(/```json|```/g, '').trim();
     parsed = JSON.parse(clean);
   } catch {
-    throw new Error('Could not read transactions from PDF. Try uploading a CSV instead.');
+    const trimmed = text.replace(/```json|```/g, '').trim();
+    const looksTruncated =
+      trimmed.length > 0 && !/[\]}]\s*$/.test(trimmed);
+    throw new Error(
+      looksTruncated
+        ? 'This statement may be too large to process at once. Try uploading a shorter date range or splitting it into two files.'
+        : 'Could not read transactions from PDF. Try uploading a CSV instead.'
+    );
   }
 
   const mapped = parsed.map((item, i) => {
