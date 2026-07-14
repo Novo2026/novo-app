@@ -253,10 +253,15 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
 
   const startingBalance = selectedAccount?.startingBalance ?? 0;
 
-  const currentBalance =
-    transactions.length > 0
-      ? transactions[transactions.length - 1].balance
-      : (selectedAccount?.currentBalance ?? startingBalance);
+  // Read live from storage so header stays accurate after local ledger deletes
+  // without bumping refreshTrigger (which would reset list scroll).
+  const currentBalance = selectedAccountId
+    ? getCheckingAccountBalance(
+        selectedAccountId,
+        startingBalance,
+        selectedAccount?.currentBalance
+      )
+    : startingBalance;
   const canTransferToChecking = accounts.length > 1;
 
   const recentDeposits = transactions
@@ -589,9 +594,12 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
               setEditingLedgerTransaction(transaction);
             }}
             onDeleteSuccess={(message) => {
+              // Do not bump refreshTrigger here — that re-fetches transactions and
+              // wholesale-replaces ledger local state, resetting the list scroll.
+              // Do not call onDataUpdate — App handleDataUpdate remounts the Tracker
+              // section via refreshKey and would cause the same collapse.
               setSuccessMessage(message);
-              setRefreshTrigger((prev) => prev + 1);
-              onDataUpdate?.();
+              setAccounts(StorageService.getCheckingAccounts());
               setTimeout(() => setSuccessMessage(null), 5000);
             }}
             onDeleteError={(message) => {
