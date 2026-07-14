@@ -605,8 +605,21 @@ If you cannot identify a checking section, extract all transactions but flag eac
     const clean = text.replace(/```json|```/g, '').trim();
     parsed = JSON.parse(clean);
   } catch {
+    console.log('[PDF import] Claude raw text (JSON parse failed)', text);
     throw new Error('Could not read transactions from PDF. Try uploading a CSV instead.');
   }
+
+  // TEMP DEBUG — Claude JSON before mapping / filtering
+  console.log('[PDF import] 0. Claude JSON (pre-map)', {
+    count: Array.isArray(parsed) ? parsed.length : 'not-an-array',
+    raw: parsed,
+    accountSections: Array.isArray(parsed)
+      ? parsed.map((t: { description?: string; accountSection?: string }) => ({
+          description: t.description,
+          accountSection: t.accountSection ?? null,
+        }))
+      : [],
+  });
 
   const mapped = parsed.map((item, i) => {
     const debit = Math.abs(item.debit ?? 0);
@@ -636,7 +649,50 @@ If you cannot identify a checking section, extract all transactions but flag eac
     };
   });
 
-  return filterCheckingSectionTransactions(mapped);
+  // TEMP DEBUG — remove after diagnosing WesBanco "No transactions found"
+  console.log('[PDF import] 1. Raw from Claude (before section filter)', {
+    count: mapped.length,
+    transactions: mapped,
+    accountSections: mapped.map((t) => ({
+      description: t.description,
+      accountSection: t.accountSection ?? null,
+    })),
+    uniqueSections: [...new Set(mapped.map((t) => t.accountSection ?? '(none)'))],
+    keepPatterns: KEEP_ACCOUNT_SECTION_PATTERNS,
+    excludePatterns: EXCLUDED_ACCOUNT_SECTION_PATTERNS,
+  });
+
+  const sectionFiltered = filterCheckingSectionTransactions(mapped);
+
+  console.log('[PDF import] 2. After filterCheckingSectionTransactions', {
+    countBefore: mapped.length,
+    countAfter: sectionFiltered.length,
+    removed: mapped.filter(
+      (t) => !sectionFiltered.some((kept) => kept.id === t.id)
+    ).map((t) => ({
+      description: t.description,
+      accountSection: t.accountSection ?? null,
+      reason:
+        !t.accountSection || t.accountSection.toLowerCase() === 'unknown'
+          ? 'kept (null/unknown section)'
+          : EXCLUDED_ACCOUNT_SECTION_PATTERNS.some((p) =>
+                t.accountSection!.toLowerCase().includes(p)
+              )
+            ? `excluded (matched exclude pattern)`
+            : !KEEP_ACCOUNT_SECTION_PATTERNS.some((p) =>
+                  t.accountSection!.toLowerCase().includes(p)
+                )
+              ? 'dropped (no keep pattern match: checking/draft/601)'
+              : 'unknown',
+    })),
+    kept: sectionFiltered.map((t) => ({
+      description: t.description,
+      accountSection: t.accountSection ?? null,
+    })),
+    transactions: sectionFiltered,
+  });
+
+  return sectionFiltered;
 }
 
 function recalculateImportedBalances(
@@ -892,9 +948,35 @@ export default function StatementUploadModal({
         summaryEndingBalance: detection.endingBalance,
         statementStartDate: detection.statementStartDate ?? undefined,
       });
+
+      // TEMP DEBUG — remove after diagnosing WesBanco "No transactions found"
+      console.log('[PDF import] 3. After analyzeStatementBalanceEntries', {
+        countBefore: parsed.length,
+        countAfter: analyzed.transactions.length,
+        meta: analyzed.meta,
+        detectionBeginningBalance: detection.beginningBalance,
+        detectionEndingBalance: detection.endingBalance,
+        detectionStatementStartDate: detection.statementStartDate,
+        removedDescriptions: parsed
+          .filter(
+            (t) => !analyzed.transactions.some((kept) => kept.id === t.id)
+          )
+          .map((t) => ({
+            description: t.description,
+            amount: t.amount,
+            debit: t.debit,
+            credit: t.credit,
+            runningBalance: t.runningBalance,
+          })),
+        transactions: analyzed.transactions,
+      });
+
       parsed = analyzed.transactions;
 
       if (parsed.length === 0) {
+        console.log('[PDF import] EMPTY — about to throw No transactions found', {
+          fileName: file.name,
+        });
         throw new Error('No transactions found. Check that the file contains transaction data.');
       }
 
