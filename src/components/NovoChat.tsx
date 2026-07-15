@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, Send, Loader2 } from 'lucide-react';
-import { streamAnthropicMessage, stripMarkdown, type ChatMessage } from '../services/anthropic';
+import { streamAnthropicMessage, stripMarkdown, type ChatMessage, type SystemPromptBlock } from '../services/anthropic';
 import { StorageService } from '../services/storage';
 import { getPaymentCommitmentsPromptContext } from '../utils/paymentCalculations';
 import { analyzeSpending, buildSpendingAnalysisContext } from '../utils/spendingAnalysis';
@@ -202,10 +202,32 @@ function buildRichUserContext(): string {
   }
 }
 
-function buildSystemPrompt(context: string): string {
-  const base = context.trim();
+function buildSystemPrompt(context: string): SystemPromptBlock[] {
+  const entryContext = context.trim();
   const richContext = buildRichUserContext();
-  return `${base}\n\n${NOVO_CONVERSATION_RULES}\n\nHERE IS EVERYTHING I KNOW ABOUT THIS USER RIGHT NOW — use this to give specific, personalized answers. Never ask them for information that is already here:\n\n${richContext}`;
+  const dynamicBlock = [
+    entryContext,
+    '',
+    'HERE IS EVERYTHING I KNOW ABOUT THIS USER RIGHT NOW — use this to give specific, personalized answers. Never ask them for information that is already here:',
+    '',
+    richContext,
+  ]
+    .filter((line, i, arr) => !(line === '' && (i === 0 || arr[i - 1] === '')))
+    .join('\n');
+
+  return [
+    // Static rules — prompt-cached (~10% input cost on cache hits within the TTL window)
+    {
+      type: 'text',
+      text: NOVO_CONVERSATION_RULES,
+      cache_control: { type: 'ephemeral' },
+    },
+    // Per-user / per-call context — intentionally not cached
+    {
+      type: 'text',
+      text: dynamicBlock,
+    },
+  ];
 }
 
 /** Space reserved above the fixed input bar (textarea + padding + safe area + mobile browser chrome). */
