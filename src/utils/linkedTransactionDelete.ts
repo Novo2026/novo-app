@@ -93,10 +93,66 @@ function removeSavingsTransaction(savingsAccountId: string, transactionId: strin
   }
 
   const account = accounts[accountIndex];
+  const beforeCount = account.transactions.length;
   const remaining = account.transactions.filter((t) => t.id !== transactionId);
+  if (remaining.length === beforeCount) {
+    throw new Error(
+      `Linked savings transaction ${transactionId} was not found in the savings account.`
+    );
+  }
   const { transactions, balance } = recalculateSavingsTransactions(remaining);
   accounts[accountIndex] = { ...account, transactions, balance };
   StorageService.saveSavingsAccounts(accounts);
+}
+
+function datesMatchForLink(a: string, b: string): boolean {
+  const na = CalculationService.normalizeDateString(a) || a.slice(0, 10);
+  const nb = CalculationService.normalizeDateString(b) || b.slice(0, 10);
+  return na === nb;
+}
+
+function savingsAccountHasTransaction(savingsAccountId: string, transactionId: string): boolean {
+  const account = StorageService.getSavingsAccounts().find((a) => a.id === savingsAccountId);
+  return !!account?.transactions.some((t) => t.id === transactionId);
+}
+
+/** Fallback when linkedSavingsTransactionId is missing or stale: match amount + date + type. */
+function findSavingsTransferFallback(
+  checkingTx: CheckingTransaction,
+  preferredSavingsAccountId?: string,
+  allowBroaden = true
+): { accountId: string; savingsTxId: string } | null {
+  const accounts = StorageService.getSavingsAccounts();
+  const searchAccounts = preferredSavingsAccountId
+    ? accounts.filter((a) => a.id === preferredSavingsAccountId)
+    : accounts;
+
+  for (const account of searchAccounts) {
+    const matches = (account.transactions || []).filter(
+      (t) =>
+        t.type === 'transfer_from_checking' &&
+        Math.abs(t.amount - checkingTx.amount) < 0.02 &&
+        datesMatchForLink(t.date, checkingTx.date)
+    );
+
+    if (matches.length === 0) continue;
+
+    const linkedExactly = matches.find((t) => t.linkedCheckingTransactionId === checkingTx.id);
+    if (linkedExactly) {
+      return { accountId: account.id, savingsTxId: linkedExactly.id };
+    }
+
+    if (matches.length === 1) {
+      return { accountId: account.id, savingsTxId: matches[0].id };
+    }
+  }
+
+  // If preferred account had nothing, broaden to all accounts (import may have wrong account id).
+  if (preferredSavingsAccountId && allowBroaden) {
+    return findSavingsTransferFallback(checkingTx, undefined, false);
+  }
+
+  return null;
 }
 
 function findUnifiedPaymentForDebtTransaction(transaction: CheckingTransaction) {
@@ -106,7 +162,7 @@ function findUnifiedPaymentForDebtTransaction(transaction: CheckingTransaction) 
   const matches = payments.filter((p) => {
     if (p.source !== 'checking') return false;
     if (transaction.debtId && p.debtId !== transaction.debtId) return false;
-    if (p.amount !== transaction.amount) return false;
+    if (Math.abs(p.amount - transaction.amount) > 0.02) return false;
     return CalculationService.normalizeDateString(p.date) === txDate;
   });
 
@@ -114,6 +170,30 @@ function findUnifiedPaymentForDebtTransaction(transaction: CheckingTransaction) 
     return null;
   }
 
+  return matches[matches.length - 1];
+}
+
+/** Looser unified-payment match when exact debtId/amount/date lookup fails. */
+function findUnifiedPaymentFallback(transaction: CheckingTransaction) {
+  const payments = StorageService.getUnifiedPayments();
+  const txDate = CalculationService.normalizeDateString(transaction.date);
+
+  const matches = payments.filter((p) => {
+    if (p.source !== 'checking') return false;
+    if (Math.abs(p.amount - transaction.amount) > 0.02) return false;
+    if (CalculationService.normalizeDateString(p.date) !== txDate) return false;
+    if (transaction.debtId && p.debtId === transaction.debtId) return true;
+    if (
+      transaction.debtName &&
+      p.debtName?.toLowerCase() === transaction.debtName.toLowerCase()
+    ) {
+      return true;
+    }
+    // Last resort: same day/amount checking payment with no conflicting debtId on the checking tx.
+    return !transaction.debtId;
+  });
+
+  if (matches.length === 0) return null;
   return matches[matches.length - 1];
 }
 
@@ -152,15 +232,44 @@ function resolveDebtForTransaction(transaction: CheckingTransaction) {
   }
 
   throw new Error(
-    `Could not find debt record for ${transaction.debtName || transaction.description || 'this payment'}.`
+    'Could not find the linked debt to reverse. The checking transaction was NOT deleted — please check My Debts manually or contact support.'
   );
 }
 
 function reverseDebtPayment(transaction: CheckingTransaction): void {
+  console.log('[NOVO delete] reverseDebtPayment links', {
+    checkingTransactionId: transaction.id,
+    debtId: transaction.debtId,
+    debtName: transaction.debtName,
+    amount: transaction.amount,
+    date: transaction.date,
+  });
+
   const { debts, debt, debtIndex } = resolveDebtForTransaction(transaction);
-  const unifiedPayment = findUnifiedPaymentForDebtTransaction(transaction);
-  const balanceToRestore =
-    unifiedPayment?.balanceReductionAmount ?? transaction.amount;
+
+  let unifiedPayment = findUnifiedPaymentForDebtTransaction(transaction);
+  if (!unifiedPayment) {
+    const fallback = findUnifiedPaymentFallback(transaction);
+    if (fallback) {
+      console.warn(
+        '[NOVO delete] Exact unified payment lookup failed; removed payment history via amount+date fallback',
+        {
+          checkingTransactionId: transaction.id,
+          fallbackPaymentId: fallback.id,
+          debtId: fallback.debtId,
+        }
+      );
+      unifiedPayment = fallback;
+    }
+  }
+
+  if (!unifiedPayment) {
+    throw new Error(
+      'Could not find the linked payment history entry to remove. The checking transaction was NOT deleted — please check My Debts / Payment History manually or contact support.'
+    );
+  }
+
+  const balanceToRestore = unifiedPayment.balanceReductionAmount ?? transaction.amount;
   const newBalance = Math.round((debt.currentBalance + balanceToRestore) * 100) / 100;
 
   debts[debtIndex] = {
@@ -171,28 +280,70 @@ function reverseDebtPayment(transaction: CheckingTransaction): void {
   };
   StorageService.saveDebts(debts);
 
-  if (unifiedPayment) {
-    const payments = StorageService.getUnifiedPayments().filter((p) => p.id !== unifiedPayment.id);
-    StorageService.saveUnifiedPayments(payments);
-  }
+  const payments = StorageService.getUnifiedPayments().filter((p) => p.id !== unifiedPayment!.id);
+  StorageService.saveUnifiedPayments(payments);
 }
 
 function reverseTransferToSavings(transaction: CheckingTransaction): void {
+  console.log('[NOVO delete] reverseTransferToSavings links', {
+    checkingTransactionId: transaction.id,
+    linkedSavingsTransactionId: transaction.linkedSavingsTransactionId,
+    linkedSavingsAccountId: transaction.linkedSavingsAccountId,
+    amount: transaction.amount,
+    date: transaction.date,
+  });
+
+  const orphanBlockMessage =
+    'Could not find the linked savings entry to remove. The checking transaction was NOT deleted — please check Joint Savings manually or contact support.';
+
   const savingsTxId = transaction.linkedSavingsTransactionId;
-  if (!savingsTxId) {
-    throw new Error('Linked savings transaction could not be found for this transfer.');
+  const savingsAccountId = transaction.linkedSavingsAccountId;
+
+  // Prefer exact ID match when both link fields are present and valid.
+  if (savingsTxId) {
+    try {
+      if (savingsAccountId && savingsAccountHasTransaction(savingsAccountId, savingsTxId)) {
+        removeSavingsTransaction(savingsAccountId, savingsTxId);
+        return;
+      }
+
+      const located = findSavingsAccountWithTransaction(savingsTxId);
+      if (located) {
+        if (savingsAccountId && located.account.id !== savingsAccountId) {
+          console.warn(
+            '[NOVO delete] linkedSavingsAccountId did not match located account; removing by transaction id',
+            {
+              linkedSavingsAccountId: savingsAccountId,
+              locatedAccountId: located.account.id,
+              savingsTxId,
+            }
+          );
+        }
+        removeSavingsTransaction(located.account.id, savingsTxId);
+        return;
+      }
+    } catch (err) {
+      // Fall through to amount+date fallback rather than blocking immediately.
+      console.warn('[NOVO delete] ID-based savings removal failed; trying fallback', err);
+    }
   }
 
-  if (transaction.linkedSavingsAccountId) {
-    removeSavingsTransaction(transaction.linkedSavingsAccountId, savingsTxId);
+  const fallback = findSavingsTransferFallback(transaction, savingsAccountId);
+  if (fallback) {
+    console.warn(
+      '[NOVO delete] linkedSavingsTransactionId lookup failed; removed savings entry via amount+date fallback',
+      {
+        expectedId: savingsTxId ?? null,
+        fallbackId: fallback.savingsTxId,
+        savingsAccountId: fallback.accountId,
+        checkingTransactionId: transaction.id,
+      }
+    );
+    removeSavingsTransaction(fallback.accountId, fallback.savingsTxId);
     return;
   }
 
-  const located = findSavingsAccountWithTransaction(savingsTxId);
-  if (!located) {
-    throw new Error('Linked savings transaction could not be found for this transfer.');
-  }
-  removeSavingsTransaction(located.account.id, savingsTxId);
+  throw new Error(orphanBlockMessage);
 }
 
 function reverseLinkedCheckingTransaction(
