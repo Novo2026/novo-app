@@ -2,8 +2,9 @@ import { useState, useRef } from 'react';
 import { Upload, X, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
 import { StorageService, type ImportDuplicateFlag, type SmartImportMatch } from '../services/storage';
-import type { Debt, CheckingTransaction, CheckingAccount } from '../types';
+import type { Debt, CheckingTransaction, CheckingAccount, SavingsAccount } from '../types';
 import { recordDebtPaymentFromChecking } from '../utils/checkingDebtPayment';
+import { recordTransferToSavings } from '../utils/savingsTransactions';
 
 interface ParsedTransaction {
   id: string;
@@ -11,7 +12,7 @@ interface ParsedTransaction {
   description: string;
   originalDescription: string;
   amount: number;
-  type: 'deposit' | 'withdrawal' | 'debt_payment';
+  type: 'deposit' | 'withdrawal' | 'debt_payment' | 'transfer_to_savings';
   category?: string;
   approved: boolean;
   debit?: number;
@@ -21,6 +22,8 @@ interface ParsedTransaction {
   /** Linked My Debts record when user confirms a debt payment during import review. */
   debtId?: string;
   debtName?: string;
+  /** Linked savings account when user confirms a transfer-to-savings during import review. */
+  linkedSavingsAccountId?: string;
 }
 
 interface StatementBalanceMeta {
@@ -93,17 +96,47 @@ const CATEGORY_OPTIONS = [
   'Essential Expense',
   'Discretionary Expense',
   'Debt Payment',
+  'Transfer to Savings',
   'Other Withdrawal',
 ];
 
-function detectType(description: string, amount: number): 'deposit' | 'withdrawal' | 'debt_payment' {
+function detectType(
+  description: string,
+  amount: number
+): 'deposit' | 'withdrawal' | 'debt_payment' | 'transfer_to_savings' {
   if (amount > 0) return 'deposit';
   const lower = description.toLowerCase();
+
+  // Strong debt signals win over transfer (e.g. "loan transfer", "mortgage payment transfer").
+  const strongDebt =
+    lower.includes('loan') ||
+    lower.includes('mortgage') ||
+    lower.includes('visa pmt') ||
+    lower.includes('mastercard') ||
+    lower.includes('credit card') ||
+    lower.includes('student') ||
+    lower.includes('chase pmt');
+
+  if (strongDebt) return 'debt_payment';
+
+  // Transfer-to-savings before generic "payment" keyword (avoids "ONLINE TRANSFER … PAYMENT"-style collisions).
+  const looksLikeSavingsTransfer =
+    lower.includes('to savings') ||
+    lower.includes('savings transfer') ||
+    lower.includes('transfer to saving') ||
+    ((lower.includes('transfer') || lower.includes('xfer')) &&
+      (lower.includes('saving') || lower.includes('hysa') || lower.includes('money market')));
+
+  if (looksLikeSavingsTransfer) return 'transfer_to_savings';
+
   if (
-    lower.includes('loan') || lower.includes('mortgage') || lower.includes('visa pmt') ||
-    lower.includes('mastercard') || lower.includes('auto pay') || lower.includes('credit card') ||
-    lower.includes('student') || lower.includes('chase pmt') || lower.includes('payment')
-  ) return 'debt_payment';
+    lower.includes('auto pay') ||
+    lower.includes('autopay') ||
+    lower.includes('payment')
+  ) {
+    return 'debt_payment';
+  }
+
   return 'withdrawal';
 }
 
@@ -185,6 +218,49 @@ function withDebtLinkGuess(tx: ParsedTransaction, debts: Debt[]): ParsedTransact
     return { ...tx, debtId: undefined, debtName: undefined };
   }
   return { ...tx, debtId: match.id, debtName: match.accountName };
+}
+
+function withSavingsLinkGuess(
+  tx: ParsedTransaction,
+  savingsAccounts: SavingsAccount[]
+): ParsedTransaction {
+  if (tx.type !== 'transfer_to_savings') {
+    return { ...tx, linkedSavingsAccountId: undefined };
+  }
+  const active = savingsAccounts.filter((a) => !('isArchived' in a && (a as { isArchived?: boolean }).isArchived));
+  if (tx.linkedSavingsAccountId && active.some((a) => a.id === tx.linkedSavingsAccountId)) {
+    return tx;
+  }
+  // Only auto-select when there's a single savings destination.
+  if (active.length === 1) {
+    return { ...tx, linkedSavingsAccountId: active[0].id };
+  }
+  return { ...tx, linkedSavingsAccountId: undefined };
+}
+
+function withImportLinkGuesses(
+  tx: ParsedTransaction,
+  debts: Debt[],
+  savingsAccounts: SavingsAccount[]
+): ParsedTransaction {
+  if (tx.type === 'transfer_to_savings') {
+    return withSavingsLinkGuess(
+      { ...tx, debtId: undefined, debtName: undefined },
+      savingsAccounts
+    );
+  }
+  if (tx.type === 'debt_payment') {
+    return withDebtLinkGuess(
+      { ...tx, linkedSavingsAccountId: undefined },
+      debts
+    );
+  }
+  return {
+    ...tx,
+    debtId: undefined,
+    debtName: undefined,
+    linkedSavingsAccountId: undefined,
+  };
 }
 
 const EXCLUDED_ACCOUNT_SECTION_PATTERNS = [
@@ -855,6 +931,7 @@ function recalculateImportedBalances(
       batchTimestamp: (t as ParsedTransaction & { batchTimestamp?: string }).batchTimestamp,
       debtId: t.debtId,
       debtName: t.debtName,
+      linkedSavingsAccountId: t.linkedSavingsAccountId,
     })),
   ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
@@ -950,6 +1027,11 @@ export default function StatementUploadModal({
   const [linkableDebts, setLinkableDebts] = useState<Debt[]>(() =>
     StorageService.getDebts().filter((d) => !d.isPaidOff && d.category !== 'HELOC')
   );
+  const [linkableSavingsAccounts, setLinkableSavingsAccounts] = useState<SavingsAccount[]>(() =>
+    StorageService.getSavingsAccounts().filter(
+      (a) => !('isArchived' in a && (a as { isArchived?: boolean }).isArchived)
+    )
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedAccount = checkingAccounts.find((a) => a.id === selectedCheckingAccountId);
@@ -970,6 +1052,10 @@ export default function StatementUploadModal({
 
     const debts = StorageService.getDebts().filter((d) => !d.isPaidOff && d.category !== 'HELOC');
     setLinkableDebts(debts);
+    const savings = StorageService.getSavingsAccounts().filter(
+      (a) => !('isArchived' in a && (a as { isArchived?: boolean }).isArchived)
+    );
+    setLinkableSavingsAccounts(savings);
 
     const existing = accountId
       ? StorageService.getCheckingTransactionsForAccount(accountId)
@@ -997,7 +1083,7 @@ export default function StatementUploadModal({
     setTransactions(
       parsed.map((t) => {
         const level = classifications.find((c) => c.parsedId === t.id)?.level ?? 'none';
-        const withLink = withDebtLinkGuess(t, debts);
+        const withLink = withImportLinkGuesses(t, debts, savings);
         return {
           ...withLink,
           // New → checked; uncertain/matched → unchecked
@@ -1189,13 +1275,28 @@ export default function StatementUploadModal({
       }
     }
 
-    const approvedWithBatch = transactionsToImport.map((t) => ({
-      ...t,
-      originalDescription: t.originalDescription || t.description,
-      source: 'import' as const,
-      batchId,
-      batchTimestamp,
-    }));
+    const approvedWithBatch = transactionsToImport.map((t) => {
+      const isLinkedTransfer = t.type === 'transfer_to_savings' && !!t.linkedSavingsAccountId;
+      return {
+        ...t,
+        // Unlinked transfer-to-savings falls back to a plain withdrawal (no savings effect).
+        type: isLinkedTransfer
+          ? ('transfer_to_savings' as const)
+          : t.type === 'transfer_to_savings'
+            ? ('withdrawal' as const)
+            : t.type,
+        category: isLinkedTransfer
+          ? t.category
+          : t.type === 'transfer_to_savings'
+            ? t.category || 'Essential Expense'
+            : t.category,
+        linkedSavingsAccountId: isLinkedTransfer ? t.linkedSavingsAccountId : undefined,
+        originalDescription: t.originalDescription || t.description,
+        source: 'import' as const,
+        batchId,
+        batchTimestamp,
+      };
+    });
 
     const existing =
       options.mode === 'replace'
@@ -1233,6 +1334,30 @@ export default function StatementUploadModal({
         });
       } catch (err) {
         console.error('[Statement import] Failed to apply debt payment to My Debts:', err);
+      }
+    }
+
+    // Link imported transfers to savings via the same dual-write path as "To Savings".
+    const linkedTransfers = approvedWithBatch.filter(
+      (t) => t.type === 'transfer_to_savings' && t.linkedSavingsAccountId
+    );
+    const sourceAccountName =
+      checkingAccounts.find((a) => a.id === selectedCheckingAccountId)?.name || 'Checking';
+    for (const tx of linkedTransfers) {
+      try {
+        recordTransferToSavings({
+          checkingAccountId: selectedCheckingAccountId,
+          checkingStartingBalance: accountStartingBalance,
+          savingsAccountId: tx.linkedSavingsAccountId!,
+          amount: tx.amount,
+          date: tx.date,
+          description: tx.originalDescription || tx.description,
+          sourceAccountName,
+          existingCheckingTransactionId: tx.id,
+          linkExistingCheckingOnly: true,
+        });
+      } catch (err) {
+        console.error('[Statement import] Failed to link transfer to savings:', err);
       }
     }
 
@@ -1371,22 +1496,25 @@ export default function StatementUploadModal({
     setTransactions((prev) =>
       prev.map((t) => {
         if (t.id !== id) return t;
-        const type: 'deposit' | 'withdrawal' | 'debt_payment' =
+        const type: ParsedTransaction['type'] =
           category === 'deposit'
             ? 'deposit'
             : category === 'Debt Payment'
               ? 'debt_payment'
-              : 'withdrawal';
+              : category === 'Transfer to Savings'
+                ? 'transfer_to_savings'
+                : 'withdrawal';
         const next: ParsedTransaction = {
           ...t,
           category:
-            category === 'deposit' || category === 'Debt Payment' ? undefined : category,
+            category === 'deposit' ||
+            category === 'Debt Payment' ||
+            category === 'Transfer to Savings'
+              ? undefined
+              : category,
           type,
         };
-        if (type !== 'debt_payment') {
-          return { ...next, debtId: undefined, debtName: undefined };
-        }
-        return withDebtLinkGuess(next, linkableDebts);
+        return withImportLinkGuesses(next, linkableDebts, linkableSavingsAccounts);
       })
     );
   };
@@ -1403,6 +1531,18 @@ export default function StatementUploadModal({
           ...t,
           debtId: debt?.id,
           debtName: debt?.accountName,
+        };
+      })
+    );
+  };
+
+  const updateSavingsLink = (id: string, savingsAccountId: string) => {
+    setTransactions((prev) =>
+      prev.map((t) => {
+        if (t.id !== id) return t;
+        return {
+          ...t,
+          linkedSavingsAccountId: savingsAccountId || undefined,
         };
       })
     );
@@ -1916,7 +2056,9 @@ export default function StatementUploadModal({
                                       ? 'deposit'
                                       : t.type === 'debt_payment'
                                         ? 'Debt Payment'
-                                        : t.category || 'Essential Expense'
+                                        : t.type === 'transfer_to_savings'
+                                          ? 'Transfer to Savings'
+                                          : t.category || 'Essential Expense'
                                   }
                                   onChange={(e) => updateCategory(t.id, e.target.value)}
                                   className="mt-2 text-xs border border-gray-200 rounded px-2 py-1 max-w-full"
@@ -1948,6 +2090,37 @@ export default function StatementUploadModal({
                                     {!t.debtId && (
                                       <p className="text-[11px] text-gray-500">
                                         Not linked to a debt — won&apos;t update My Debts
+                                      </p>
+                                    )}
+                                  </div>
+                                )}
+                                {t.type === 'transfer_to_savings' && (
+                                  <div className="mt-2 space-y-1">
+                                    <label className="block text-[11px] font-semibold text-gray-600">
+                                      Which savings account?
+                                    </label>
+                                    {linkableSavingsAccounts.length === 0 ? (
+                                      <p className="text-[11px] text-amber-700">
+                                        No savings accounts yet — will import as a withdrawal
+                                      </p>
+                                    ) : (
+                                      <select
+                                        value={t.linkedSavingsAccountId || ''}
+                                        onChange={(e) => updateSavingsLink(t.id, e.target.value)}
+                                        className="text-xs border border-gray-200 rounded px-2 py-1 w-full max-w-full"
+                                      >
+                                        <option value="">Not linked</option>
+                                        {linkableSavingsAccounts.map((a) => (
+                                          <option key={a.id} value={a.id}>
+                                            {a.name} —{' '}
+                                            {CalculationService.formatCurrency(a.balance)}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    )}
+                                    {!t.linkedSavingsAccountId && linkableSavingsAccounts.length > 0 && (
+                                      <p className="text-[11px] text-gray-500">
+                                        Not linked to savings — won&apos;t update savings balance
                                       </p>
                                     )}
                                   </div>

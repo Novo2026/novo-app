@@ -33,7 +33,7 @@ import {
   calculateMortgageBalanceReduction,
   formatMortgagePaymentDescription,
 } from '../utils/checkingDebtPayment';
-import { recalculateCheckingBalances, recalculateSavingsTransactions } from '../utils/savingsTransactions';
+import { recalculateCheckingBalances, recordTransferToSavings } from '../utils/savingsTransactions';
 import {
   getActiveCheckingAccountId,
   setActiveCheckingAccountId,
@@ -3171,62 +3171,18 @@ function TransferToSavingsModal({
     setIsSubmitting(true);
 
     try {
-      const savingsTxId = `savings_tx_${Date.now()}`;
-      const checkingTxId = `checking_${Date.now()}`;
-      const checkingDescription = description.trim() || `Transfer to ${selectedAccount?.name || 'Savings'}`;
-      const savingsDescription = description.trim() || `Transfer from ${sourceAccountName}`;
-
-      const checkingTransactions = StorageService.getCheckingTransactionsForAccount(accountId);
-      const newCheckingTx: CheckingTransaction = {
-        id: checkingTxId,
-        accountId,
-        date: transferDate,
-        type: 'transfer_to_savings',
+      const result = recordTransferToSavings({
+        checkingAccountId: accountId,
+        checkingStartingBalance: startingBalance,
+        savingsAccountId: selectedAccountId,
         amount: transferAmount,
-        description: checkingDescription,
-        balance: 0,
-        isReconciled: false,
-        linkedSavingsTransactionId: savingsTxId,
-        linkedSavingsAccountId: selectedAccountId,
-      };
-      checkingTransactions.push(newCheckingTx);
-      checkingTransactions.sort((a, b) => CalculationService.compareDateStrings(a.date, b.date));
-      recalculateBalances(checkingTransactions, startingBalance);
-      StorageService.saveCheckingTransactionsForAccount(accountId, checkingTransactions);
-
-      const allAccounts = StorageService.getSavingsAccounts();
-      const accountIndex = allAccounts.findIndex(a => a.id === selectedAccountId);
-      if (accountIndex === -1) {
-        throw new Error('Selected savings account could not be found.');
-      }
-
-      const account = allAccounts[accountIndex];
-      const newSavingsTransaction = {
-        id: savingsTxId,
         date: transferDate,
-        type: 'transfer_from_checking' as const,
-        amount: transferAmount,
-        description: savingsDescription,
-        category: 'From Checking',
-        balanceAfter: 0,
-        linkedCheckingTransactionId: checkingTxId,
-        linkedCheckingAccountId: accountId,
-      };
-
-      const { transactions: recalculated, balance: newSavingsBalance } = recalculateSavingsTransactions([
-        ...(account.transactions || []),
-        newSavingsTransaction,
-      ]);
-
-      allAccounts[accountIndex] = {
-        ...account,
-        balance: newSavingsBalance,
-        transactions: recalculated,
-      };
-      StorageService.saveSavingsAccounts(allAccounts);
+        description: description.trim() || undefined,
+        sourceAccountName,
+      });
 
       onSuccess(
-        `Transfer complete — ${CalculationService.formatCurrency(transferAmount)} moved to ${selectedAccount?.name || 'Savings'}. Checking balance: ${CalculationService.formatCurrency(newBalance)}`
+        `Transfer complete — ${CalculationService.formatCurrency(transferAmount)} moved to ${selectedAccount?.name || 'Savings'}. Checking balance: ${CalculationService.formatCurrency(result.checkingBalance)}`
       );
     } catch (err) {
       console.error('Transfer to Savings failed:', err);
