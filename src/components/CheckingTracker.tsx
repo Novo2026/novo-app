@@ -34,6 +34,7 @@ import {
   formatMortgagePaymentDescription,
 } from '../utils/checkingDebtPayment';
 import { recalculateCheckingBalances, recordTransferToSavings } from '../utils/savingsTransactions';
+import { pushCloudIfSignedIn } from '../services/cloudSync';
 import {
   getActiveCheckingAccountId,
   setActiveCheckingAccountId,
@@ -598,6 +599,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
               // wholesale-replaces ledger local state, resetting the list scroll.
               // Do not call onDataUpdate — App handleDataUpdate remounts the Tracker
               // section via refreshKey and would cause the same collapse.
+              // Cloud sync is triggered directly from persistDelete via pushCloudIfSignedIn.
               setSuccessMessage(message);
               setAccounts(StorageService.getCheckingAccounts());
               setTimeout(() => setSuccessMessage(null), 5000);
@@ -1995,6 +1997,8 @@ function TransactionLedger({
     transaction: CheckingTransaction,
     deleteHelocToo: boolean
   ): Promise<string> => {
+    let message: string;
+
     if (transaction.linkedHelocTransactionId) {
       if (deleteHelocToo) {
         const filteredHeloc = JSON.parse(
@@ -2021,21 +2025,27 @@ function TransactionLedger({
       if (removed === 0) {
         throw new Error('Transaction could not be found.');
       }
-      return deleteHelocToo
+      message = deleteHelocToo
         ? '✓ Both linked transactions deleted. Balances updated.'
         : '✓ Checking transaction deleted. HELOC transaction kept.';
-    }
-
-    if (isLinkedCheckingDeleteType(transaction.type)) {
+    } else if (isLinkedCheckingDeleteType(transaction.type)) {
       const result = deleteCheckingTransactionWithLinkedReversal(accountId, transaction.id);
-      return result.message;
+      message = result.message;
+    } else {
+      const removed = StorageService.deleteTransaction(accountId, transaction.id);
+      if (removed === 0) {
+        throw new Error('Transaction could not be found.');
+      }
+      message = '✓ Transaction deleted. Balances updated.';
     }
 
-    const removed = StorageService.deleteTransaction(accountId, transaction.id);
-    if (removed === 0) {
-      throw new Error('Transaction could not be found.');
-    }
-    return '✓ Transaction deleted. Balances updated.';
+    // Cloud push independent of onDataUpdate/refreshTrigger (those cause scroll collapse).
+    // pushLocalStorageToCloud upserts the full syncable snapshot (checking + savings + debts + HELOC).
+    void pushCloudIfSignedIn('checking-ledger-delete').catch((err) =>
+      console.error('NOVO cloud sync failed after delete:', err)
+    );
+
+    return message;
   };
 
   const executeDelete = (transaction: CheckingTransaction, deleteHelocToo = false) => {

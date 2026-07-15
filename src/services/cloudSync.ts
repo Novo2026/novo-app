@@ -57,6 +57,26 @@ export async function pushLocalStorageToCloud(userId: string): Promise<void> {
   }
 }
 
+/**
+ * Push full localStorage snapshot to Supabase when a user is signed in.
+ * Use after local-only writes that must not call onDataUpdate (e.g. ledger delete).
+ * Pushes all syncable keys — including checking, savings, debts, unified payments.
+ */
+export async function pushCloudIfSignedIn(reason: string): Promise<void> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
+  if (!userId) {
+    console.log('[NOVO cloud sync] skip push (not signed in)', { reason });
+    return;
+  }
+
+  console.log('[NOVO cloud sync] push starting', { reason, userId });
+  await pushLocalStorageToCloud(userId);
+  console.log('[NOVO cloud sync] push complete', { reason });
+}
+
 export async function pullRemoteToLocalStorage(userId: string): Promise<void> {
   const { data, error } = await supabase
     .from('user_data')
