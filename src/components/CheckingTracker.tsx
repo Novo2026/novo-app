@@ -653,6 +653,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
             setShowTransferModal(false);
             setSuccessMessage(message);
             setRefreshTrigger(prev => prev + 1);
+            onDataUpdate?.();
             setTimeout(() => setSuccessMessage(null), 5000);
           }}
           currentBalance={currentBalance}

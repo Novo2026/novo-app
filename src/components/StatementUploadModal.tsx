@@ -5,6 +5,7 @@ import { StorageService, type ImportDuplicateFlag, type SmartImportMatch } from 
 import type { Debt, CheckingTransaction, CheckingAccount, SavingsAccount } from '../types';
 import { recordDebtPaymentFromChecking } from '../utils/checkingDebtPayment';
 import { recordTransferToSavings } from '../utils/savingsTransactions';
+import { pushCloudIfSignedIn } from '../services/cloudSync';
 
 interface ParsedTransaction {
   id: string;
@@ -1406,6 +1407,12 @@ export default function StatementUploadModal({
     const skippedCount =
       options.skippedCount ?? Math.max(0, transactions.length - importedCount);
     const message = `✓ Added ${importedCount} transaction${importedCount === 1 ? '' : 's'}. Skipped ${skippedCount} duplicate${skippedCount === 1 ? '' : 's'}.${mismatchWarning}`;
+
+    // Push immediately after local persist so X-dismiss still syncs (don't gate on Done).
+    // Use pushCloudIfSignedIn (not onDataUpdate) so confirmation UI isn't remounted away.
+    void pushCloudIfSignedIn('statement-import').catch((err) =>
+      console.error('NOVO cloud sync failed after statement import:', err)
+    );
 
     if (options.showConfirmation !== false) {
       setImportResult({

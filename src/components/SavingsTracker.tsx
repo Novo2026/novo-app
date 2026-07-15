@@ -62,7 +62,11 @@ function getTransactionDescription(transaction: SavingsTransaction): string {
   return getSavingsTypeLabel(transaction.type);
 }
 
-export default function SavingsTracker() {
+export default function SavingsTracker({
+  onDataUpdate,
+}: {
+  onDataUpdate?: () => void;
+}) {
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [showLogTransaction, setShowLogTransaction] = useState(false);
   const [activeAccountId, setActiveAccountId] = useState<string | null>(() =>
@@ -113,6 +117,7 @@ export default function SavingsTracker() {
         }
       }
       setRefreshKey(prev => prev + 1);
+      onDataUpdate?.();
     }
   };
 
@@ -127,6 +132,7 @@ export default function SavingsTracker() {
     setShowLogTransaction(false);
     setEditingAccount(undefined);
     setRefreshKey((prev) => prev + 1);
+    onDataUpdate?.();
   };
 
   const toggleAccountExpansion = (accountId: string) => {
@@ -160,6 +166,7 @@ export default function SavingsTracker() {
       }
       selectActiveAccount(account.id);
       setRefreshKey((prev) => prev + 1);
+      onDataUpdate?.();
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Delete failed. Please try again.');
     }
@@ -509,6 +516,7 @@ export default function SavingsTracker() {
             selectActiveAccount(editingTransaction.account.id);
             setEditingTransaction(null);
             setRefreshKey((prev) => prev + 1);
+            onDataUpdate?.();
           }}
         />
       )}
