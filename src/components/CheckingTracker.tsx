@@ -2077,13 +2077,27 @@ function TransactionLedger({
   const handleRemoveImported = (importedTransactionId: string) => {
     setFadingIds((prev) => new Set(prev).add(importedTransactionId));
     window.setTimeout(() => {
-      StorageService.resolveImportDuplicateFlag(accountId, importedTransactionId, 'remove_imported');
-      setFadingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(importedTransactionId);
-        return next;
-      });
-      onDuplicateResolved('Transaction removed');
+      try {
+        // Same linked-reversal path as the main ledger delete (savings/debt/checking links).
+        deleteCheckingTransactionWithLinkedReversal(accountId, importedTransactionId);
+        // Clear the duplicate flag only — deletion already completed above.
+        StorageService.resolveImportDuplicateFlag(accountId, importedTransactionId, 'keep_both');
+        setFadingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(importedTransactionId);
+          return next;
+        });
+        onDuplicateResolved('Transaction removed');
+      } catch (err) {
+        setFadingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(importedTransactionId);
+          return next;
+        });
+        onDeleteError?.(
+          err instanceof Error ? err.message : 'Delete failed. Please try again.'
+        );
+      }
     }, 300);
   };
 

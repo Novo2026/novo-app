@@ -771,16 +771,16 @@ export const StorageService = {
   resolveImportDuplicateFlag(
     accountId: string,
     importedTransactionId: string,
-    action: 'keep_both' | 'remove_imported'
+    _action: 'keep_both' | 'remove_imported'
   ): void {
     const flags = this.getImportDuplicateFlags(accountId);
     const flag = flags.find((f) => f.importedTransactionId === importedTransactionId);
     if (!flag) return;
 
-    if (action === 'remove_imported') {
-      this.deleteTransaction(accountId, importedTransactionId);
-    }
-
+    // Flag-only for both actions. Deleting the imported row must go through
+    // deleteCheckingTransactionWithLinkedReversal (TransactionLedger handleRemoveImported).
+    // Previously remove_imported called plain deleteTransaction and could orphan
+    // linked savings / debt rows.
     this.saveImportDuplicateFlags(
       accountId,
       flags.filter((f) => f.importedTransactionId !== importedTransactionId)
