@@ -34,6 +34,7 @@ import {
   formatMortgagePaymentDescription,
 } from '../utils/checkingDebtPayment';
 import { recalculateCheckingBalances, recordTransferToSavings } from '../utils/savingsTransactions';
+import { recordHelocDraw, recordHelocPayment, getCurrentHelocBalance, getHelocCreditLimit } from '../utils/helocTransactions';
 import { pushCloudIfSignedIn } from '../services/cloudSync';
 import {
   getActiveCheckingAccountId,
@@ -178,6 +179,7 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
   const [undoConfirmBatch, setUndoConfirmBatch] = useState<ImportBatchRecord | null>(null);
   const [showLegacyCleanup, setShowLegacyCleanup] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showHelocDrawModal, setShowHelocDrawModal] = useState(false);
   const [showSavingsTransferModal, setShowSavingsTransferModal] = useState(false);
   const [showCheckingTransferModal, setShowCheckingTransferModal] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<CheckingTransaction | null>(null);
@@ -493,6 +495,15 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
                   hoverBgClass="hover:bg-pink-100"
                 />
                 <QuickActionButton
+                  icon={Home}
+                  label="From HELOC"
+                  onClick={() => setShowHelocDrawModal(true)}
+                  textClass="text-fuchsia-700"
+                  borderClass="border-fuchsia-200"
+                  bgClass="bg-fuchsia-50"
+                  hoverBgClass="hover:bg-fuchsia-100"
+                />
+                <QuickActionButton
                   icon={DollarSign}
                   label="Set Balance"
                   onClick={() => {
@@ -659,6 +670,24 @@ export function CheckingTracker({ onDataUpdate }: { onDataUpdate?: () => void })
           currentBalance={currentBalance}
           startingBalance={startingBalance}
           accountId={selectedAccountId}
+          sourceAccountName={selectedAccount?.name || 'Checking'}
+        />
+      )}
+
+      {showHelocDrawModal && (
+        <TransferFromHelocModal
+          onClose={() => setShowHelocDrawModal(false)}
+          onSuccess={(message) => {
+            setShowHelocDrawModal(false);
+            setSuccessMessage(message);
+            setRefreshTrigger((prev) => prev + 1);
+            onDataUpdate?.();
+            setTimeout(() => setSuccessMessage(null), 5000);
+          }}
+          currentBalance={currentBalance}
+          startingBalance={startingBalance}
+          accountId={selectedAccountId}
+          sourceAccountName={selectedAccount?.name || 'Checking'}
         />
       )}
 
@@ -2000,7 +2029,11 @@ function TransactionLedger({
   ): Promise<string> => {
     let message: string;
 
-    if (transaction.linkedHelocTransactionId) {
+    // Linked transfer types (incl. HELOC) always use hardened dual-side reversal.
+    if (isLinkedCheckingDeleteType(transaction.type)) {
+      const result = deleteCheckingTransactionWithLinkedReversal(accountId, transaction.id);
+      message = result.message;
+    } else if (transaction.linkedHelocTransactionId) {
       if (deleteHelocToo) {
         const filteredHeloc = JSON.parse(
           localStorage.getItem('novo_heloc_transactions') || '[]'
@@ -2029,9 +2062,6 @@ function TransactionLedger({
       message = deleteHelocToo
         ? '✓ Both linked transactions deleted. Balances updated.'
         : '✓ Checking transaction deleted. HELOC transaction kept.';
-    } else if (isLinkedCheckingDeleteType(transaction.type)) {
-      const result = deleteCheckingTransactionWithLinkedReversal(accountId, transaction.id);
-      message = result.message;
     } else {
       const removed = StorageService.deleteTransaction(accountId, transaction.id);
       if (removed === 0) {
@@ -2266,7 +2296,29 @@ function TransactionLedger({
                   )}
                   {isConfirming && (
                     <div className="px-4 pb-3 pt-1 bg-gray-50 border-t border-brand-gray-border/50 text-xs">
-                      {transaction.linkedHelocTransactionId ? (
+                      {isLinkedCheckingDeleteType(transaction.type) ? (
+                        <>
+                          <p className="text-brand-gray mb-2">
+                            {getCheckingDeleteConfirmationMessage(transaction)}
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => executeDelete(transaction)}
+                              className="font-semibold text-red-600 hover:underline"
+                            >
+                              Yes
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="font-semibold text-brand-gray hover:underline"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </>
+                      ) : transaction.linkedHelocTransactionId ? (
                         <>
                           <p className="text-brand-gray mb-2">
                             This transaction is linked to a HELOC transaction.
@@ -2285,28 +2337,6 @@ function TransactionLedger({
                               className="font-semibold text-red-600 hover:underline"
                             >
                               Checking Only
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteId(null)}
-                              className="font-semibold text-brand-gray hover:underline"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </>
-                      ) : isLinkedCheckingDeleteType(transaction.type) ? (
-                        <>
-                          <p className="text-brand-gray mb-2">
-                            {getCheckingDeleteConfirmationMessage(transaction)}
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={() => executeDelete(transaction)}
-                              className="font-semibold text-red-600 hover:underline"
-                            >
-                              Yes
                             </button>
                             <button
                               type="button"
@@ -2897,19 +2927,22 @@ function TransferToHelocModal({
   onSuccess,
   currentBalance,
   startingBalance,
-  accountId
+  accountId,
+  sourceAccountName,
 }: {
   onClose: () => void;
   onSuccess: (message: string) => void;
   currentBalance: number;
   startingBalance: number;
   accountId: string;
+  sourceAccountName: string;
 }) {
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(CalculationService.getTodayDateString());
   const [reason, setReason] = useState<'excess' | 'extra_payment' | 'other'>('excess');
-  const [description, setDescription] = useState('');
+  const [description, setDescription] = useState('Transfer excess funds to HELOC');
   const [autoRecordInHeloc, setAutoRecordInHeloc] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const transferAmount = parseFloat(amount) || 0;
   const newBalance = Math.max(0, currentBalance - transferAmount);
@@ -2926,84 +2959,23 @@ function TransferToHelocModal({
   };
 
   const handleSubmit = () => {
-    if (!transferAmount || transferAmount <= 0) {
-      alert('Please enter a valid transfer amount');
-      return;
-    }
-
-    if (transferAmount > currentBalance) {
-      alert('Transfer amount cannot exceed current checking balance');
-      return;
-    }
-
-    const checkingTransactions = StorageService.getCheckingTransactionsForAccount(accountId);
-
-    const helocTransactionId = autoRecordInHeloc
-      ? `heloc_${Date.now()}_linked`
-      : undefined;
-
-    const newCheckingTransaction: CheckingTransaction = {
-      id: `checking_${Date.now()}`,
-      accountId,
-      date,
-      type: 'transfer_to_heloc',
-      amount: transferAmount,
-      description: description || 'Transfer to HELOC',
-      balance: 0,
-      isReconciled: false,
-      linkedHelocTransactionId: helocTransactionId,
-      isTransferToHeloc: true
-    };
-
-    checkingTransactions.push(newCheckingTransaction);
-    checkingTransactions.sort((a, b) => CalculationService.compareDateStrings(a.date, b.date));
-    recalculateBalances(checkingTransactions, startingBalance);
-
-    StorageService.saveCheckingTransactionsForAccount(accountId, checkingTransactions);
-
-    if (autoRecordInHeloc && helocTransactionId) {
-      const helocTransactions = JSON.parse(
-        localStorage.getItem('novo_heloc_transactions') || '[]'
-      );
-
-      const homeEquity = JSON.parse(localStorage.getItem('novo_home_equity') || '{}');
-      const helocBalance = homeEquity.helocBalance || 0;
-
-      let currentHelocBalance = helocBalance;
-      if (helocTransactions.length > 0) {
-        currentHelocBalance = helocTransactions[helocTransactions.length - 1].balance;
-      }
-
-      const newHelocTransaction = {
-        id: helocTransactionId,
-        date,
-        type: 'payment' as const,
+    setError(null);
+    try {
+      const result = recordHelocPayment({
+        checkingAccountId: accountId,
+        checkingStartingBalance: startingBalance,
         amount: transferAmount,
-        description: 'Payment from checking account',
-        balance: 0,
-        linkedCheckingTransactionId: newCheckingTransaction.id,
-        isTransferFromChecking: true
-      };
-
-      helocTransactions.push(newHelocTransaction);
-      helocTransactions.sort((a: any, b: any) => CalculationService.compareDateStrings(a.date, b.date));
-
-      let runningHelocBalance = helocBalance;
-      helocTransactions.forEach((txn: any) => {
-        if (txn.type === 'draw' || txn.type === 'interest') {
-          runningHelocBalance += txn.amount;
-        } else {
-          runningHelocBalance -= txn.amount;
-        }
-        runningHelocBalance = Math.max(0, runningHelocBalance);
-        txn.balance = Math.round(runningHelocBalance * 100) / 100;
+        date,
+        description: description.trim() || undefined,
+        sourceAccountName,
+        recordInHelocLedger: autoRecordInHeloc,
       });
-
-      localStorage.setItem('novo_heloc_transactions', JSON.stringify(helocTransactions));
+      onSuccess(
+        `✓ Transfer recorded: -${CalculationService.formatCurrency(transferAmount)}. New checking balance: ${CalculationService.formatCurrency(result.checkingBalance)}`
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Transfer failed. Please try again.');
     }
-
-    const message = `✓ Transfer recorded: -${CalculationService.formatCurrency(transferAmount)}. New checking balance: ${CalculationService.formatCurrency(newBalance)}`;
-    onSuccess(message);
   };
 
   return (
@@ -3102,6 +3074,10 @@ function TransferToHelocModal({
             </label>
           </div>
 
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+          )}
+
           {transferAmount > 0 && (
             <div className="bg-gray-50 rounded-lg p-4 space-y-2">
               <div className="flex justify-between text-sm">
@@ -3122,16 +3098,170 @@ function TransferToHelocModal({
 
         <div className="flex space-x-3 mt-6">
           <button
+            type="button"
             onClick={onClose}
             className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-colors"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleSubmit}
             className="flex-1 bg-[#9B59B6] hover:bg-[#8E44AD] text-white font-semibold py-3 px-6 rounded-lg transition-colors"
           >
             Record Transfer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TransferFromHelocModal({
+  onClose,
+  onSuccess,
+  currentBalance,
+  startingBalance,
+  accountId,
+  sourceAccountName,
+}: {
+  onClose: () => void;
+  onSuccess: (message: string) => void;
+  currentBalance: number;
+  startingBalance: number;
+  accountId: string;
+  sourceAccountName: string;
+}) {
+  const [amount, setAmount] = useState('');
+  const [date, setDate] = useState(CalculationService.getTodayDateString());
+  const [description, setDescription] = useState('Transfer from HELOC');
+  const [autoRecordInHeloc, setAutoRecordInHeloc] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const homeEquity = StorageService.getHomeEquity();
+  const helocBalance = getCurrentHelocBalance();
+  const availableCredit = Math.max(0, getHelocCreditLimit(homeEquity) - helocBalance);
+
+  const drawAmount = parseFloat(amount) || 0;
+  const newCheckingBalance = currentBalance + drawAmount;
+  const newHelocBalance = helocBalance + drawAmount;
+
+  const handleSubmit = () => {
+    setError(null);
+    try {
+      const result = recordHelocDraw({
+        checkingAccountId: accountId,
+        checkingStartingBalance: startingBalance,
+        amount: drawAmount,
+        date,
+        description: description.trim() || undefined,
+        sourceAccountName,
+        recordInHelocLedger: autoRecordInHeloc,
+      });
+      onSuccess(
+        `✓ Draw recorded: +${CalculationService.formatCurrency(drawAmount)} in checking. HELOC balance: ${CalculationService.formatCurrency(result.helocBalance)}`
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Draw failed. Please try again.');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+        <h3 className="text-xl font-bold text-gray-800 mb-2">Transfer from HELOC</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Draw funds from your HELOC into {sourceAccountName}
+        </p>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Draw Amount</label>
+            <div className="relative">
+              <span className="absolute left-3 top-2 text-gray-600">$</span>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#9B59B6] focus:border-transparent"
+                placeholder="0.00"
+                step="0.01"
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Available credit: {CalculationService.formatCurrency(availableCredit)}
+            </p>
+          </div>
+
+          <DatePicker
+            label="Date"
+            value={date}
+            onChange={setDate}
+            demoMode={JSON.parse(localStorage.getItem('novo_demo_mode') || 'false')}
+          />
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#9B59B6] focus:border-transparent"
+              placeholder="Draw details..."
+            />
+          </div>
+
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <label className="flex items-center space-x-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoRecordInHeloc}
+                onChange={(e) => setAutoRecordInHeloc(e.target.checked)}
+                className="w-5 h-5 text-[#9B59B6] rounded focus:ring-[#9B59B6]"
+              />
+              <div>
+                <div className="font-semibold text-gray-800">Automatically record in HELOC Tracker</div>
+                <div className="text-sm text-gray-600">Creates a matching draw in your HELOC account</div>
+              </div>
+            </label>
+          </div>
+
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+          )}
+
+          {drawAmount > 0 && (
+            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Checking after draw:</span>
+                <span className="font-semibold text-green-700">
+                  {CalculationService.formatCurrency(newCheckingBalance)}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">HELOC balance after:</span>
+                <span className="font-semibold text-red-600">
+                  {CalculationService.formatCurrency(newHelocBalance)}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex space-x-3 mt-6">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            className="flex-1 bg-[#9B59B6] hover:bg-[#8E44AD] text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+          >
+            Record Draw
           </button>
         </div>
       </div>

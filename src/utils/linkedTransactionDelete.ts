@@ -1,6 +1,10 @@
 import { CalculationService } from '../services/calculations';
 import { StorageService } from '../services/storage';
 import {
+  findHelocTransactionFallback,
+  removeHelocTransaction,
+} from './helocTransactions';
+import {
   recalculateCheckingBalances,
   recalculateSavingsTransactions,
 } from './savingsTransactions';
@@ -12,6 +16,8 @@ const LINKED_CHECKING_TYPES = new Set<CheckingTransaction['type']>([
   'transfer_to_checking',
   'transfer_from_checking',
   'transfer_from_savings',
+  'transfer_to_heloc',
+  'transfer_from_heloc',
 ]);
 
 const LINKED_SAVINGS_TYPES = new Set<SavingsTransaction['type']>([
@@ -24,6 +30,7 @@ interface StorageSnapshot {
   savings: string;
   debts: string;
   unifiedPayments: string;
+  heloc: string;
 }
 
 function snapshotStorage(accountIds: string[]): StorageSnapshot {
@@ -38,6 +45,7 @@ function snapshotStorage(accountIds: string[]): StorageSnapshot {
     savings: JSON.stringify(StorageService.getSavingsAccounts()),
     debts: JSON.stringify(StorageService.getDebts()),
     unifiedPayments: JSON.stringify(StorageService.getUnifiedPayments()),
+    heloc: JSON.stringify(StorageService.getHELOCTransactions()),
   };
 }
 
@@ -48,6 +56,7 @@ function restoreSnapshot(snapshot: StorageSnapshot): void {
   StorageService.saveSavingsAccounts(JSON.parse(snapshot.savings));
   StorageService.saveDebts(JSON.parse(snapshot.debts));
   StorageService.saveUnifiedPayments(JSON.parse(snapshot.unifiedPayments));
+  StorageService.saveHELOCTransactions(JSON.parse(snapshot.heloc));
 }
 
 function findCheckingAccountIdForTransaction(transactionId: string): string | null {
@@ -346,6 +355,62 @@ function reverseTransferToSavings(transaction: CheckingTransaction): void {
   throw new Error(orphanBlockMessage);
 }
 
+function reverseHelocLinkedTransfer(
+  transaction: CheckingTransaction,
+  expectedHelocType: 'payment' | 'draw'
+): void {
+  console.log('[NOVO delete] reverseHelocLinkedTransfer links', {
+    checkingTransactionId: transaction.id,
+    linkedHelocTransactionId: transaction.linkedHelocTransactionId,
+    linkedHelocAccountId: transaction.linkedHelocAccountId,
+    expectedHelocType,
+    amount: transaction.amount,
+    date: transaction.date,
+  });
+
+  const orphanBlockMessage =
+    'Could not find the linked HELOC entry to remove. The checking transaction was NOT deleted — please check the HELOC Tracker manually or contact support.';
+
+  const helocTxId = transaction.linkedHelocTransactionId;
+
+  if (helocTxId) {
+    try {
+      const exists = StorageService.getHELOCTransactions().some((t) => t.id === helocTxId);
+      if (exists) {
+        removeHelocTransaction(helocTxId);
+        return;
+      }
+    } catch (err) {
+      console.warn('[NOVO delete] ID-based HELOC removal failed; trying fallback', err);
+    }
+  }
+
+  const fallback = findHelocTransactionFallback(transaction, expectedHelocType);
+  if (fallback) {
+    console.warn(
+      '[NOVO delete] linkedHelocTransactionId lookup failed; removed HELOC entry via amount+date fallback',
+      {
+        expectedId: helocTxId ?? null,
+        fallbackId: fallback.id,
+        checkingTransactionId: transaction.id,
+      }
+    );
+    removeHelocTransaction(fallback.id);
+    return;
+  }
+
+  // Checking-only transfer (user unchecked "record in HELOC Tracker") — allow delete.
+  if (!helocTxId) {
+    console.warn(
+      '[NOVO delete] No HELOC ledger link on checking transfer; deleting checking side only',
+      { checkingTransactionId: transaction.id, expectedHelocType }
+    );
+    return;
+  }
+
+  throw new Error(orphanBlockMessage);
+}
+
 function reverseLinkedCheckingTransaction(
   linkedTransactionId: string,
   expectedType?: CheckingTransaction['type']
@@ -389,6 +454,10 @@ export function getCheckingDeleteConfirmationMessage(transaction: CheckingTransa
       return `Deleting this transfer will also remove the ${amount} withdrawal from the source checking account. This cannot be undone. Are you sure?`;
     case 'transfer_from_savings':
       return `Deleting this deposit will also remove the ${amount} withdrawal from the linked savings account. This cannot be undone. Are you sure?`;
+    case 'transfer_to_heloc':
+      return `Deleting this transfer will also remove the ${amount} payment from your HELOC ledger. This cannot be undone. Are you sure?`;
+    case 'transfer_from_heloc':
+      return `Deleting this deposit will also remove the ${amount} draw from your HELOC ledger. This cannot be undone. Are you sure?`;
     default:
       return 'Delete this transaction? All balances will be recalculated from this point forward.';
   }
@@ -443,6 +512,12 @@ export function deleteCheckingTransactionWithLinkedReversal(
       case 'transfer_to_savings':
         reverseTransferToSavings(transaction);
         break;
+      case 'transfer_to_heloc':
+        reverseHelocLinkedTransfer(transaction, 'payment');
+        break;
+      case 'transfer_from_heloc':
+        reverseHelocLinkedTransfer(transaction, 'draw');
+        break;
       case 'transfer_to_checking':
         if (!transaction.linkedCheckingTransactionId) {
           throw new Error('Linked receiving checking transaction could not be found.');
@@ -493,6 +568,9 @@ export function deleteCheckingTransactionWithLinkedReversal(
         };
       case 'transfer_to_savings':
         return { message: '✓ Transfer deleted from checking and savings.' };
+      case 'transfer_to_heloc':
+      case 'transfer_from_heloc':
+        return { message: '✓ Transfer deleted from checking and HELOC.' };
       case 'transfer_to_checking':
       case 'transfer_from_checking':
         return { message: '✓ Transfer deleted from both checking accounts.' };

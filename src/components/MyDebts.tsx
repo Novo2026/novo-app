@@ -33,6 +33,7 @@ import {
   hasProjectedPayoffMetadata,
   isInstallmentLoanCategory,
 } from '../utils/installmentLoan';
+import { getCurrentHelocBalance, getHelocCreditLimit } from '../utils/helocTransactions';
 import type { Debt, Transaction, Milestone } from '../types';
 
 interface MyDebtsProps {
@@ -52,6 +53,8 @@ function getDebtAccentBorder(debt: Debt, isOpenAccount: boolean): string {
       return 'border-l-brand-red';
     case 'Personal Loan':
       return 'border-l-brand-green';
+    case 'HELOC':
+      return 'border-l-purple-600';
     default:
       return 'border-l-brand-gray';
   }
@@ -68,6 +71,8 @@ function getDebtTopAccentBorder(debt: Debt, isOpenAccount: boolean): string {
       return 'border-t-brand-red';
     case 'Personal Loan':
       return 'border-t-brand-green';
+    case 'HELOC':
+      return 'border-t-purple-600';
     default:
       return 'border-t-brand-gray';
   }
@@ -86,6 +91,8 @@ function getDebtTypePillClasses(debt: Debt, isOpenAccount: boolean): string {
       return 'inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-50 text-brand-red border border-brand-red';
     case 'Personal Loan':
       return 'inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-green-50 text-brand-green border border-brand-green';
+    case 'HELOC':
+      return 'inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-300';
     default:
       return 'inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-gray-50 text-brand-gray border border-brand-gray';
   }
@@ -186,6 +193,8 @@ export default function MyDebts({ onDataUpdate, scrollToDebtId, onScrollToDebtHa
     return () => window.clearTimeout(scrollTimer);
   }, [scrollToDebtId, onScrollToDebtHandled]);
 
+  // Legacy HELOC rows in novo_debts stay hidden (Round 1 SSOT is novo_home_equity + ledger).
+  // Live HELOC card below is sourced from getCurrentHelocBalance when hasHELOC.
   const allDebts = StorageService.getDebts().filter(d => d.category !== 'HELOC');
   const activeDebts = allDebts.filter(d => !d.isPaidOff);
   const paidOffDebts = allDebts.filter(d => d.isPaidOff);
@@ -199,6 +208,18 @@ export default function MyDebts({ onDataUpdate, scrollToDebtId, onScrollToDebtHa
     () => sortActiveDebts(activeDebts, debtSort),
     [activeDebts, debtSort]
   );
+
+  const homeEquity = StorageService.getHomeEquity();
+  const showHelocCard = homeEquity?.hasHELOC === true;
+  const helocLiveBalance = showHelocCard ? getCurrentHelocBalance() : 0;
+  const helocLimit = showHelocCard ? getHelocCreditLimit(homeEquity) : 0;
+  const helocRate = homeEquity?.helocRate ?? 0;
+  const helocMinPayment = homeEquity?.helocMinPayment ?? 0;
+  const helocAvailableCredit = Math.max(0, helocLimit - helocLiveBalance);
+  const summaryActiveCount = activeDebts.length + (showHelocCard ? 1 : 0);
+  const summaryTotalOwed = totalOwed + (showHelocCard ? helocLiveBalance : 0);
+  const summaryMinimums = totalMinimums + (showHelocCard ? helocMinPayment : 0);
+  const hasAnyActiveCards = activeDebts.length > 0 || showHelocCard;
 
   const handleAddCharge = (debtId: string) => {
     setSelectedDebtId(debtId);
@@ -499,7 +520,7 @@ export default function MyDebts({ onDataUpdate, scrollToDebtId, onScrollToDebtHa
     );
   }
 
-  if (allDebts.length === 0) {
+  if (allDebts.length === 0 && !showHelocCard) {
     return (
       <div className="bg-brand-gray-light min-h-screen">
         <div className="bg-brand-navy py-3 px-5">
@@ -543,6 +564,94 @@ export default function MyDebts({ onDataUpdate, scrollToDebtId, onScrollToDebtHa
       </div>
     );
   }
+
+  const renderHelocCard = () => {
+    const baseline = homeEquity?.helocBalance ?? helocLiveBalance;
+    const paidOffAmount = Math.max(0, baseline - helocLiveBalance);
+    const progress = baseline > 0 ? (paidOffAmount / baseline) * 100 : 0;
+
+    return (
+      <div
+        key="heloc-live-card"
+        id="debt-card-heloc"
+        className="bg-white border border-brand-gray-border rounded-[10px] border-l-4 border-t-[3px] border-l-purple-600 border-t-purple-600 overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.10),0_1px_3px_rgba(0,0,0,0.06)]"
+      >
+        <div className="p-5">
+          <div className="flex items-start justify-between gap-2 mb-3">
+            <div className="min-w-0 flex flex-col items-start gap-1">
+              <h3 className="text-[15px] font-medium text-brand-navy">HELOC</h3>
+              <span className="inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-300">
+                HELOC
+              </span>
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-brand-blue-light text-brand-blue">
+                <Home className="w-3 h-3" />
+                From Tracker
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[11px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">
+                {helocRate.toFixed(helocRate % 1 === 0 ? 0 : 2)}% APR
+              </span>
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <p className="text-[10px] uppercase tracking-wide text-brand-gray">Current Balance</p>
+            <p className="text-[22px] font-medium mt-0.5 text-brand-navy">
+              {CalculationService.formatCurrency(helocLiveBalance)}
+            </p>
+            <p className="text-[11px] text-brand-gray mt-0.5">
+              Credit limit {CalculationService.formatCurrency(helocLimit)}
+              {' · '}
+              Available {CalculationService.formatCurrency(helocAvailableCredit)}
+            </p>
+          </div>
+
+          {baseline > 0 && (
+            <div className="mb-3">
+              <div className="flex justify-between text-[11px] mb-1">
+                <span className="text-brand-gray">{progress.toFixed(1)}% vs setup balance</span>
+                <span className="text-brand-green">
+                  {CalculationService.formatCurrency(paidOffAmount)} below setup
+                </span>
+              </div>
+              <div className="w-full bg-brand-gray-border rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="h-full bg-purple-500 rounded-full transition-all"
+                  style={{ width: `${Math.min(Math.max(progress, 0), 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <div>
+              <p className="text-[10px] text-brand-gray">Min payment</p>
+              <p className="text-[13px] text-brand-navy">
+                {helocMinPayment > 0
+                  ? CalculationService.formatCurrency(helocMinPayment)
+                  : '—'}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] text-brand-gray">Rate</p>
+              <p className="text-[13px] text-brand-navy">{helocRate.toFixed(2)}%</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-brand-gray">Limit</p>
+              <p className="text-[13px] text-brand-navy">
+                {CalculationService.formatCurrency(helocLimit)}
+              </p>
+            </div>
+          </div>
+
+          <p className="text-[11px] text-brand-gray">
+            Balance updates automatically from HELOC Tracker draws and payments (including To/From HELOC transfers).
+          </p>
+        </div>
+      </div>
+    );
+  };
 
   const renderDebtCard = (debt: Debt) => {
     const isOpenAccount = debt.currentBalance === 0 && !debt.isPaidOff && debt.startingBalance === 0;
@@ -837,22 +946,22 @@ export default function MyDebts({ onDataUpdate, scrollToDebtId, onScrollToDebtHa
       {pageHeader}
 
       <div className="max-w-5xl mx-auto px-5 pb-8">
-        {activeDebts.length > 0 && (
+        {hasAnyActiveCards && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-5">
             <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-orange">
               <p className="text-[11px] text-brand-gray uppercase tracking-wide">Active debts</p>
-              <p className="text-[22px] font-medium text-brand-navy mt-1">{activeDebts.length}</p>
+              <p className="text-[22px] font-medium text-brand-navy mt-1">{summaryActiveCount}</p>
             </div>
             <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-red">
               <p className="text-[11px] text-brand-gray uppercase tracking-wide">Total owed</p>
               <p className="text-[22px] font-medium text-brand-navy mt-1">
-                {CalculationService.formatCurrency(totalOwed)}
+                {CalculationService.formatCurrency(summaryTotalOwed)}
               </p>
             </div>
             <div className="bg-white border border-brand-gray-border rounded-lg p-4 border-l-4 border-l-brand-blue">
               <p className="text-[11px] text-brand-gray uppercase tracking-wide">Monthly minimums</p>
               <p className="text-[22px] font-medium text-brand-navy mt-1">
-                {CalculationService.formatCurrency(totalMinimums)}
+                {CalculationService.formatCurrency(summaryMinimums)}
               </p>
             </div>
           </div>
@@ -874,7 +983,7 @@ export default function MyDebts({ onDataUpdate, scrollToDebtId, onScrollToDebtHa
           </div>
         )}
 
-        {activeDebts.length === 0 && paidOffDebts.length > 0 ? (
+        {!hasAnyActiveCards && paidOffDebts.length > 0 ? (
           <div className="text-center py-12 bg-white border border-brand-gray-border rounded-lg">
             <Trophy className="w-16 h-16 text-brand-green mx-auto mb-4" />
             <h3 className="text-2xl font-bold text-brand-navy mb-2">All Debts Paid Off!</h3>
@@ -907,6 +1016,7 @@ export default function MyDebts({ onDataUpdate, scrollToDebtId, onScrollToDebtHa
               </select>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {showHelocCard && renderHelocCard()}
               {sortedActiveDebts.map((debt) => renderDebtCard(debt))}
             </div>
           </>

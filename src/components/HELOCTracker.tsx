@@ -3,6 +3,7 @@ import { TrendingUp, Plus, Download, CreditCard as Edit2, X, CreditCard, Wallet,
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
+import { getCurrentHelocBalance, getHelocCreditLimit, recalculateHelocBalances } from '../utils/helocTransactions';
 import { CheckingTracker } from './CheckingTracker';
 import Accordion from './Accordion';
 import ChunkingRecommendation from './ChunkingRecommendation';
@@ -60,15 +61,9 @@ export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
     }
   }, [successBanner]);
 
-  const helocLimit = homeEquity.hasHELOC && homeEquity.helocLimit
-    ? homeEquity.helocLimit
-    : hasHomeEquity
-      ? (homeEquity.homeValue! * 0.9) - homeEquity.mortgageBalance!
-      : 0;
+  const helocLimit = getHelocCreditLimit(homeEquity);
 
-  const currentBalance = transactions.length > 0
-    ? transactions[transactions.length - 1].balance
-    : (homeEquity.hasHELOC && homeEquity.helocBalance !== undefined ? homeEquity.helocBalance : 0);
+  const currentBalance = getCurrentHelocBalance(transactions, homeEquity);
 
   const availableCredit = helocLimit - currentBalance;
   const interestRate = homeEquity.hasHELOC && homeEquity.helocRate ? homeEquity.helocRate : 8.5;
@@ -1733,18 +1728,5 @@ function RecordInterestModal({
 }
 
 function recalculateBalances(transactions: HELOCTransaction[]) {
-  const homeEquity = StorageService.getHomeEquity();
-  let runningBalance = homeEquity.hasHELOC && homeEquity.helocBalance !== undefined
-    ? homeEquity.helocBalance
-    : 0;
-
-  transactions.forEach(transaction => {
-    if (transaction.type === 'draw' || transaction.type === 'interest') {
-      runningBalance += transaction.amount;
-    } else if (transaction.type === 'payment') {
-      runningBalance -= transaction.amount;
-    }
-    runningBalance = Math.max(0, runningBalance);
-    transaction.balance = Math.round(runningBalance * 100) / 100;
-  });
+  recalculateHelocBalances(transactions);
 }

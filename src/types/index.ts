@@ -253,6 +253,8 @@ export interface CheckingTransaction {
   debtId?: string;
   debtName?: string;
   linkedHelocTransactionId?: string;
+  /** Canonical HELOC link id (`heloc`) — mirrors linkedSavingsAccountId pattern. */
+  linkedHelocAccountId?: string;
   linkedCheckingTransactionId?: string;
   linkedSavingsTransactionId?: string;
   linkedSavingsAccountId?: string;
