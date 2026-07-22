@@ -1,4 +1,5 @@
 import type { Debt } from '../types';
+import { CalculationService } from './calculations';
 import {
   applyInstallmentPayoffMonthCap,
   getInstallmentRemainingTermMonths,
@@ -183,12 +184,9 @@ export const DebtCalculations = {
         remainingBalance = 0;
       }
 
-      const currentDate = new Date();
-      currentDate.setMonth(currentDate.getMonth() + month);
-
       projections.push({
         month,
-        date: currentDate.toISOString().split('T')[0],
+        date: CalculationService.addMonthsToDate(new Date(), month),
         payment: remainingBalance === 0 ? payment + remainingBalance : payment,
         interest: Math.round(interest * 100) / 100,
         principal: Math.round(principal * 100) / 100,
@@ -367,14 +365,11 @@ export const DebtCalculations = {
           debt.paidOff = true;
           debt.payoffMonth = month;
 
-          const currentDate = new Date();
-          currentDate.setMonth(currentDate.getMonth() + month);
-
           payoffTimeline.push({
             debtId: debt.debtId,
             debtName: debt.debtName,
             payoffMonth: month,
-            payoffDate: currentDate.toISOString().split('T')[0],
+            payoffDate: CalculationService.addMonthsToDate(new Date(), month),
           });
 
           // Add this debt's minimum to available extra cash (snowball effect)
@@ -411,20 +406,16 @@ export const DebtCalculations = {
           targetDebt.paidOff = true;
           targetDebt.payoffMonth = month;
 
-          const currentDate = new Date();
-          currentDate.setMonth(currentDate.getMonth() + month);
-
-          // Update or add to payoff timeline
           const existingPayoff = payoffTimeline.find(p => p.debtId === targetDebt.debtId);
           if (existingPayoff) {
             existingPayoff.payoffMonth = month;
-            existingPayoff.payoffDate = currentDate.toISOString().split('T')[0];
+            existingPayoff.payoffDate = CalculationService.addMonthsToDate(new Date(), month);
           } else {
             payoffTimeline.push({
               debtId: targetDebt.debtId,
               debtName: targetDebt.debtName,
               payoffMonth: month,
-              payoffDate: currentDate.toISOString().split('T')[0],
+              payoffDate: CalculationService.addMonthsToDate(new Date(), month),
             });
           }
 
@@ -434,12 +425,9 @@ export const DebtCalculations = {
       }
 
       const totalBalance = debtBalances.reduce((sum, d) => sum + d.balance, 0);
-      const currentDate = new Date();
-      currentDate.setMonth(currentDate.getMonth() + month);
-
       monthlyProjections.push({
         month,
-        date: currentDate.toISOString().split('T')[0],
+        date: CalculationService.addMonthsToDate(new Date(), month),
         debts: monthDebts,
         totalBalance: Math.round(totalBalance * 100) / 100,
       });

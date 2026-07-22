@@ -1,4 +1,5 @@
 import { Calendar } from 'lucide-react';
+import { CalculationService } from '../services/calculations';
 
 interface DatePickerProps {
   value: string;
@@ -8,15 +9,29 @@ interface DatePickerProps {
   demoMode?: boolean;
 }
 
-export default function DatePicker({ value, onChange, label = 'Date', allowFuture = false, demoMode = false }: DatePickerProps) {
-  const today = new Date().toISOString().split('T')[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-  const oneWeekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
-  const oneMonthAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+/** Format a Date as local YYYY-MM-DD (matches getTodayDateString style). */
+function formatLocalYmd(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
-  const fiveYearsAgo = new Date();
+function shiftLocalToday(days: number): string {
+  const d = CalculationService.parseLocalDate(CalculationService.getTodayDateString());
+  d.setDate(d.getDate() + days);
+  return formatLocalYmd(d);
+}
+
+export default function DatePicker({ value, onChange, label = 'Date', allowFuture = false, demoMode = false }: DatePickerProps) {
+  const today = CalculationService.getTodayDateString();
+  const yesterday = shiftLocalToday(-1);
+  const oneWeekAgo = shiftLocalToday(-7);
+  const oneMonthAgo = shiftLocalToday(-30);
+
+  const fiveYearsAgo = CalculationService.parseLocalDate(today);
   fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
-  const minDate = fiveYearsAgo.toISOString().split('T')[0];
+  const minDate = formatLocalYmd(fiveYearsAgo);
 
   const maxDate = allowFuture || demoMode ? '2099-12-31' : today;
 

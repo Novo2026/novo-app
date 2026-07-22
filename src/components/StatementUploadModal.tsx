@@ -352,7 +352,16 @@ function parseCSV(text: string): ParsedTransaction[] {
 
     const dateObj = new Date(date);
     if (isNaN(dateObj.getTime())) continue;
-    const normalizedDate = dateObj.toISOString().split('T')[0];
+    // Prefer local calendar components — toISOString().split shifts the day in US timezones.
+    // Already-ISO YYYY-MM-DD strings: normalize without UTC round-trip.
+    const normalizedDate = /^\d{4}-\d{2}-\d{2}/.test(date.trim())
+      ? CalculationService.normalizeDateString(date.trim())
+      : (() => {
+          const year = dateObj.getFullYear();
+          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+          const day = String(dateObj.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        })();
 
     const type = amount === 0 ? 'deposit' : detectType(description, amount);
 

@@ -145,8 +145,8 @@ export default function ReconcilePanel({
       difference,
       transactionCount: reconciledIds.length,
       status,
-      periodStart: dates[0] ?? new Date().toISOString().split('T')[0],
-      periodEnd: dates[dates.length - 1] ?? new Date().toISOString().split('T')[0],
+      periodStart: dates[0] ?? CalculationService.getTodayDateString(),
+      periodEnd: dates[dates.length - 1] ?? CalculationService.getTodayDateString(),
     });
 
     StorageService.clearReconcileProgress(accountId);

@@ -16,6 +16,7 @@ import {
   Cloud,
 } from 'lucide-react';
 import { StorageService } from '../services/storage';
+import { CalculationService } from '../services/calculations';
 import { assembleNovoReportPayload } from '../utils/novoReportData';
 import { buildNovoFullReportHtml, printHtmlDocument } from '../utils/novoPrintReport';
 import LearnHELOCModal from './LearnHELOCModal';
@@ -152,7 +153,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
       const key = localStorage.key(i);
       if (key) snapshot[key] = localStorage.getItem(key) ?? '';
     }
-    const date = new Date().toISOString().split('T')[0];
+    const date = CalculationService.getTodayDateString();
     const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

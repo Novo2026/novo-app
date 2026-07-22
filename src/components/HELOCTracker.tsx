@@ -92,8 +92,8 @@ export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
     const data: { month: string; balance: number }[] = [];
     let balance = homeEquity.hasHELOC && homeEquity.helocBalance !== undefined ? homeEquity.helocBalance : 0;
 
-    transactions.forEach((t, idx) => {
-      const date = new Date(t.date);
+    transactions.forEach((t) => {
+      const date = CalculationService.parseLocalDate(t.date);
       const monthStr = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 
       if (data.length === 0 || data[data.length - 1].month !== monthStr) {
@@ -238,7 +238,7 @@ export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
               const interestTransactions = transactions.filter(t => t.type === 'interest');
               const totalInterestLifetime = interestTransactions.reduce((sum, t) => sum + t.amount, 0);
               const totalInterestThisYear = interestTransactions
-                .filter(t => new Date(t.date).getFullYear() === currentYear)
+                .filter(t => CalculationService.parseLocalDate(t.date).getFullYear() === currentYear)
                 .reduce((sum, t) => sum + t.amount, 0);
 
               if (interestTransactions.length > 0) {
@@ -322,7 +322,7 @@ export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
 
               const hasInterestForLastMonth = transactions.some(t => {
                 if (t.type !== 'interest') return false;
-                const txDate = new Date(t.date);
+                const txDate = CalculationService.parseLocalDate(t.date);
                 return txDate.getMonth() === lastMonth && txDate.getFullYear() === lastMonthYear;
               });
 
@@ -832,7 +832,7 @@ function TransactionLedger({
   };
 
   const sortedTransactions = [...transactions].sort((a, b) =>
-    new Date(b.date).getTime() - new Date(a.date).getTime()
+    CalculationService.compareDateStrings(b.date, a.date)
   );
 
   return (
@@ -870,7 +870,7 @@ function TransactionLedger({
               {sortedTransactions.map((transaction) => (
                 <tr key={transaction.id} className="border-b border-gray-100 hover:bg-gray-50">
                   <td className="py-3 px-4 text-gray-800">
-                    {new Date(transaction.date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' })}
+                    {CalculationService.formatLocalDateShort(transaction.date)}
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center space-x-2">
@@ -1043,7 +1043,7 @@ function RecordDrawModal({
       transactions.push(newTransaction);
     }
 
-    transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    transactions.sort((a, b) => CalculationService.compareDateStrings(a.date, b.date));
     recalculateBalances(transactions);
 
     localStorage.setItem('novo_heloc_transactions', JSON.stringify(transactions));
@@ -1070,7 +1070,9 @@ function RecordDrawModal({
       };
 
       checkingTransactions.push(newCheckingTransaction);
-      checkingTransactions.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      checkingTransactions.sort((a: any, b: any) =>
+        CalculationService.compareDateStrings(a.date, b.date)
+      );
 
       let runningBalance = startingBalance;
       checkingTransactions.forEach((txn: any) => {
@@ -1471,7 +1473,7 @@ function RecordPaymentModal({
       transactions.push(newTransaction);
     }
 
-    transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    transactions.sort((a, b) => CalculationService.compareDateStrings(a.date, b.date));
     recalculateBalances(transactions);
 
     localStorage.setItem('novo_heloc_transactions', JSON.stringify(transactions));
@@ -1575,8 +1577,8 @@ function RecordInterestModal({
   interestRate: number;
   editTransaction: HELOCTransaction | null;
 }) {
-  const currentDate = new Date();
-  const [month, setMonth] = useState(editTransaction?.date.substring(0, 7) || currentDate.toISOString().substring(0, 7));
+  const todayLocal = CalculationService.getTodayDateString();
+  const [month, setMonth] = useState(editTransaction?.date.substring(0, 7) || todayLocal.substring(0, 7));
   const [manualAmount, setManualAmount] = useState(editTransaction?.amount.toString() || '');
   const [useManual, setUseManual] = useState(!!editTransaction);
 
@@ -1600,12 +1602,17 @@ function RecordInterestModal({
       localStorage.getItem('novo_heloc_transactions') || '[]'
     );
 
+    const monthLabel = CalculationService.parseLocalDate(`${month}-01`).toLocaleDateString('en-US', {
+      month: 'long',
+      year: 'numeric',
+    });
+
     const newTransaction: HELOCTransaction = {
       id: editTransaction?.id || `heloc_${Date.now()}`,
       date,
       type: 'interest',
       amount: interestAmount,
-      description: `Monthly interest for ${new Date(month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`,
+      description: `Monthly interest for ${monthLabel}`,
       balance: 0
     };
 
@@ -1616,7 +1623,7 @@ function RecordInterestModal({
       transactions.push(newTransaction);
     }
 
-    transactions.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    transactions.sort((a, b) => CalculationService.compareDateStrings(a.date, b.date));
     recalculateBalances(transactions);
 
     localStorage.setItem('novo_heloc_transactions', JSON.stringify(transactions));
