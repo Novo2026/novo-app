@@ -19,6 +19,7 @@ import {
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import { runMilestoneDetection } from '../utils/milestoneEngine';
+import { getDebtPaydownDisplay } from '../utils/debtProgressDisplay';
 import LogPaymentModal from './LogPaymentModal';
 import EditPaymentModal from './EditPaymentModal';
 import EditDebtModal from './EditDebtModal';
@@ -61,10 +62,14 @@ function formatPaidOffDate(date: string | undefined | null): string {
 
 function getDebtProgressInfo(debt: Debt) {
   const originalBalance = debt.startingBalance;
-  const paidOff = originalBalance - debt.currentBalance;
   const isOpenAccount = debt.currentBalance === 0 && originalBalance === 0;
-  const percentage = originalBalance > 0 ? (paidOff / originalBalance) * 100 : 0;
-  return { paidOff, percentage, isOpenAccount };
+  const {
+    balanceIncreased,
+    increaseAmount,
+    paidOffAmount: paidOff,
+    progressPercent: percentage,
+  } = getDebtPaydownDisplay(originalBalance, debt.currentBalance);
+  return { paidOff, percentage, isOpenAccount, balanceIncreased, increaseAmount };
 }
 
 function formatDebtApr(debt: Debt): string {
@@ -233,10 +238,10 @@ export default function Dashboard({
   const dfCurrentBalance = debtFreedomDebts
     .filter((d) => !d.isPaidOff)
     .reduce((sum, d) => sum + d.currentBalance, 0);
-  const dfProgressPercentage =
-    dfStartingBalance > 0
-      ? Math.min(100, ((dfStartingBalance - dfCurrentBalance) / dfStartingBalance) * 100)
-      : 0;
+  const dfPaydown = getDebtPaydownDisplay(dfStartingBalance, dfCurrentBalance);
+  const dfProgressPercentage = dfPaydown.progressPercent;
+  const dfBalanceIncreased = dfPaydown.balanceIncreased;
+  const dfIncreaseAmount = dfPaydown.increaseAmount;
 
   const debtFreedomIds = new Set(debtFreedomDebts.map((d) => d.id));
   const dfCashFlowPaidOff = StorageService.getUnifiedPayments()
@@ -576,7 +581,9 @@ export default function Dashboard({
               {CalculationService.formatCurrency(metricDebtBalance)}
             </p>
             <p className="text-[10px] sm:text-[11px] text-brand-gray mt-0.5 line-clamp-2">
-              {metricDebtProgress.toFixed(1)}% paid off
+              {hasDebtFreedomDebts && dfBalanceIncreased
+                ? `Balance increased ${CalculationService.formatCurrency(dfIncreaseAmount)} since starting`
+                : `${Math.max(0, metricDebtProgress).toFixed(1)}% paid off`}
             </p>
             {hasDebtFreedomDebts && hasActiveMortgage && (
               <button
@@ -789,7 +796,8 @@ export default function Dashboard({
                   </p>
                   <div className="bg-white border border-brand-gray-border rounded-lg overflow-hidden">
                   {nonHelocActiveDebts.map((debt, index) => {
-                    const { paidOff, percentage, isOpenAccount } = getDebtProgressInfo(debt);
+                    const { paidOff, percentage, isOpenAccount, balanceIncreased, increaseAmount } =
+                      getDebtProgressInfo(debt);
                     const isLast = index === nonHelocActiveDebts.length - 1;
                     return (
                       <div
@@ -815,7 +823,7 @@ export default function Dashboard({
                               <div className="w-full bg-brand-gray-border rounded-full h-1 mt-1">
                                 <div
                                   className="bg-brand-orange h-1 rounded-full transition-all"
-                                  style={{ width: `${Math.min(percentage, 100)}%` }}
+                                  style={{ width: `${Math.min(Math.max(percentage, 0), 100)}%` }}
                                 />
                               </div>
                             )}
@@ -850,8 +858,14 @@ export default function Dashboard({
                               </button>
                             </div>
                             {!isOpenAccount && (
-                              <span className="text-[11px] text-brand-gray">
-                                {CalculationService.formatCurrency(paidOff)} paid off
+                              <span
+                                className={`text-[11px] text-right ${
+                                  balanceIncreased ? 'text-brand-orange' : 'text-brand-gray'
+                                }`}
+                              >
+                                {balanceIncreased
+                                  ? `Balance increased ${CalculationService.formatCurrency(increaseAmount)} since starting`
+                                  : `${CalculationService.formatCurrency(paidOff)} paid off`}
                               </span>
                             )}
                           </div>
@@ -1043,7 +1057,7 @@ export default function Dashboard({
                     </p>
                   )}
                   {activeMortgages.map((mortgage, index) => {
-                    const { percentage } = getDebtProgressInfo(mortgage);
+                    const { percentage, balanceIncreased, increaseAmount } = getDebtProgressInfo(mortgage);
                     const biweeklyTip = getMortgageBiweeklyTip(mortgage);
                     const projectedPayoff = formatProjectedPayoffMonthYear(mortgage);
 
@@ -1051,14 +1065,24 @@ export default function Dashboard({
                       <div key={mortgage.id}>
                         {index > 0 && <div className="border-t border-brand-gray-border my-4" />}
                         <p className="text-[13px] font-medium text-brand-navy mb-2">{mortgage.name}</p>
-                        <div className="flex items-center justify-between text-[11px] text-brand-gray mb-1.5">
-                          <span>{percentage.toFixed(1)}% paid down</span>
-                          <span>{CalculationService.formatCurrency(mortgage.currentBalance)} remaining</span>
+                        <div
+                          className={`flex items-center justify-between text-[11px] mb-1.5 ${
+                            balanceIncreased ? 'text-brand-orange' : 'text-brand-gray'
+                          }`}
+                        >
+                          <span>
+                            {balanceIncreased
+                              ? `Balance increased ${CalculationService.formatCurrency(increaseAmount)} since starting`
+                              : `${percentage.toFixed(1)}% paid down`}
+                          </span>
+                          <span className="text-brand-gray">
+                            {CalculationService.formatCurrency(mortgage.currentBalance)} remaining
+                          </span>
                         </div>
                         <div className="w-full bg-brand-gray-border rounded-full h-2 overflow-hidden mb-2">
                           <div
                             className="h-full bg-brand-blue rounded-full transition-all duration-500"
-                            style={{ width: `${Math.min(percentage, 100)}%` }}
+                            style={{ width: `${Math.min(Math.max(percentage, 0), 100)}%` }}
                           />
                         </div>
                         <p className="text-[11px] text-brand-gray mb-1">

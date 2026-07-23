@@ -26,6 +26,7 @@ import HomeSaleCelebrationModal from './HomeSaleCelebrationModal';
 import AddReplacementMortgageModal from './AddReplacementMortgageModal';
 import CelebrationModal from './CelebrationModal';
 import { MILESTONE_CELEBRATIONS_DISABLED } from '../utils/milestoneEngine';
+import { getDebtPaydownDisplay } from '../utils/debtProgressDisplay';
 import {
   formatLoanStartDateForDisplay,
   formatLoanTermForDisplay,
@@ -656,8 +657,12 @@ export default function MyDebts({ onDataUpdate, scrollToDebtId, onScrollToDebtHa
   const renderDebtCard = (debt: Debt) => {
     const isOpenAccount = debt.currentBalance === 0 && !debt.isPaidOff && debt.startingBalance === 0;
     const isPaidDownToZero = debt.currentBalance === 0 && !debt.isPaidOff && debt.startingBalance > 0;
-    const paidOffAmount = debt.startingBalance - debt.currentBalance;
-    const progress = debt.startingBalance > 0 ? (paidOffAmount / debt.startingBalance) * 100 : 0;
+    const {
+      balanceIncreased,
+      increaseAmount,
+      paidOffAmount,
+      progressPercent: progress,
+    } = getDebtPaydownDisplay(debt.startingBalance, debt.currentBalance);
     const lastPayment = getLastPaymentForDebt(debt.id);
     const projectedPayoff = hasProjectedPayoffMetadata(debt) && formatProjectedPayoffMonthYear(debt)
       ? formatProjectedPayoffMonthYear(debt)
@@ -738,14 +743,25 @@ export default function MyDebts({ onDataUpdate, scrollToDebtId, onScrollToDebtHa
             <p className="text-[11px] text-brand-gray mb-3">No balance yet</p>
           ) : (
             <div className="mb-3">
-              <div className="flex justify-between text-[11px] mb-1">
-                <span className="text-brand-gray">{progress.toFixed(1)}% paid off</span>
-                <span className="text-brand-green">{CalculationService.formatCurrency(paidOffAmount)} paid off</span>
+              <div className="flex justify-between text-[11px] mb-1 gap-2">
+                {balanceIncreased ? (
+                  <>
+                    <span className="text-brand-gray">0.0% paid off</span>
+                    <span className="text-brand-orange text-right">
+                      Balance increased {CalculationService.formatCurrency(increaseAmount)} since starting
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-brand-gray">{progress.toFixed(1)}% paid off</span>
+                    <span className="text-brand-green">{CalculationService.formatCurrency(paidOffAmount)} paid off</span>
+                  </>
+                )}
               </div>
               <div className="w-full bg-brand-gray-border rounded-full h-1.5 overflow-hidden">
                 <div
                   className="h-full bg-brand-orange rounded-full transition-all"
-                  style={{ width: `${Math.min(progress, 100)}%` }}
+                  style={{ width: `${Math.min(Math.max(progress, 0), 100)}%` }}
                 />
               </div>
             </div>

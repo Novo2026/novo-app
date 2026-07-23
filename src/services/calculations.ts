@@ -223,10 +223,12 @@ export const CalculationService = {
     // Total interest paid across all payments
     const totalInterestPaid = unifiedPayments.reduce((sum, p) => sum + p.interestCharged, 0);
 
-    // For progress calculation, use actual eliminated vs total starting
-    const totalPaidOff = totalStartingBalance - totalCurrentBalance;
+    // For progress calculation, use actual eliminated vs total starting.
+    // Floor at 0 when aggregate current exceeds starting (e.g. reused credit cards).
+    const rawPaidOff = totalStartingBalance - totalCurrentBalance;
+    const totalPaidOff = Math.max(0, rawPaidOff);
     const progressPercentage = totalStartingBalance > 0
-      ? (totalPaidOff / totalStartingBalance) * 100
+      ? Math.min(100, Math.max(0, (rawPaidOff / totalStartingBalance) * 100))
       : 0;
 
     const activeDebts = debts.filter(d => !d.isPaidOff);

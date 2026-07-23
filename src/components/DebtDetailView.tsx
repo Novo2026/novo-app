@@ -12,6 +12,7 @@ import {
   hasProjectedPayoffMetadata,
   isInstallmentLoanCategory,
 } from '../utils/installmentLoan';
+import { getDebtPaydownDisplay } from '../utils/debtProgressDisplay';
 import type { Debt, Transaction, UnifiedPayment } from '../types';
 
 interface DebtDetailViewProps {
@@ -131,8 +132,12 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
 
   const transactions = getMergedPaymentHistory(debt.id);
 
-  const paidOff = debt.startingBalance - debt.currentBalance;
-  const progress = (paidOff / debt.startingBalance) * 100;
+  const {
+    balanceIncreased,
+    increaseAmount,
+    paidOffAmount: paidOff,
+    progressPercent: progress,
+  } = getDebtPaydownDisplay(debt.startingBalance, debt.currentBalance);
 
   const chartData = [
     { date: 'Start', balance: debt.startingBalance },
@@ -253,24 +258,38 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-600 mb-1">Amount Paid Off</p>
-            <p className="text-xl font-bold text-brand-green">
-              {CalculationService.formatCurrency(paidOff)}
+            <p className="text-sm text-gray-600 mb-1">
+              {balanceIncreased ? 'Balance Change' : 'Amount Paid Off'}
             </p>
+            {balanceIncreased ? (
+              <p className="text-xl font-bold text-brand-orange">
+                +{CalculationService.formatCurrency(increaseAmount)}
+              </p>
+            ) : (
+              <p className="text-xl font-bold text-brand-green">
+                {CalculationService.formatCurrency(paidOff)}
+              </p>
+            )}
           </div>
           <div>
             <p className="text-sm text-gray-600 mb-1">Progress</p>
-            <p className="text-xl font-bold text-brand-blue">
-              {progress.toFixed(1)}%
+            <p className={`text-xl font-bold ${balanceIncreased ? 'text-brand-orange' : 'text-brand-blue'}`}>
+              {balanceIncreased ? '0.0%' : `${progress.toFixed(1)}%`}
             </p>
           </div>
         </div>
+
+        {balanceIncreased && (
+          <p className="text-sm text-brand-orange mb-3">
+            Balance increased {CalculationService.formatCurrency(increaseAmount)} since starting
+          </p>
+        )}
 
         <div className="mb-4">
           <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
             <div
               className={`h-full rounded-full ${debt.isPaidOff ? 'bg-brand-green' : 'bg-brand-blue'}`}
-              style={{ width: `${Math.min(progress, 100)}%` }}
+              style={{ width: `${Math.min(Math.max(progress, 0), 100)}%` }}
             />
           </div>
         </div>

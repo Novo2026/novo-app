@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, CheckCircle, AlertTriangle, CreditCard as Edit2, CreditCard, Home, FileText } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
+import { getDebtPaydownDisplay } from '../utils/debtProgressDisplay';
 import CelebrationModal from './CelebrationModal';
 import { MILESTONE_CELEBRATIONS_DISABLED } from '../utils/milestoneEngine';
 import EditDebtModal from './EditDebtModal';
@@ -38,6 +39,8 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
     newBalance: number;
     principalPaid: number;
     progress: number;
+    balanceIncreased: boolean;
+    increaseAmount: number;
     isPaidOff: boolean;
     freedPayment: number;
     totalDebtEliminated: number;
@@ -216,8 +219,8 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
       localStorage.setItem('novo_heloc_transactions', JSON.stringify(helocTransactions));
     }
 
-    const paidOff = debt.startingBalance - calculation.newBalance;
-    const progress = (paidOff / debt.startingBalance) * 100;
+    const paydown = getDebtPaydownDisplay(debt.startingBalance, calculation.newBalance);
+    const progress = paydown.progressPercent;
 
     let previousCashFlow: number | undefined;
     if (isPaidOff) {
@@ -240,6 +243,8 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
       newBalance: calculation.newBalance,
       principalPaid: calculation.principalPaid,
       progress,
+      balanceIncreased: paydown.balanceIncreased,
+      increaseAmount: paydown.increaseAmount,
       isPaidOff,
       freedPayment: debt.minimumPayment,
       totalDebtEliminated: debt.startingBalance,
@@ -358,7 +363,13 @@ export default function LogPaymentModal({ preselectedDebtId, preselectedAmount, 
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Progress:</span>
-                <span className="font-semibold text-brand-blue">{calculationResult.progress.toFixed(1)}% paid off</span>
+                {calculationResult.balanceIncreased ? (
+                  <span className="font-semibold text-brand-orange text-right">
+                    Balance increased {CalculationService.formatCurrency(calculationResult.increaseAmount)} since starting
+                  </span>
+                ) : (
+                  <span className="font-semibold text-brand-blue">{calculationResult.progress.toFixed(1)}% paid off</span>
+                )}
               </div>
             </div>
           </div>
