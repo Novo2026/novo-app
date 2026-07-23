@@ -11,8 +11,9 @@ const JS_CSS_PATTERN = /\.(js|css)$/;
 const HASHED_ASSET_PATTERN = /-[A-Za-z0-9_-]{8,}\.[a-z0-9]+$/i;
 
 self.addEventListener('install', (event) => {
+  // Do NOT call skipWaiting() here — that raced the in-page "New version" banner.
+  // Activation waits until the user clicks reload (SKIP_WAITING message below).
   console.log('[NOVO SW] Installing version:', CACHE_VERSION);
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
