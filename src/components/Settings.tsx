@@ -19,6 +19,7 @@ import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import { assembleNovoReportPayload } from '../utils/novoReportData';
 import { buildNovoFullReportHtml, printHtmlDocument } from '../utils/novoPrintReport';
+import { confirmFinancialProfileSaveIfNeeded } from '../utils/financialProfileSave';
 import LearnHELOCModal from './LearnHELOCModal';
 import HelocSuccessModal from './HelocSuccessModal';
 import { clearMilestoneHistory } from '../utils/milestoneEngine';
@@ -202,6 +203,10 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
   };
 
   const handleSaveFinancialProfile = () => {
+    if (!confirmFinancialProfileSaveIfNeeded(financialProfile)) {
+      return;
+    }
+
     StorageService.saveFinancialProfile(financialProfile);
     setShowFinancialSuccess(true);
     onDataUpdate();

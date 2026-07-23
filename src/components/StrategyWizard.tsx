@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, Calculator, AlertTriangle } from 'lucide-react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
+import { confirmFinancialProfileSaveIfNeeded } from '../utils/financialProfileSave';
 import ChunkingReadinessQuiz from './ChunkingReadinessQuiz';
 import type { FinancialProfile, HomeEquity, StrategyResult } from '../types';
 
@@ -129,6 +130,10 @@ export default function StrategyWizard({ onComplete, onCancel }: StrategyWizardP
 
   const handleNext = async () => {
     if (step === 1) {
+      if (!confirmFinancialProfileSaveIfNeeded(profile)) {
+        return;
+      }
+
       StorageService.saveFinancialProfile(profile);
       await Promise.resolve();
       const savedProfile = StorageService.getFinancialProfile();
