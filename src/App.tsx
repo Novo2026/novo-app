@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { Home, CreditCard, TrendingUp, BarChart3, Settings as SettingsIcon, Wallet, PiggyBank, MessageCircle, CheckCircle, X, Menu, Building2, LogOut, CalendarClock, Sliders } from 'lucide-react';
+import { Home, CreditCard, TrendingUp, BarChart3, Settings as SettingsIcon, Wallet, PiggyBank, MessageCircle, CheckCircle, X, Menu, Building2, LogOut, CalendarClock, Sliders, ChevronLeft, ChevronRight } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import MyDebts from './components/MyDebts';
 import PaymentStrategies from './components/PaymentStrategies';
@@ -55,6 +55,50 @@ function App() {
   });
   const [scrollToDebtId, setScrollToDebtId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const desktopNavScrollRef = useRef<HTMLDivElement>(null);
+  const [desktopNavCanScrollLeft, setDesktopNavCanScrollLeft] = useState(false);
+  const [desktopNavCanScrollRight, setDesktopNavCanScrollRight] = useState(false);
+
+  const updateDesktopNavScrollAffordances = () => {
+    const el = desktopNavScrollRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const maxScroll = scrollWidth - clientWidth;
+    setDesktopNavCanScrollLeft(scrollLeft > 2);
+    setDesktopNavCanScrollRight(maxScroll > 2 && scrollLeft < maxScroll - 2);
+  };
+
+  const scrollDesktopNav = (direction: 'left' | 'right') => {
+    const el = desktopNavScrollRef.current;
+    if (!el) return;
+    const amount = Math.min(280, Math.max(160, el.clientWidth * 0.45));
+    el.scrollBy({ left: direction === 'left' ? -amount : amount, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    const el = desktopNavScrollRef.current;
+    if (!el) return;
+
+    updateDesktopNavScrollAffordances();
+    const onScroll = () => updateDesktopNavScrollAffordances();
+    el.addEventListener('scroll', onScroll, { passive: true });
+
+    const resizeObserver = new ResizeObserver(() => updateDesktopNavScrollAffordances());
+    resizeObserver.observe(el);
+    window.addEventListener('resize', updateDesktopNavScrollAffordances);
+
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateDesktopNavScrollAffordances);
+    };
+  }, [featurePreferences.helocEnabled, featurePreferences.checkingEnabled]);
+
+  useEffect(() => {
+    // Recheck after tab strip content / sticky layout settles
+    const id = window.requestAnimationFrame(() => updateDesktopNavScrollAffordances());
+    return () => window.cancelAnimationFrame(id);
+  }, [currentSection, featurePreferences.helocEnabled, featurePreferences.checkingEnabled]);
 
   useEffect(() => {
     const {
@@ -693,8 +737,60 @@ function App() {
         }`}
         style={currentSection === 'tracker' ? undefined : { boxShadow: '0 1px 0 rgba(232,216,196,0.8)' }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex overflow-x-auto">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {desktopNavCanScrollLeft && (
+            <>
+              <div
+                className="pointer-events-none absolute left-0 top-0 bottom-0 z-[1] w-10 sm:w-12"
+                style={{
+                  background:
+                    currentSection === 'tracker'
+                      ? 'linear-gradient(to right, #ffffff 20%, transparent)'
+                      : 'linear-gradient(to right, #FDF6EE 20%, transparent)',
+                }}
+                aria-hidden="true"
+              />
+              <button
+                type="button"
+                onClick={() => scrollDesktopNav('left')}
+                aria-label="Scroll navigation left"
+                className={`absolute left-1 sm:left-2 top-1/2 z-[2] -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition-colors ${
+                  currentSection === 'tracker'
+                    ? 'border-brand-gray-border bg-white text-brand-navy hover:bg-brand-cream'
+                    : 'border-brand-cream-border bg-white/95 text-brand-navy hover:bg-white'
+                }`}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            </>
+          )}
+          {desktopNavCanScrollRight && (
+            <>
+              <div
+                className="pointer-events-none absolute right-0 top-0 bottom-0 z-[1] w-10 sm:w-12"
+                style={{
+                  background:
+                    currentSection === 'tracker'
+                      ? 'linear-gradient(to left, #ffffff 20%, transparent)'
+                      : 'linear-gradient(to left, #FDF6EE 20%, transparent)',
+                }}
+                aria-hidden="true"
+              />
+              <button
+                type="button"
+                onClick={() => scrollDesktopNav('right')}
+                aria-label="Scroll navigation right"
+                className={`absolute right-1 sm:right-2 top-1/2 z-[2] -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition-colors ${
+                  currentSection === 'tracker'
+                    ? 'border-brand-gray-border bg-white text-brand-navy hover:bg-brand-cream'
+                    : 'border-brand-cream-border bg-white/95 text-brand-navy hover:bg-white'
+                }`}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </>
+          )}
+          <div ref={desktopNavScrollRef} className="desktop-nav-scroll flex overflow-x-auto">
             <button
               onClick={() => setCurrentSection('dashboard')}
               className={`flex items-center space-x-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${

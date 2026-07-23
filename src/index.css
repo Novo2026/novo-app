@@ -156,6 +156,26 @@
   ::-webkit-scrollbar-thumb { background: rgba(30,58,95,0.15); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: rgba(30,58,95,0.25); }
 
+  /* Desktop tab strip only — stronger affordance when tabs overflow */
+  .desktop-nav-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(30, 58, 95, 0.45) rgba(232, 216, 196, 0.55);
+  }
+  .desktop-nav-scroll::-webkit-scrollbar {
+    height: 8px;
+  }
+  .desktop-nav-scroll::-webkit-scrollbar-track {
+    background: rgba(232, 216, 196, 0.55);
+    border-radius: 4px;
+  }
+  .desktop-nav-scroll::-webkit-scrollbar-thumb {
+    background: rgba(30, 58, 95, 0.45);
+    border-radius: 4px;
+  }
+  .desktop-nav-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(30, 58, 95, 0.6);
+  }
+
   /* Slider */
   input[type="range"].slider {
     @apply appearance-none bg-transparent cursor-pointer;
