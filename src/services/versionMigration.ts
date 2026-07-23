@@ -13,6 +13,10 @@ const PROTECTED_PREFIXES = ['sb-'];
 /**
  * UI, coaching, and calculation-cache keys cleared when the stored app version
  * is older than APP_VERSION. User financial data is intentionally excluded.
+ *
+ * Durable Setup Guide progress is NOT cleared here — treat like financial data:
+ * novo_start_here_dismissed, novo_smarter_payments_visited,
+ * novo_first_chat_completed, novo_install_date.
  */
 const MIGRATION_CLEAR_KEYS = [
   'novo_proactive_messages',
@@ -21,9 +25,6 @@ const MIGRATION_CLEAR_KEYS = [
   'novo_ben_tasks',
   'novo_strategy_calc_hash',
   'novo_data_hash',
-  'novo_start_here_dismissed',
-  'novo_smarter_payments_visited',
-  'novo_first_chat_completed',
   'askNovoClicked',
   'trackerTabNewSeen',
   'menuOpenCount',
@@ -32,7 +33,6 @@ const MIGRATION_CLEAR_KEYS = [
   'chunkingQuizPassed',
   'novo_demo_mode',
   'lastVisit',
-  'novo_install_date',
 ];
 
 function parseVersion(version: string): number[] {
