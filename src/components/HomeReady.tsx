@@ -11,6 +11,7 @@ import {
   Lightbulb,
   AlertTriangle,
   BadgeCheck,
+  Info,
 } from 'lucide-react';
 import type { Debt } from '../types';
 import { StorageService } from '../services/storage';
@@ -325,30 +326,31 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
     ? ((proposedMortgage + monthlyDebtMinimums) / grossMonthlyIncome) * 100
     : null;
 
-  const headerSubtitle = ownsHome
-    ? 'Manage and optimize your mortgage'
-    : 'Your path from debt freedom to homeownership';
+  const showReadinessCard =
+    !ownsHome && !!result && hasFinancialProfile && grossMonthlyIncome > 0 && !!readiness;
+  const showSupportingAnalysis =
+    !!canComputeDti || ownsHome || showReadinessCard;
 
   return (
     <div className="bg-brand-gray-light min-h-screen">
-      <div className="bg-brand-navy py-3 px-5">
+      <div className="bg-brand-navy py-4 px-5">
         <div className="max-w-3xl mx-auto">
-          <h1 className="text-white text-lg font-medium leading-tight">Home Ready</h1>
-          <p className="text-white/65 text-xs mt-0.5">{headerSubtitle}</p>
+          <div className="flex flex-wrap items-center gap-2 mb-1.5">
+            <span className="inline-flex items-center gap-1 rounded-full bg-white/10 border border-white/20 px-2.5 py-0.5 text-[10px] font-medium tracking-wide text-white/80 uppercase">
+              <Home className="w-3 h-3" />
+              Home Ready
+            </span>
+          </div>
+          <h1 className="text-white text-xl sm:text-2xl font-semibold leading-tight">
+            Mortgage Payment Planner
+          </h1>
+          <p className="text-white/70 text-[13px] mt-1.5 max-w-xl leading-relaxed">
+            See what a home price, rate, or scenario could mean for your monthly payment.
+          </p>
         </div>
       </div>
 
       <div className="max-w-3xl mx-auto px-5 py-6 space-y-5 pb-12">
-        {!ownsHome && (
-          <div className="bg-brand-cream border-l-4 border-brand-orange rounded-lg p-4 flex items-start gap-3">
-            <Home className="w-5 h-5 text-brand-orange shrink-0 mt-0.5" />
-            <p className="text-[13px] text-brand-navy leading-relaxed">
-              Use this calculator to see what a home would cost monthly — and whether your current financial
-              position makes you ready to buy.
-            </p>
-          </div>
-        )}
-
         {!hasFinancialProfile && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
             <div className="flex gap-3">
@@ -391,148 +393,179 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
           </div>
         )}
 
-        <div
-          id="mortgage-calculator"
-          className="bg-white border border-brand-gray-border rounded-lg border-t-[3px] border-t-brand-navy shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-5"
-        >
-          <div className="flex items-center gap-2 mb-5">
-            <Calculator className="w-4 h-4 text-brand-orange" />
-            <h2 className="text-sm font-medium text-brand-navy">Mortgage Payment Calculator</h2>
+        {/* Primary focus: calculator inputs + estimated payment */}
+        <section className="space-y-4" aria-label="Mortgage payment planner">
+          <div
+            id="mortgage-calculator"
+            className="bg-white border border-brand-gray-border rounded-xl border-t-[3px] border-t-brand-navy shadow-[0_4px_16px_rgba(0,0,0,0.1)] p-5 sm:p-6"
+          >
+            <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 mb-5 flex items-start gap-3">
+              <Info className="w-5 h-5 text-sky-700 shrink-0 mt-0.5" />
+              <p className="text-[13px] text-sky-950 leading-relaxed font-medium">
+                This is a planning estimate to help you explore scenarios — not a loan quote. For real numbers on
+                your situation, reach out to Ben.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 mb-5">
+              <Calculator className="w-5 h-5 text-brand-orange" />
+              <h2 className="text-base font-semibold text-brand-navy">Scenario inputs</h2>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field
+                  label="Home Price"
+                  value={homePrice}
+                  onChange={setHomePrice}
+                  prefix="$"
+                  hint="What price range are you considering?"
+                />
+                <div>
+                  <Field label="Down Payment" value={downPayment} onChange={setDownPayment} prefix="$" />
+                  {result && (
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      <p className="text-[11px] text-brand-gray">{downPct}% down</p>
+                      {result.downPct < 20 && (
+                        <span className="inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                          PMI applies
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Interest Rate" value={rate} onChange={setRate} suffix="%" hint="Current avg ~6.75%" />
+                <div>
+                  <label className="block text-xs font-medium text-brand-gray mb-1.5">Loan Term</label>
+                  <select
+                    value={term}
+                    onChange={(e) => setTerm(e.target.value)}
+                    className="w-full border border-brand-gray-border rounded-lg py-2.5 px-3 text-sm text-brand-navy bg-white focus:outline-none focus:border-brand-navy transition"
+                  >
+                    <option value="30">30 years</option>
+                    <option value="20">20 years</option>
+                    <option value="15">15 years</option>
+                    <option value="10">10 years</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-brand-gray mb-1.5">Credit score range</label>
+                <p className="text-[11px] text-brand-gray mb-1">Used with LTV to estimate PMI (not a hard pull).</p>
+                <select
+                  value={creditScoreRange}
+                  onChange={(e) => setCreditScoreRange(e.target.value as CreditScoreRange)}
+                  className="w-full border border-brand-gray-border rounded-lg py-2.5 px-3 text-sm text-brand-navy bg-white focus:outline-none focus:border-brand-navy transition"
+                >
+                  {CREDIT_SCORE_RANGE_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center gap-1.5 text-xs text-brand-blue font-medium hover:underline"
+              >
+                {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                {showAdvanced ? 'Hide' : 'Add'} taxes & insurance
+              </button>
+
+              {showAdvanced && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                  <Field
+                    label="Annual Property Tax"
+                    value={annualTax}
+                    onChange={setAnnualTax}
+                    prefix="$"
+                    hint="Check county auditor site"
+                  />
+                  <Field
+                    label="Annual Home Insurance"
+                    value={annualIns}
+                    onChange={setAnnualIns}
+                    prefix="$"
+                    hint="Avg ~$1,200/yr in Ohio"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field
-                label="Home Price"
-                value={homePrice}
-                onChange={setHomePrice}
-                prefix="$"
-                hint="What price range are you considering?"
-              />
-              <div>
-                <Field label="Down Payment" value={downPayment} onChange={setDownPayment} prefix="$" />
-                {result && (
-                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                    <p className="text-[11px] text-brand-gray">{downPct}% down</p>
-                    {result.downPct < 20 && (
-                      <span className="inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                        PMI applies
-                      </span>
+          {result && (
+            <div className="bg-white border border-brand-gray-border rounded-xl border-t-[3px] border-t-brand-orange shadow-[0_4px_16px_rgba(0,0,0,0.1)] p-5 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <TrendingUp className="w-5 h-5 text-brand-orange" />
+                <h2 className="text-base font-semibold text-brand-navy">Your Estimated Payment</h2>
+              </div>
+
+              <div className="space-y-1">
+                <ResultRow label="Estimated Monthly Payment" value={fmt(result.monthlyPayment)} highlight />
+                <ResultRow label="Loan Amount" value={fmt(result.loanAmount)} />
+                <ResultRow label="Principal & Interest" value={fmt(result.principalAndInterest)} />
+
+                <button
+                  type="button"
+                  onClick={() => setShowBreakdown(!showBreakdown)}
+                  className="flex items-center gap-1.5 text-xs text-brand-blue font-medium hover:underline pt-2"
+                >
+                  {showBreakdown ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  {showBreakdown ? 'Hide' : 'Show'} full breakdown
+                </button>
+
+                {showBreakdown && (
+                  <div className="pt-1">
+                    <ResultRow label="Monthly Property Tax" value={fmt(result.monthlyTax)} />
+                    <ResultRow label="Monthly Insurance" value={fmt(result.monthlyInsurance)} />
+                    {result.monthlyPMI > 0 && (
+                      <>
+                        <ResultRow
+                          label={`PMI (est. · ${result.pmiAnnualPercent.toFixed(2)}%/yr · LTV ${result.ltvPercent.toFixed(1)}%)`}
+                          value={fmt(result.monthlyPMI)}
+                        />
+                        <p className="text-[11px] text-brand-gray leading-relaxed py-2">
+                          PMI estimate based on credit range and LTV. Actual rate varies by lender and PMI provider.
+                        </p>
+                      </>
                     )}
+                    <ResultRow label="Total Interest Paid" value={fmt(result.totalInterest)} />
+                    <ResultRow label="Total Cost Over Loan" value={fmt(result.totalCost)} />
+                  </div>
+                )}
+
+                {result.downPct < 20 && (
+                  <div className="bg-amber-50 border border-amber-200 border-l-4 border-amber-400 rounded-lg p-3 mt-3 flex items-start gap-2">
+                    <Lightbulb className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-xs text-brand-navy">
+                      Put 20% down ({fmt(parseDollar(homePrice) * 0.2)}) to eliminate PMI and save{' '}
+                      {fmt(result.monthlyPMI)}/mo.
+                    </p>
                   </div>
                 )}
               </div>
             </div>
+          )}
+        </section>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Interest Rate" value={rate} onChange={setRate} suffix="%" hint="Current avg ~6.75%" />
-              <div>
-                <label className="block text-xs font-medium text-brand-gray mb-1.5">Loan Term</label>
-                <select
-                  value={term}
-                  onChange={(e) => setTerm(e.target.value)}
-                  className="w-full border border-brand-gray-border rounded-lg py-2.5 px-3 text-sm text-brand-navy bg-white focus:outline-none focus:border-brand-navy transition"
-                >
-                  <option value="30">30 years</option>
-                  <option value="20">20 years</option>
-                  <option value="15">15 years</option>
-                  <option value="10">10 years</option>
-                </select>
-              </div>
-            </div>
+        {showSupportingAnalysis && (
+          <div className="pt-2 border-t border-brand-gray-border space-y-4">
+            <p className="text-[11px] uppercase tracking-wide text-brand-gray font-medium pt-1">
+              Supporting analysis
+            </p>
 
-            <div>
-              <label className="block text-xs font-medium text-brand-gray mb-1.5">Credit score range</label>
-              <p className="text-[11px] text-brand-gray mb-1">Used with LTV to estimate PMI (not a hard pull).</p>
-              <select
-                value={creditScoreRange}
-                onChange={(e) => setCreditScoreRange(e.target.value as CreditScoreRange)}
-                className="w-full border border-brand-gray-border rounded-lg py-2.5 px-3 text-sm text-brand-navy bg-white focus:outline-none focus:border-brand-navy transition"
-              >
-                {CREDIT_SCORE_RANGE_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center gap-1.5 text-xs text-brand-blue font-medium hover:underline"
-            >
-              {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              {showAdvanced ? 'Hide' : 'Add'} taxes & insurance
-            </button>
-
-            {showAdvanced && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                <Field
-                  label="Annual Property Tax"
-                  value={annualTax}
-                  onChange={setAnnualTax}
-                  prefix="$"
-                  hint="Check county auditor site"
-                />
-                <Field
-                  label="Annual Home Insurance"
-                  value={annualIns}
-                  onChange={setAnnualIns}
-                  prefix="$"
-                  hint="Avg ~$1,200/yr in Ohio"
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {result && (
-          <div className="bg-white border border-brand-gray-border rounded-lg p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="w-4 h-4 text-brand-orange" />
-              <h2 className="text-sm font-medium text-brand-navy">Your Estimated Payment</h2>
-            </div>
-
-            <div className="space-y-1">
-              <ResultRow label="Estimated Monthly Payment" value={fmt(result.monthlyPayment)} highlight />
-              <ResultRow label="Loan Amount" value={fmt(result.loanAmount)} />
-              <ResultRow label="Principal & Interest" value={fmt(result.principalAndInterest)} />
-
-              <button
-                type="button"
-                onClick={() => setShowBreakdown(!showBreakdown)}
-                className="flex items-center gap-1.5 text-xs text-brand-blue font-medium hover:underline pt-2"
-              >
-                {showBreakdown ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                {showBreakdown ? 'Hide' : 'Show'} full breakdown
-              </button>
-
-              {showBreakdown && (
-                <div className="pt-1">
-                  <ResultRow label="Monthly Property Tax" value={fmt(result.monthlyTax)} />
-                  <ResultRow label="Monthly Insurance" value={fmt(result.monthlyInsurance)} />
-                  {result.monthlyPMI > 0 && (
-                    <>
-                      <ResultRow
-                        label={`PMI (est. · ${result.pmiAnnualPercent.toFixed(2)}%/yr · LTV ${result.ltvPercent.toFixed(1)}%)`}
-                        value={fmt(result.monthlyPMI)}
-                      />
-                      <p className="text-[11px] text-brand-gray leading-relaxed py-2">
-                        PMI estimate based on credit range and LTV. Actual rate varies by lender and PMI provider.
-                      </p>
-                    </>
-                  )}
-                  <ResultRow label="Total Interest Paid" value={fmt(result.totalInterest)} />
-                  <ResultRow label="Total Cost Over Loan" value={fmt(result.totalCost)} />
-                </div>
-              )}
-
-              {canComputeDti && frontEndDti !== null && backEndDti !== null && (
-                <div className="mt-4 pt-4 border-t border-brand-gray-border space-y-1">
-                  <p className="text-[11px] uppercase text-brand-gray tracking-wide mb-2">
-                    Debt-to-Income (Gross)
-                  </p>
+            {canComputeDti && frontEndDti !== null && backEndDti !== null && (
+              <div className="bg-brand-gray-light/80 border border-brand-gray-border rounded-lg p-4 sm:p-5">
+                <p className="text-[11px] uppercase text-brand-gray tracking-wide mb-3">
+                  Debt-to-Income (Gross)
+                </p>
+                <div className="space-y-1">
                   <ResultRow label="Current monthly debt obligations (minimums)" value={fmt(monthlyDebtMinimums)} />
                   <ResultRow label="Proposed total housing payment (PITI + PMI)" value={fmt(proposedMortgage)} />
                   <ResultRow label="Front-end DTI (housing ÷ gross income)" value={`${frontEndDti.toFixed(1)}%`} />
@@ -545,159 +578,149 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
                     depends on the lender.
                   </p>
                 </div>
-              )}
-
-              {result.downPct < 20 && (
-                <div className="bg-amber-50 border border-amber-200 border-l-4 border-amber-400 rounded-lg p-3 mt-3 flex items-start gap-2">
-                  <Lightbulb className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-xs text-brand-navy">
-                    Put 20% down ({fmt(parseDollar(homePrice) * 0.2)}) to eliminate PMI and save{' '}
-                    {fmt(result.monthlyPMI)}/mo.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {ownsHome ? (
-          <>
-            <div className="bg-white border border-brand-gray-border rounded-lg border-t-[3px] border-t-brand-blue shadow-[0_2px_8px_rgba(0,0,0,0.08)] p-5">
-              <div className="flex items-start gap-3 mb-4">
-                <BadgeCheck className="w-5 h-5 text-brand-blue shrink-0 mt-0.5" />
-                <div>
-                  <h2 className="text-[15px] font-medium text-brand-navy">You&apos;re already a homeowner</h2>
-                  <p className="text-[13px] text-brand-gray mt-1 leading-relaxed">
-                    Use the calculator above to explore refinance scenarios or plan your next property purchase.
-                  </p>
-                </div>
               </div>
+            )}
 
-              {mortgageDebts.length > 0 ? (
-                <div className="space-y-3">
-                  {mortgageDebts.map((debt) => (
+            {ownsHome ? (
+              <>
+                <div className="bg-white border border-brand-gray-border rounded-lg p-4 sm:p-5">
+                  <div className="flex items-start gap-3 mb-4">
+                    <BadgeCheck className="w-4 h-4 text-brand-blue shrink-0 mt-0.5" />
+                    <div>
+                      <h2 className="text-sm font-medium text-brand-navy">You&apos;re already a homeowner</h2>
+                      <p className="text-xs text-brand-gray mt-1 leading-relaxed">
+                        Optional: use the planner above to explore refinance scenarios or plan your next purchase.
+                      </p>
+                    </div>
+                  </div>
+
+                  {mortgageDebts.length > 0 ? (
+                    <div className="space-y-3">
+                      {mortgageDebts.map((debt) => (
+                        <div
+                          key={debt.id}
+                          className="flex flex-wrap items-center justify-between gap-3 py-3 border-b border-brand-gray-border last:border-b-0"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-[13px] font-medium text-brand-navy">{debt.accountName}</p>
+                            <p className="text-xs text-brand-gray mt-0.5">
+                              Balance: {fmt(debt.currentBalance)}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-brand-blue border border-brand-blue">
+                              {debt.interestRate.toFixed(2)}%
+                            </span>
+                            <a
+                              href="#mortgage-calculator"
+                              className="text-xs font-medium text-brand-blue hover:underline"
+                            >
+                              Refi Analysis →
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-brand-gray">
+                      Add your mortgage in My Debts to see property details here.
+                    </p>
+                  )}
+                </div>
+
+                {highRateMortgages.map((debt) => {
+                  const monthlySavings = estimateRefiMonthlySavings(debt);
+                  return (
                     <div
-                      key={debt.id}
-                      className="flex flex-wrap items-center justify-between gap-3 py-3 border-b border-brand-gray-border last:border-b-0"
+                      key={`refi-${debt.id}`}
+                      className="bg-amber-50 border border-amber-200 border-l-4 border-amber-400 rounded-lg p-4"
                     >
-                      <div className="min-w-0">
-                        <p className="text-[13px] font-medium text-brand-navy">{debt.accountName}</p>
-                        <p className="text-xs text-brand-gray mt-0.5">
-                          Balance: {fmt(debt.currentBalance)}
+                      <div className="flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="space-y-2">
+                          <p className="text-[13px] font-medium text-brand-navy">Refinance opportunity detected</p>
+                          <p className="text-xs text-brand-gray leading-relaxed">
+                            Your {debt.accountName} mortgage at {debt.interestRate.toFixed(2)}% may benefit from
+                            refinancing at current rates.
+                            {monthlySavings > 0 && (
+                              <> A lower rate could save you {fmt(monthlySavings)}/month.</>
+                            )}
+                          </p>
+                          <a
+                            href={STRATEGY_CALL_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={openBenBookingCalendar}
+                            className="inline-block text-xs font-medium text-brand-blue hover:underline"
+                          >
+                            Explore with Ben →
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            ) : (
+              showReadinessCard &&
+              readiness && (
+                <div className="bg-brand-gray-light/80 border border-brand-gray-border rounded-lg p-4 sm:p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <CheckCircle2 className="w-4 h-4 text-brand-orange" />
+                    <h2 className="text-sm font-medium text-brand-navy">Homebuyer Readiness Score</h2>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-[11px] text-brand-gray">Gross monthly income (from profile)</p>
+                        <p className="text-base font-medium text-brand-navy mt-0.5">{fmt(grossMonthlyIncome)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] text-brand-gray">Current debt minimums (active debts)</p>
+                        <p className="text-base font-medium text-brand-navy mt-0.5">{fmt(monthlyDebtMinimums)}</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[13px] text-brand-gray">Readiness Level</span>
+                        <span
+                          className={`inline-flex text-[13px] font-medium px-3 py-1 rounded-full ${readiness.badgeClass}`}
+                        >
+                          {readiness.displayLabel}
+                        </span>
+                      </div>
+
+                      <div className="w-full bg-brand-gray-border rounded-full h-2 mb-3 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{
+                            width: `${readiness.pct}%`,
+                            backgroundColor: readiness.barColor,
+                          }}
+                        />
+                      </div>
+
+                      <p className="text-[13px] text-brand-navy">{readiness.msg}</p>
+
+                      <div className="mt-3 space-y-1 text-xs text-brand-gray">
+                        <p>
+                          Front-end DTI:{' '}
+                          <span className="text-brand-navy font-medium">{readiness.frontDti.toFixed(1)}%</span>
+                          <span className="ml-1">(proposed housing ÷ gross)</span>
+                        </p>
+                        <p>
+                          Back-end DTI:{' '}
+                          <span className="text-brand-navy font-medium">{readiness.backDti.toFixed(1)}%</span>
+                          <span className="ml-1">(housing + existing minimums ÷ gross)</span>
                         </p>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className="inline-flex text-[10px] font-medium px-2 py-0.5 rounded-full bg-blue-50 text-brand-blue border border-brand-blue">
-                          {debt.interestRate.toFixed(2)}%
-                        </span>
-                        <a
-                          href="#mortgage-calculator"
-                          className="text-xs font-medium text-brand-blue hover:underline"
-                        >
-                          Refi Analysis →
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-brand-gray">
-                  Add your mortgage in My Debts to see property details here.
-                </p>
-              )}
-            </div>
-
-            {highRateMortgages.map((debt) => {
-              const monthlySavings = estimateRefiMonthlySavings(debt);
-              return (
-                <div
-                  key={`refi-${debt.id}`}
-                  className="bg-amber-50 border border-amber-200 border-l-4 border-amber-400 rounded-lg p-4"
-                >
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                    <div className="space-y-2">
-                      <p className="text-[13px] font-medium text-brand-navy">Refinance opportunity detected</p>
-                      <p className="text-xs text-brand-gray leading-relaxed">
-                        Your {debt.accountName} mortgage at {debt.interestRate.toFixed(2)}% may benefit from
-                        refinancing at current rates.
-                        {monthlySavings > 0 && (
-                          <> A lower rate could save you {fmt(monthlySavings)}/month.</>
-                        )}
-                      </p>
-                      <a
-                        href={STRATEGY_CALL_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={openBenBookingCalendar}
-                        className="inline-block text-xs font-medium text-brand-blue hover:underline"
-                      >
-                        Explore with Ben →
-                      </a>
                     </div>
                   </div>
                 </div>
-              );
-            })}
-          </>
-        ) : (
-          result &&
-          hasFinancialProfile &&
-          grossMonthlyIncome > 0 &&
-          readiness && (
-            <div className="bg-white border border-brand-gray-border rounded-lg p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <CheckCircle2 className="w-4 h-4 text-brand-orange" />
-                <h2 className="text-sm font-medium text-brand-navy">Homebuyer Readiness Score</h2>
-              </div>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-[11px] text-brand-gray">Gross monthly income (from profile)</p>
-                    <p className="text-base font-medium text-brand-navy mt-0.5">{fmt(grossMonthlyIncome)}</p>
-                  </div>
-                  <div>
-                    <p className="text-[11px] text-brand-gray">Current debt minimums (active debts)</p>
-                    <p className="text-base font-medium text-brand-navy mt-0.5">{fmt(monthlyDebtMinimums)}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[13px] text-brand-gray">Readiness Level</span>
-                    <span
-                      className={`inline-flex text-[13px] font-medium px-3 py-1 rounded-full ${readiness.badgeClass}`}
-                    >
-                      {readiness.displayLabel}
-                    </span>
-                  </div>
-
-                  <div className="w-full bg-brand-gray-border rounded-full h-2 mb-3 overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-700"
-                      style={{
-                        width: `${readiness.pct}%`,
-                        backgroundColor: readiness.barColor,
-                      }}
-                    />
-                  </div>
-
-                  <p className="text-[13px] text-brand-navy">{readiness.msg}</p>
-
-                  <div className="mt-3 space-y-1 text-xs text-brand-gray">
-                    <p>
-                      Front-end DTI: <span className="text-brand-navy font-medium">{readiness.frontDti.toFixed(1)}%</span>
-                      <span className="ml-1">(proposed housing ÷ gross)</span>
-                    </p>
-                    <p>
-                      Back-end DTI: <span className="text-brand-navy font-medium">{readiness.backDti.toFixed(1)}%</span>
-                      <span className="ml-1">(housing + existing minimums ÷ gross)</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
+              )
+            )}
+          </div>
         )}
 
         <div id="strategy-call" className="bg-brand-navy rounded-lg p-6 text-center">
