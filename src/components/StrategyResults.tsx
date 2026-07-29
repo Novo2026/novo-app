@@ -998,6 +998,21 @@ export default function StrategyResults({
         <div className="pt-4">
           <ResponsiveContainer width="100%" height={400}>
             <AreaChart data={chartData}>
+              <defs>
+                {colors.map((color, index) => (
+                  <linearGradient
+                    key={`payoffAreaGrad-${index}`}
+                    id={`payoffAreaGrad-${index}`}
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="0%" stopColor={color} stopOpacity={0.45} />
+                    <stop offset="100%" stopColor={color} stopOpacity={0.08} />
+                  </linearGradient>
+                ))}
+              </defs>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
               <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
@@ -1013,7 +1028,7 @@ export default function StrategyResults({
                   dataKey={debt.accountName}
                   stackId="1"
                   stroke={colors[index % colors.length]}
-                  fill={colors[index % colors.length]}
+                  fill={`url(#payoffAreaGrad-${index % colors.length})`}
                 />
               ))}
             </AreaChart>

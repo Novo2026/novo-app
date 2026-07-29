@@ -20,6 +20,7 @@ import {
 } from 'recharts';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
+import BrandProgressBar from './BrandProgressBar';
 import AddSavingsAccountModal from './AddSavingsAccountModal';
 import LogSavingsTransactionModal from './LogSavingsTransactionModal';
 import {
@@ -317,12 +318,7 @@ export default function SavingsTracker({
                             {CalculationService.formatCurrency(account.goalAmount)}
                           </span>
                         </div>
-                        <div className="w-full bg-brand-gray-border rounded-full h-1.5 overflow-hidden">
-                          <div
-                            className="bg-brand-green h-full rounded-full transition-all"
-                            style={{ width: `${Math.min(progress, 100)}%` }}
-                          />
-                        </div>
+                        <BrandProgressBar percent={progress} tone="green" size="sm" />
                       </div>
                     )}
 

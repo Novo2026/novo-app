@@ -4,13 +4,13 @@ import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import type { UnifiedPayment } from '../types';
 import {
-  LineChart,
-  Line,
   BarChart,
   Bar,
   PieChart,
   Pie,
   Cell,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -375,7 +375,17 @@ export default function ProgressReports({ onDataUpdate, onNavigateToDebt }: Prog
         <div className="bg-white border border-brand-gray-border rounded-lg p-5">
           <h3 className="text-sm font-medium text-brand-navy mb-4">Projected vs. actual progress</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={projectedData}>
+            <AreaChart data={projectedData}>
+              <defs>
+                <linearGradient id="progressProjectedAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgba(107,114,128,0.15)" />
+                  <stop offset="100%" stopColor="rgba(107,114,128,0)" />
+                </linearGradient>
+                <linearGradient id="progressActualAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgba(255,107,53,0.15)" />
+                  <stop offset="100%" stopColor="rgba(255,107,53,0)" />
+                </linearGradient>
+              </defs>
               <CartesianGrid stroke={CHART_GRID_STROKE} strokeDasharray="3 3" />
               <XAxis dataKey="month" tick={CHART_AXIS_TICK} axisLine={false} tickLine={false} />
               <YAxis
@@ -390,24 +400,26 @@ export default function ProgressReports({ onDataUpdate, onNavigateToDebt }: Prog
                 align="center"
                 wrapperStyle={{ fontSize: 11, paddingTop: 12 }}
               />
-              <Line
+              <Area
                 type="monotone"
                 dataKey="projected"
                 stroke={BRAND_GRAY}
                 strokeWidth={1.5}
                 strokeDasharray="6 4"
+                fill="url(#progressProjectedAreaGrad)"
                 dot={{ fill: BRAND_GRAY, r: 3 }}
                 name="Projected Balance"
               />
-              <Line
+              <Area
                 type="monotone"
                 dataKey="actual"
                 stroke={BRAND_ORANGE}
                 strokeWidth={2}
+                fill="url(#progressActualAreaGrad)"
                 dot={{ fill: BRAND_ORANGE, r: 3 }}
                 name="Actual Balance"
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       )}
@@ -417,6 +429,20 @@ export default function ProgressReports({ onDataUpdate, onNavigateToDebt }: Prog
           <h3 className="text-sm font-medium text-brand-navy mb-4">Monthly payments by source</h3>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={monthlyPaymentsArray}>
+              <defs>
+                <linearGradient id="progressBarNavyGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={BRAND_NAVY} stopOpacity={1} />
+                  <stop offset="100%" stopColor={BRAND_NAVY} stopOpacity={0.72} />
+                </linearGradient>
+                <linearGradient id="progressBarOrangeGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={BRAND_ORANGE} stopOpacity={1} />
+                  <stop offset="100%" stopColor={BRAND_ORANGE} stopOpacity={0.72} />
+                </linearGradient>
+                <linearGradient id="progressBarBlueGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={BRAND_BLUE} stopOpacity={1} />
+                  <stop offset="100%" stopColor={BRAND_BLUE} stopOpacity={0.72} />
+                </linearGradient>
+              </defs>
               <CartesianGrid stroke={CHART_GRID_STROKE} strokeDasharray="3 3" />
               <XAxis dataKey="month" tick={CHART_AXIS_TICK} axisLine={false} tickLine={false} />
               <YAxis
@@ -431,9 +457,9 @@ export default function ProgressReports({ onDataUpdate, onNavigateToDebt }: Prog
                 align="center"
                 wrapperStyle={{ fontSize: 11, paddingTop: 12 }}
               />
-              <Bar dataKey="checking" stackId="a" fill={BRAND_NAVY} name="Checking Register" />
-              <Bar dataKey="direct" stackId="a" fill={BRAND_ORANGE} name="Direct Payments" />
-              <Bar dataKey="heloc" stackId="a" fill={BRAND_BLUE} name="HELOC Chunks" />
+              <Bar dataKey="checking" stackId="a" fill="url(#progressBarNavyGrad)" name="Checking Register" />
+              <Bar dataKey="direct" stackId="a" fill="url(#progressBarOrangeGrad)" name="Direct Payments" />
+              <Bar dataKey="heloc" stackId="a" fill="url(#progressBarBlueGrad)" name="HELOC Chunks" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -445,6 +471,16 @@ export default function ProgressReports({ onDataUpdate, onNavigateToDebt }: Prog
           <div className="flex items-center justify-center">
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
+                <defs>
+                  <linearGradient id="progressPieRedGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={BRAND_RED} stopOpacity={1} />
+                    <stop offset="100%" stopColor={BRAND_RED} stopOpacity={0.75} />
+                  </linearGradient>
+                  <linearGradient id="progressPieNavyGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={BRAND_NAVY} stopOpacity={1} />
+                    <stop offset="100%" stopColor={BRAND_NAVY} stopOpacity={0.75} />
+                  </linearGradient>
+                </defs>
                 <Pie
                   data={interestVsPrincipalData}
                   cx="50%"
@@ -466,7 +502,14 @@ export default function ProgressReports({ onDataUpdate, onNavigateToDebt }: Prog
                   dataKey="value"
                 >
                   {interestVsPrincipalData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={
+                        entry.name === 'Principal Paid'
+                          ? 'url(#progressPieNavyGrad)'
+                          : 'url(#progressPieRedGrad)'
+                      }
+                    />
                   ))}
                 </Pie>
                 <Tooltip formatter={(value: number) => CalculationService.formatCurrency(value)} />
@@ -494,11 +537,17 @@ export default function ProgressReports({ onDataUpdate, onNavigateToDebt }: Prog
         <div className="bg-white border border-brand-gray-border rounded-lg p-5">
           <h3 className="text-sm font-medium text-brand-navy mb-4">HELOC balance over time</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={helocTransactions.map(t => ({
+            <AreaChart data={helocTransactions.map(t => ({
               date: new Date(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
               balance: t.balance,
               type: t.type,
             }))}>
+              <defs>
+                <linearGradient id="progressHelocAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgba(45,156,219,0.15)" />
+                  <stop offset="100%" stopColor="rgba(45,156,219,0)" />
+                </linearGradient>
+              </defs>
               <CartesianGrid stroke={CHART_GRID_STROKE} strokeDasharray="3 3" />
               <XAxis dataKey="date" tick={CHART_AXIS_TICK} axisLine={false} tickLine={false} />
               <YAxis
@@ -512,15 +561,16 @@ export default function ProgressReports({ onDataUpdate, onNavigateToDebt }: Prog
                 labelFormatter={(label) => `Date: ${label}`}
               />
               <Legend verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: 11, paddingTop: 12 }} />
-              <Line
+              <Area
                 type="stepAfter"
                 dataKey="balance"
                 stroke={BRAND_BLUE}
                 strokeWidth={2}
+                fill="url(#progressHelocAreaGrad)"
                 name="HELOC Balance"
                 dot={{ r: 3, fill: BRAND_BLUE }}
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
           <div className="mt-4 grid grid-cols-3 gap-4">
             <div className="text-center p-3 bg-blue-50 border border-brand-blue rounded-lg">

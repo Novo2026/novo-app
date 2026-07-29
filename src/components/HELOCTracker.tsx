@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
 import { TrendingUp, Plus, Download, CreditCard as Edit2, X, CreditCard, Wallet, PenLine, Link2, Zap } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
 import { getCurrentHelocBalance, getHelocCreditLimit, recalculateHelocBalances } from '../utils/helocTransactions';
 import { CheckingTracker } from './CheckingTracker';
 import Accordion from './Accordion';
+import BrandProgressBar from './BrandProgressBar';
 import ChunkingRecommendation from './ChunkingRecommendation';
 import ChunkingScenarioComparison from './ChunkingScenarioComparison';
 import ChunkingPlanCalculator from './ChunkingPlanCalculator';
@@ -280,12 +281,11 @@ export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
                 <span>{CalculationService.formatCurrency(currentBalance)} used</span>
                 <span>{CalculationService.formatCurrency(helocLimit)} limit</span>
               </div>
-              <div className="w-full bg-white/20 rounded-full h-3">
-                <div
-                  className="bg-[#F2C94C] h-3 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min((currentBalance / helocLimit) * 100, 100)}%` }}
-                />
-              </div>
+              <BrandProgressBar
+                percent={helocLimit > 0 ? (currentBalance / helocLimit) * 100 : 0}
+                tone="gold"
+                size="lg"
+              />
             </div>
 
             {currentBalance > 0 && (
@@ -460,13 +460,26 @@ export function HELOCTracker({ onDataUpdate }: { onDataUpdate?: () => void }) {
             >
               <div className="pt-4">
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={chartData}>
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="helocTrackerBalanceGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="rgba(45,156,219,0.15)" />
+                        <stop offset="100%" stopColor="rgba(45,156,219,0)" />
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
                     <Tooltip formatter={(value) => CalculationService.formatCurrency(value as number)} />
-                    <Line type="monotone" dataKey="balance" stroke="#2D9CDB" strokeWidth={2} />
-                  </LineChart>
+                    <Area
+                      type="monotone"
+                      dataKey="balance"
+                      stroke="#2D9CDB"
+                      strokeWidth={2}
+                      fill="url(#helocTrackerBalanceGrad)"
+                      dot={{ fill: '#2D9CDB', r: 3 }}
+                    />
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
             </Accordion>

@@ -18,6 +18,7 @@ import { CalculationService } from '../services/calculations';
 import AddDebtModal from './AddDebtModal';
 import AddChargeModal from './AddChargeModal';
 import DebtDetailView from './DebtDetailView';
+import BrandProgressBar from './BrandProgressBar';
 import EditDebtModal from './EditDebtModal';
 import BatchEntryModal from './BatchEntryModal';
 import RefinanceModal from './RefinanceModal';
@@ -616,12 +617,7 @@ export default function MyDebts({ onDataUpdate, scrollToDebtId, onScrollToDebtHa
                   {CalculationService.formatCurrency(paidOffAmount)} below setup
                 </span>
               </div>
-              <div className="w-full bg-brand-gray-border rounded-full h-1.5 overflow-hidden">
-                <div
-                  className="h-full bg-purple-500 rounded-full transition-all"
-                  style={{ width: `${Math.min(Math.max(progress, 0), 100)}%` }}
-                />
-              </div>
+              <BrandProgressBar percent={progress} tone="purple" size="sm" />
             </div>
           )}
 
@@ -758,12 +754,7 @@ export default function MyDebts({ onDataUpdate, scrollToDebtId, onScrollToDebtHa
                   </>
                 )}
               </div>
-              <div className="w-full bg-brand-gray-border rounded-full h-1.5 overflow-hidden">
-                <div
-                  className="h-full bg-brand-orange rounded-full transition-all"
-                  style={{ width: `${Math.min(Math.max(progress, 0), 100)}%` }}
-                />
-              </div>
+              <BrandProgressBar percent={progress} tone="orange" size="sm" />
             </div>
           )}
 

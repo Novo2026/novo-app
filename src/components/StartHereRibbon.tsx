@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { CheckCircle2, Circle, ChevronDown, ChevronUp, ArrowRight, X } from 'lucide-react';
 import { StorageService } from '../services/storage';
 
+import BrandProgressBar from './BrandProgressBar';
+
 interface StartHereStep {
   id: string;
   title: string;
@@ -168,12 +170,12 @@ export default function StartHereRibbon({ onNavigate, onOpenChat, userName }: St
         </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-white/70">{progressPercent}%</span>
-          <div className="h-1.5 w-20 bg-white/20 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-brand-orange rounded-full transition-all duration-500"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
+          <BrandProgressBar
+            percent={progressPercent}
+            tone="orange"
+            size="sm"
+            className="!w-20 !bg-white/20"
+          />
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </div>
       </button>

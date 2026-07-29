@@ -24,6 +24,7 @@ import LogPaymentModal from './LogPaymentModal';
 import EditPaymentModal from './EditPaymentModal';
 import EditDebtModal from './EditDebtModal';
 import StartHereRibbon from './StartHereRibbon';
+import BrandProgressBar from './BrandProgressBar';
 import FinancialHealthScore, { computeFinancialHealthScore } from './FinancialHealthScore';
 import MortgageBalanceModal from './MortgageBalanceModal';
 import {
@@ -820,12 +821,7 @@ export default function Dashboard({
                                 Open account
                               </span>
                             ) : (
-                              <div className="w-full bg-brand-gray-border rounded-full h-1 mt-1">
-                                <div
-                                  className="bg-brand-orange h-1 rounded-full transition-all"
-                                  style={{ width: `${Math.min(Math.max(percentage, 0), 100)}%` }}
-                                />
-                              </div>
+                              <BrandProgressBar percent={percentage} tone="orange" size="xs" />
                             )}
                           </div>
                           <div className="flex flex-col items-end gap-2 shrink-0">
@@ -1014,12 +1010,7 @@ export default function Dashboard({
                     <span>{dfProgressPercentage.toFixed(1)}% paid off</span>
                     <span>{CalculationService.formatCurrency(dfCurrentBalance)} remaining</span>
                   </div>
-                  <div className="w-full bg-brand-gray-border rounded-full h-2 overflow-hidden mb-3">
-                    <div
-                      className="h-full bg-brand-orange rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(dfProgressPercentage, 100)}%` }}
-                    />
-                  </div>
+                  <BrandProgressBar percent={dfProgressPercentage} tone="orange" size="md" className="mb-3" />
                   <p className="text-xs text-brand-gray mb-2">
                     {CalculationService.formatCurrency(dfCurrentBalance)} remaining of{' '}
                     {CalculationService.formatCurrency(dfStartingBalance)} starting
@@ -1079,12 +1070,7 @@ export default function Dashboard({
                             {CalculationService.formatCurrency(mortgage.currentBalance)} remaining
                           </span>
                         </div>
-                        <div className="w-full bg-brand-gray-border rounded-full h-2 overflow-hidden mb-2">
-                          <div
-                            className="h-full bg-brand-blue rounded-full transition-all duration-500"
-                            style={{ width: `${Math.min(Math.max(percentage, 0), 100)}%` }}
-                          />
-                        </div>
+                        <BrandProgressBar percent={percentage} tone="blue" size="md" className="mb-2" />
                         <p className="text-[11px] text-brand-gray mb-1">
                           Original: {formatOriginalAmountForDisplay(mortgage.startingBalance)} · Started:{' '}
                           {formatMortgageStartedDate(mortgage)}

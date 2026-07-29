@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import type { Debt } from '../types';
 import { StorageService } from '../services/storage';
+import BrandProgressBar from './BrandProgressBar';
 
 const fmt = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
@@ -691,15 +692,18 @@ export default function HomeReady({ onNavigateToSettings }: HomeReadyProps) {
                         </span>
                       </div>
 
-                      <div className="w-full bg-brand-gray-border rounded-full h-2 mb-3 overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-700"
-                          style={{
-                            width: `${readiness.pct}%`,
-                            backgroundColor: readiness.barColor,
-                          }}
-                        />
-                      </div>
+                    <BrandProgressBar
+                      percent={readiness.pct}
+                      tone={
+                        readiness.score === 'Strong' || readiness.score === 'Good'
+                          ? 'green'
+                          : readiness.score === 'Caution'
+                            ? 'orange'
+                            : 'orange'
+                      }
+                      size="md"
+                      className="mb-3"
+                    />
 
                       <p className="text-[13px] text-brand-navy">{readiness.msg}</p>
 

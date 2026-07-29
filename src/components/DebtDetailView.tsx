@@ -2,7 +2,7 @@ import { ArrowLeft, Download, RefreshCw, Home, Trash2, AlertTriangle } from 'luc
 import { useState } from 'react';
 import { StorageService } from '../services/storage';
 import { CalculationService } from '../services/calculations';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import {
   formatLoanStartDateForDisplay,
   formatLoanTermForDisplay,
@@ -13,6 +13,7 @@ import {
   isInstallmentLoanCategory,
 } from '../utils/installmentLoan';
 import { getDebtPaydownDisplay } from '../utils/debtProgressDisplay';
+import BrandProgressBar from './BrandProgressBar';
 import type { Debt, Transaction, UnifiedPayment } from '../types';
 
 interface DebtDetailViewProps {
@@ -286,12 +287,11 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
         )}
 
         <div className="mb-4">
-          <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-            <div
-              className={`h-full rounded-full ${debt.isPaidOff ? 'bg-brand-green' : 'bg-brand-blue'}`}
-              style={{ width: `${Math.min(Math.max(progress, 0), 100)}%` }}
-            />
-          </div>
+          <BrandProgressBar
+            percent={progress}
+            tone={debt.isPaidOff ? 'green' : 'blue'}
+            size="xl"
+          />
         </div>
 
         {!debt.isPaidOff && (
@@ -413,13 +413,26 @@ export default function DebtDetailView({ debt, onBack, onDataUpdate }: DebtDetai
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-xl font-bold text-gray-800 mb-4">Balance History</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData}>
+            <AreaChart data={chartData}>
+              <defs>
+                <linearGradient id="debtDetailBalanceGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgba(45,156,219,0.15)" />
+                  <stop offset="100%" stopColor="rgba(45,156,219,0)" />
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis />
               <Tooltip formatter={(value: number) => CalculationService.formatCurrency(value)} />
-              <Line type="monotone" dataKey="balance" stroke="#2D9CDB" strokeWidth={2} />
-            </LineChart>
+              <Area
+                type="monotone"
+                dataKey="balance"
+                stroke="#2D9CDB"
+                strokeWidth={2}
+                fill="url(#debtDetailBalanceGrad)"
+                dot={{ fill: '#2D9CDB', r: 3 }}
+              />
+            </AreaChart>
           </ResponsiveContainer>
         </div>
       )}
