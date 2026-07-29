@@ -469,8 +469,8 @@ export default function ProgressReports({ onDataUpdate, onNavigateToDebt }: Prog
         <div className="bg-white border border-brand-gray-border rounded-lg p-5">
           <h3 className="text-sm font-medium text-brand-navy mb-4">Interest vs. principal</h3>
           <div className="flex items-center justify-center">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
+            <ResponsiveContainer width="100%" height={320}>
+              <PieChart margin={{ top: 8, right: 24, bottom: 8, left: 24 }}>
                 <defs>
                   <linearGradient id="progressPieRedGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={BRAND_RED} stopOpacity={1} />
@@ -485,20 +485,9 @@ export default function ProgressReports({ onDataUpdate, onNavigateToDebt }: Prog
                   data={interestVsPrincipalData}
                   cx="50%"
                   cy="50%"
-                  labelLine={false}
-                  label={({ name, percent, x, y }) => (
-                    <text
-                      x={x}
-                      y={y}
-                      fill={name === 'Principal Paid' ? BRAND_NAVY : BRAND_RED}
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      fontSize={11}
-                    >
-                      {`${name}: ${(percent * 100).toFixed(1)}%`}
-                    </text>
-                  )}
-                  outerRadius={100}
+                  labelLine={{ stroke: BRAND_GRAY, strokeWidth: 1 }}
+                  label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(1)}%`}
+                  outerRadius={88}
                   dataKey="value"
                 >
                   {interestVsPrincipalData.map((entry, index) => (
@@ -513,6 +502,11 @@ export default function ProgressReports({ onDataUpdate, onNavigateToDebt }: Prog
                   ))}
                 </Pie>
                 <Tooltip formatter={(value: number) => CalculationService.formatCurrency(value)} />
+                <Legend
+                  verticalAlign="bottom"
+                  align="center"
+                  wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                />
               </PieChart>
             </ResponsiveContainer>
           </div>
