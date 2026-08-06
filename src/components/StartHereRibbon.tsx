@@ -1,8 +1,24 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle2, Circle, ChevronDown, ChevronUp, ArrowRight, X } from 'lucide-react';
+import {
+  CheckCircle2,
+  Circle,
+  ChevronDown,
+  ChevronUp,
+  ArrowRight,
+  Share,
+  PlusSquare,
+  Download,
+} from 'lucide-react';
 import { StorageService } from '../services/storage';
-
 import BrandProgressBar from './BrandProgressBar';
+import {
+  hasDeferredInstallPrompt,
+  isIosSafariLike,
+  isPwaInstallComplete,
+  markPwaInstallComplete,
+  promptNovoInstall,
+  subscribePwaInstall,
+} from '../utils/pwaInstall';
 
 interface StartHereStep {
   id: string;
@@ -63,6 +79,15 @@ function getSteps(hasHELOC: boolean, _isHomeowner: boolean): StartHereStep[] {
       },
     },
     {
+      id: 'install',
+      title: 'Add NOVO to your home screen',
+      novoCoaching: `You've got a real plan now — keep it one tap away. Adding NOVO to your home screen makes it feel like an app, loads faster, and means you're more likely to log payments and stay on track.`,
+      completedMessage: `NOVO is on your home screen — easy access locked in.`,
+      ctaLabel: 'Install NOVO',
+      ctaSection: 'pwa_install',
+      checkComplete: () => isPwaInstallComplete(),
+    },
+    {
       id: 'smarter',
       title: 'Check Smarter Payments',
       novoCoaching: `Here's something most people don't know: switching from monthly to bi-weekly payments on even one debt can save you hundreds — sometimes thousands — in interest without spending a single extra dollar. You're just splitting your existing payment in two and paying every 2 weeks instead of once a month. That adds up to one extra payment per year completely free. Go see what it would save you specifically.`,
@@ -107,6 +132,111 @@ function getSteps(hasHELOC: boolean, _isHomeowner: boolean): StartHereStep[] {
   });
 }
 
+function InstallStepActions({ onDone }: { onDone: () => void }) {
+  const [canNativeInstall, setCanNativeInstall] = useState(hasDeferredInstallPrompt());
+  const [installBusy, setInstallBusy] = useState(false);
+  const ios = isIosSafariLike();
+
+  useEffect(() => subscribePwaInstall(() => {
+    setCanNativeInstall(hasDeferredInstallPrompt());
+    if (isPwaInstallComplete()) onDone();
+  }), [onDone]);
+
+  const handleNativeInstall = async () => {
+    setInstallBusy(true);
+    try {
+      const outcome = await promptNovoInstall();
+      if (outcome === 'accepted' || isPwaInstallComplete()) {
+        onDone();
+      }
+    } finally {
+      setInstallBusy(false);
+      setCanNativeInstall(hasDeferredInstallPrompt());
+    }
+  };
+
+  if (ios) {
+    return (
+      <div className="space-y-3">
+        <ol className="space-y-2.5 text-sm text-brand-navy">
+          <li className="flex items-start gap-2.5">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-navy text-[11px] font-bold text-white">
+              1
+            </span>
+            <span className="pt-0.5 leading-snug">
+              Tap the <Share className="inline-block h-3.5 w-3.5 align-text-bottom text-brand-blue" />{' '}
+              <strong>Share</strong> button in Safari (bottom center on iPhone).
+            </span>
+          </li>
+          <li className="flex items-start gap-2.5">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-navy text-[11px] font-bold text-white">
+              2
+            </span>
+            <span className="pt-0.5 leading-snug">
+              Scroll and tap <PlusSquare className="inline-block h-3.5 w-3.5 align-text-bottom text-brand-blue" />{' '}
+              <strong>Add to Home Screen</strong>.
+            </span>
+          </li>
+          <li className="flex items-start gap-2.5">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-navy text-[11px] font-bold text-white">
+              3
+            </span>
+            <span className="pt-0.5 leading-snug">
+              Tap <strong>Add</strong> in the top right — NOVO appears on your home screen.
+            </span>
+          </li>
+        </ol>
+        <button
+          type="button"
+          onClick={() => {
+            markPwaInstallComplete();
+            onDone();
+          }}
+          className="flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-bold text-sm py-2.5 px-5 rounded-lg transition-colors"
+        >
+          I&apos;ve added it
+          <CheckCircle2 className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  }
+
+  if (canNativeInstall) {
+    return (
+      <button
+        type="button"
+        disabled={installBusy}
+        onClick={handleNativeInstall}
+        className="flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-dark disabled:opacity-60 text-white font-bold text-sm py-2.5 px-5 rounded-lg transition-colors"
+      >
+        <Download className="w-4 h-4" />
+        {installBusy ? 'Opening install…' : 'Install NOVO'}
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-brand-gray leading-relaxed">
+        Your browser may already offer install from the address bar (install icon) or the browser menu
+        → <strong>Install app</strong> / <strong>Add to Home screen</strong>. After you install, this
+        step will check off automatically — or confirm below.
+      </p>
+      <button
+        type="button"
+        onClick={() => {
+          markPwaInstallComplete();
+          onDone();
+        }}
+        className="flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-bold text-sm py-2.5 px-5 rounded-lg transition-colors"
+      >
+        I&apos;ve installed it
+        <CheckCircle2 className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
 export default function StartHereRibbon({ onNavigate, onOpenChat, userName }: StartHereRibbonProps) {
   const [expanded, setExpanded] = useState(true);
   const [activeStep, setActiveStep] = useState<string | null>(null);
@@ -123,6 +253,8 @@ export default function StartHereRibbon({ onNavigate, onOpenChat, userName }: St
       localStorage.setItem(INSTALL_DATE_KEY, new Date().toISOString());
     }
   }, []);
+
+  useEffect(() => subscribePwaInstall(() => forceUpdate((n) => n + 1)), []);
 
   const handleNavigate = (section: string) => {
     if (section === 'smarter-payments') {
@@ -250,16 +382,25 @@ export default function StartHereRibbon({ onNavigate, onOpenChat, userName }: St
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => {
-                        setActiveStep(null);
-                        handleNavigate(step.ctaSection);
-                      }}
-                      className="flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-bold text-sm py-2.5 px-5 rounded-lg transition-colors"
-                    >
-                      {step.ctaLabel}
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
+                    {step.id === 'install' ? (
+                      <InstallStepActions
+                        onDone={() => {
+                          setActiveStep(null);
+                          forceUpdate((n) => n + 1);
+                        }}
+                      />
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setActiveStep(null);
+                          handleNavigate(step.ctaSection);
+                        }}
+                        className="flex items-center gap-2 bg-brand-orange hover:bg-brand-orange-dark text-white font-bold text-sm py-2.5 px-5 rounded-lg transition-colors"
+                      >
+                        {step.ctaLabel}
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 )}
 

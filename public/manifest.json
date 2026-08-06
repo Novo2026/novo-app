@@ -4,8 +4,8 @@
   "description": "Eliminate debt faster with proven strategies and AI-powered coaching",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#10b981",
+  "background_color": "#FDF6EE",
+  "theme_color": "#1E3A5F",
   "orientation": "portrait-primary",
   "icons": [
     {

@@ -24,6 +24,7 @@ import { supabase } from './lib/supabase';
 import { pushLocalStorageToCloud } from './services/cloudSync';
 import { syncTierFromSupabase } from './services/accessControl';
 import { StorageService } from './services/storage';
+import { initPwaInstallListeners } from './utils/pwaInstall';
 import type { Debt, Transaction, FeaturePreferences } from './types';
 
 type Section = 'dashboard' | 'debts' | 'strategies' | 'smarter-payments' | 'what-if' | 'tracker' | 'savings' | 'progress' | 'home-ready' | 'guide' | 'settings';
@@ -99,6 +100,10 @@ function App() {
     const id = window.requestAnimationFrame(() => updateDesktopNavScrollAffordances());
     return () => window.cancelAnimationFrame(id);
   }, [currentSection, featurePreferences.helocEnabled, featurePreferences.checkingEnabled]);
+
+  useEffect(() => {
+    initPwaInstallListeners();
+  }, []);
 
   useEffect(() => {
     const {
