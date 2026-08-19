@@ -95,8 +95,27 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
     if (savedProgress) {
       try {
         const { step: savedStep, data: savedData } = JSON.parse(savedProgress);
+        const sources: IncomeSource[] = savedData.incomeSources || [];
+        const sourceTotal = sources.reduce((sum: number, s: IncomeSource) => {
+          if (s.useAnnual && s.annualAmount) {
+            return sum + (parseFloat(s.annualAmount.replace(/[^0-9.]/g, '')) / 12 || 0);
+          }
+          return sum + (parseFloat((s.monthlyAmount || '').replace(/[^0-9.]/g, '')) || 0);
+        }, 0);
+        const restored = {
+          ...savedData,
+          incomeSources: sources,
+          ...(!savedData.grossIncome && sourceTotal > 0
+            ? {
+                grossIncome: (Math.round(sourceTotal)).toLocaleString('en-US', {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 2,
+                }),
+              }
+            : {}),
+        };
         setStep(savedStep);
-        setData(savedData);
+        setData(restored);
         if (savedData.accountType) {
           localStorage.setItem('novo_account_type', savedData.accountType);
         }
@@ -126,6 +145,28 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
     const num = value.replace(/[^0-9.]/g, '');
     return parseFloat(num) || 0;
   };
+
+  const sumIncomeSourcesMonthly = (sources: IncomeSource[]): number => {
+    return sources.reduce((sum, s) => {
+      if (s.useAnnual && s.annualAmount) {
+        return sum + (parseFloat(s.annualAmount.replace(/[^0-9.]/g, '')) / 12 || 0);
+      }
+      return sum + (parseFloat((s.monthlyAmount || '').replace(/[^0-9.]/g, '')) || 0);
+    }, 0);
+  };
+
+  const setIncomeSources = (incomeSources: IncomeSource[]) => {
+    const totalMonthly = sumIncomeSourcesMonthly(incomeSources);
+    setData({
+      ...data,
+      incomeSources,
+      ...(totalMonthly > 0
+        ? { grossIncome: formatCurrency(String(Math.round(totalMonthly))) }
+        : {}),
+    });
+  };
+
+  const isSoloHousehold = data.accountType === 'solo';
 
   const handleCurrencyChange = (field: keyof OnboardingData, value: string) => {
     setData({ ...data, [field]: formatCurrency(value) });
@@ -465,7 +506,8 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">
-            How does income come into your household? <span className="text-red-500">*</span>
+            {isSoloHousehold ? 'Where does your income come from?' : 'How does income come into your household?'}{' '}
+            <span className="text-red-500">*</span>
           </label>
           <p className="text-xs text-gray-500 mb-3">Select all that apply — you can add up to 5 sources</p>
         </div>
@@ -487,7 +529,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                   onClick={() => {
                     const current = data.incomeSources || [];
                     if (isActive) {
-                      setData({ ...data, incomeSources: current.filter(s => s.type !== source.type) });
+                      setIncomeSources(current.filter(s => s.type !== source.type));
                     } else if (current.length < 5) {
                       const newSource: IncomeSource = {
                         id: `income_${Date.now()}`,
@@ -498,7 +540,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                         useAnnual: source.type === 'self_employed',
                         description: '',
                       };
-                      setData({ ...data, incomeSources: [...current, newSource] });
+                      setIncomeSources([...current, newSource]);
                     }
                   }}
                   className="w-full flex items-center gap-3 p-3 text-left"
@@ -524,7 +566,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                             const updated = (data.incomeSources || []).map(s =>
                               s.type === source.type ? { ...s, useAnnual: false } : s
                             );
-                            setData({ ...data, incomeSources: updated });
+                            setIncomeSources(updated);
                           }}
                           className={`text-xs px-3 py-1 rounded-full border transition-all ${!existing.useAnnual ? 'bg-brand-navy text-white border-brand-navy' : 'bg-white text-gray-600 border-gray-300'}`}
                         >
@@ -536,7 +578,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                             const updated = (data.incomeSources || []).map(s =>
                               s.type === source.type ? { ...s, useAnnual: true } : s
                             );
-                            setData({ ...data, incomeSources: updated });
+                            setIncomeSources(updated);
                           }}
                           className={`text-xs px-3 py-1 rounded-full border transition-all ${existing.useAnnual ? 'bg-brand-navy text-white border-brand-navy' : 'bg-white text-gray-600 border-gray-300'}`}
                         >
@@ -559,7 +601,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                               const updated = (data.incomeSources || []).map(s =>
                                 s.type === source.type ? { ...s, monthlyAmount: e.target.value } : s
                               );
-                              setData({ ...data, incomeSources: updated });
+                              setIncomeSources(updated);
                             }}
                             placeholder="0"
                             className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
@@ -583,7 +625,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                               const updated = (data.incomeSources || []).map(s =>
                                 s.type === source.type ? { ...s, annualAmount: e.target.value } : s
                               );
-                              setData({ ...data, incomeSources: updated });
+                              setIncomeSources(updated);
                             }}
                             placeholder="0"
                             className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
@@ -624,17 +666,14 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         </div>
 
         {(data.incomeSources || []).length > 0 && (() => {
-          const totalMonthly = (data.incomeSources || []).reduce((sum, s) => {
-            if (s.useAnnual && s.annualAmount) {
-              return sum + (parseFloat(s.annualAmount.replace(/[^0-9.]/g, '')) / 12);
-            }
-            return sum + (parseFloat(s.monthlyAmount.replace(/[^0-9.]/g, '')) || 0);
-          }, 0);
+          const totalMonthly = sumIncomeSourcesMonthly(data.incomeSources || []);
           if (totalMonthly === 0) return null;
           return (
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
               <div className="flex justify-between items-center">
-                <p className="text-sm font-semibold text-emerald-800">Combined Monthly Income</p>
+                <p className="text-sm font-semibold text-emerald-800">
+                  {isSoloHousehold ? 'Your Monthly Income' : 'Combined Monthly Income'}
+                </p>
                 <p className="text-lg font-bold text-emerald-700">${totalMonthly.toLocaleString('en-US', { maximumFractionDigits: 0 })}</p>
               </div>
               <p className="text-xs text-emerald-600 mt-1">Gross total across all {(data.incomeSources || []).length} income source{(data.incomeSources || []).length > 1 ? 's' : ''}</p>
@@ -645,16 +684,19 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">
-          Combined Monthly Take-Home Pay <span className="text-red-500">*</span>
+          {isSoloHousehold ? 'Your Monthly Take-Home Pay' : 'Combined Monthly Take-Home Pay'}{' '}
+          <span className="text-red-500">*</span>
         </label>
-        <p className="text-xs text-gray-500 mb-2">Total monthly amount that actually lands in your bank accounts after all taxes and deductions</p>
+        <p className="text-xs text-gray-500 mb-2">
+          Net pay after taxes and deductions — this is a different number from the gross total above. Enter what actually lands in your bank accounts.
+        </p>
         <div className="relative">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
           <input
             type="text"
             value={data.monthlyIncome}
             onChange={(e) => handleCurrencyChange('monthlyIncome', e.target.value)}
-            placeholder="5,000"
+            placeholder="e.g. 4,200 after taxes"
             className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all min-h-[48px]"
             style={{ fontSize: '16px' }}
           />
@@ -664,16 +706,17 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
       <div>
         <label className="block text-sm font-semibold text-gray-700 mb-2">
-          Combined Gross Monthly Income <span className="text-red-500">*</span>
+          {isSoloHousehold ? 'Your Gross Monthly Income' : 'Combined Gross Monthly Income'}{' '}
+          <span className="text-red-500">*</span>
         </label>
-        <p className="text-xs text-gray-500 mb-2">Before taxes — used for DTI calculation</p>
+        <p className="text-xs text-gray-500 mb-2">Before taxes — used for DTI. Auto-filled from your income sources; you can adjust if needed.</p>
         <div className="relative">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
           <input
             type="text"
             value={data.grossIncome}
             onChange={(e) => handleCurrencyChange('grossIncome', e.target.value)}
-            placeholder="7,000"
+            placeholder="Filled from sources above"
             className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all min-h-[48px]"
             style={{ fontSize: '16px' }}
           />
