@@ -581,7 +581,7 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
                             className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
                           />
                         </div>
-                        <p className="text-[11px] text-brand-gray mt-1">12-month average monthly amount</p>
+                        <p className="text-[11px] text-brand-gray mt-1">12-month average monthly take-home</p>
                       </div>
                       <div className="pt-2 border-t border-brand-gray-border">
                         <label className="block text-xs font-medium text-brand-gray mb-1">
@@ -623,17 +623,18 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
 
                   {typeInfo.type === 'rental' && (
                     <div>
-                      <label className="block text-xs font-medium text-brand-gray mb-1">Monthly rental income</label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
-                        <input
-                          type="text"
-                          value={existing.monthlyAmount}
-                          onChange={e => updateSource(typeInfo.type, { monthlyAmount: e.target.value })}
-                          placeholder="0"
-                          className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
-                        />
-                      </div>
+                        <label className="block text-xs font-medium text-brand-gray mb-1">Monthly rental income</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
+                          <input
+                            type="text"
+                            value={existing.monthlyAmount}
+                            onChange={e => updateSource(typeInfo.type, { monthlyAmount: e.target.value })}
+                            placeholder="0"
+                            className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
+                          />
+                        </div>
+                        <p className="text-[11px] text-brand-gray mt-1">What actually lands in your accounts. Also used as a gross-equivalent for DTI.</p>
                     </div>
                   )}
 

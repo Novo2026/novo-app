@@ -600,10 +600,10 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                       </div>
                     )}
 
-                    {(!existing.useAnnual || source.type !== 'self_employed') && (
+                    {source.type === 'w2' && (
                       <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1">
-                          {source.type === 'commission' ? '12-month average monthly amount' : 'Monthly amount (gross)'}
+                          Gross Monthly Salary (before taxes)
                         </label>
                         <div className="relative">
                           <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
@@ -620,15 +620,35 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                             className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
                           />
                         </div>
-                        {source.type === 'commission' && (
-                          <p className="text-xs text-gray-400 mt-1">Add up last 12 months of commission and divide by 12</p>
-                        )}
+                        <p className="text-xs text-gray-400 mt-1">Used for mortgage qualification calculations only. Enter take-home in the field below.</p>
                       </div>
                     )}
 
-                    {existing.useAnnual && source.type === 'self_employed' && (
+                    {source.type === 'self_employed' && !existing.useAnnual && (
                       <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">Annual amount</label>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Monthly take-home (after taxes)</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                          <input
+                            type="text"
+                            value={existing.monthlyAmount}
+                            onChange={e => {
+                              const updated = (data.incomeSources || []).map(s =>
+                                s.type === source.type ? { ...s, monthlyAmount: e.target.value } : s
+                              );
+                              setIncomeSources(updated);
+                            }}
+                            placeholder="0"
+                            className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">Owner draw or typical monthly take-home — not gross revenue. This amount is also used as a gross-equivalent for DTI.</p>
+                      </div>
+                    )}
+
+                    {source.type === 'self_employed' && existing.useAnnual && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Annual take-home (we&apos;ll average it)</label>
                         <div className="relative">
                           <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
                           <input
@@ -647,28 +667,95 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                         {existing.annualAmount && parseFloat(existing.annualAmount.replace(/[^0-9.]/g, '')) > 0 && (
                           <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-2">
                             <p className="text-xs text-blue-800 font-medium">
-                              📊 Using <strong>${(parseFloat(existing.annualAmount.replace(/[^0-9.]/g, '')) / 12).toLocaleString('en-US', { maximumFractionDigits: 0 })}/month</strong> as your monthly average for planning purposes
+                              Using <strong>${(parseFloat(existing.annualAmount.replace(/[^0-9.]/g, '')) / 12).toLocaleString('en-US', { maximumFractionDigits: 0 })}/month</strong> as your monthly average for planning purposes
                             </p>
                           </div>
                         )}
                       </div>
                     )}
 
-                    {source.type === 'other' && (
+                    {source.type === 'commission' && (
                       <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">Description (optional)</label>
-                        <input
-                          type="text"
-                          value={existing.description}
-                          onChange={e => {
-                            const updated = (data.incomeSources || []).map(s =>
-                              s.type === source.type ? { ...s, description: e.target.value } : s
-                            );
-                            setData({ ...data, incomeSources: updated });
-                          }}
-                          placeholder="e.g. Social Security, rental income, pension"
-                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
-                        />
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">
+                          12-month average monthly take-home
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                          <input
+                            type="text"
+                            value={existing.monthlyAmount}
+                            onChange={e => {
+                              const updated = (data.incomeSources || []).map(s =>
+                                s.type === source.type ? { ...s, monthlyAmount: e.target.value } : s
+                              );
+                              setIncomeSources(updated);
+                            }}
+                            placeholder="0"
+                            className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">Add up last 12 months of commission and divide by 12</p>
+                      </div>
+                    )}
+
+                    {source.type === 'rental' && (
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Monthly rental income</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                          <input
+                            type="text"
+                            value={existing.monthlyAmount}
+                            onChange={e => {
+                              const updated = (data.incomeSources || []).map(s =>
+                                s.type === source.type ? { ...s, monthlyAmount: e.target.value } : s
+                              );
+                              setIncomeSources(updated);
+                            }}
+                            placeholder="0"
+                            className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">What actually lands in your accounts. Also used as a gross-equivalent for DTI.</p>
+                      </div>
+                    )}
+
+                    {source.type === 'other' && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">Monthly take-home</label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                            <input
+                              type="text"
+                              value={existing.monthlyAmount}
+                              onChange={e => {
+                                const updated = (data.incomeSources || []).map(s =>
+                                  s.type === source.type ? { ...s, monthlyAmount: e.target.value } : s
+                                );
+                                setIncomeSources(updated);
+                              }}
+                              placeholder="0"
+                              className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
+                            />
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">What actually lands in your accounts. Also used as a gross-equivalent for DTI.</p>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">Description (optional)</label>
+                          <input
+                            type="text"
+                            value={existing.description}
+                            onChange={e => {
+                              const updated = (data.incomeSources || []).map(s =>
+                                s.type === source.type ? { ...s, description: e.target.value } : s
+                              );
+                              setData({ ...data, incomeSources: updated });
+                            }}
+                            placeholder="e.g. Social Security, pension"
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
+                          />
+                        </div>
                       </div>
                     )}
                   </div>
@@ -689,7 +776,9 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                 </p>
                 <p className="text-lg font-bold text-emerald-700">${totalMonthly.toLocaleString('en-US', { maximumFractionDigits: 0 })}</p>
               </div>
-              <p className="text-xs text-emerald-600 mt-1">Gross total across all {(data.incomeSources || []).length} income source{(data.incomeSources || []).length > 1 ? 's' : ''}</p>
+              <p className="text-xs text-emerald-600 mt-1">
+                Total across {(data.incomeSources || []).length} income source{(data.incomeSources || []).length > 1 ? 's' : ''} (W2 gross + take-home / gross-equivalent for other types)
+              </p>
             </div>
           );
         })()}
