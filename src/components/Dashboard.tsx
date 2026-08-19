@@ -24,6 +24,7 @@ import LogPaymentModal from './LogPaymentModal';
 import EditPaymentModal from './EditPaymentModal';
 import EditDebtModal from './EditDebtModal';
 import StartHereRibbon from './StartHereRibbon';
+import BenWelcomeNote from './BenWelcomeNote';
 import BrandProgressBar from './BrandProgressBar';
 import FinancialHealthScore, { computeFinancialHealthScore } from './FinancialHealthScore';
 import MortgageBalanceModal from './MortgageBalanceModal';
@@ -277,22 +278,6 @@ export default function Dashboard({
     : hasActiveMortgage
       ? mortgageProgressAvg
       : metrics.progressPercentage;
-  const metricDebtDateLabel = hasDebtFreedomDebts
-    ? freedomProjection
-      ? CalculationService.formatMonthYear(freedomProjection.debtFreeDate)
-      : '—'
-    : hasActiveMortgage
-      ? mortgagePayoffLabel ?? '—'
-      : optimizedProjection
-        ? CalculationService.formatMonthYear(optimizedProjection.debtFreeDate)
-        : '—';
-  const metricDebtDateSubtext = hasDebtFreedomDebts
-    ? hasActiveMortgage
-      ? 'Non-mortgage debts'
-      : 'Non-mortgage debts'
-    : hasActiveMortgage
-      ? 'Mortgage'
-      : 'Non-mortgage debts';
   const metricDebtCardLabel = mortgageOnlyClient ? 'Mortgage balance' : 'Total debt';
 
   const handleCommitmentChange = (value: number) => {
@@ -323,6 +308,22 @@ export default function Dashboard({
   const targetTotalPayment = targetDebt
     ? targetDebt.minimumPayment + extraForDebtPayoff
     : 0;
+
+  const paidOffDebtIds = new Set(debts.filter((d) => d.isPaidOff).map((d) => d.id));
+  const nextTimelineEntry = strategyResult?.payoffTimeline?.find(
+    (item) =>
+      !paidOffDebtIds.has(item.debtId) && nonHelocActive.some((d) => d.id === item.debtId)
+  );
+  const nextMilestoneDebt = nextTimelineEntry
+    ? nonHelocActive.find((d) => d.id === nextTimelineEntry.debtId) ?? targetDebt
+    : targetDebt;
+  const nextMilestoneName =
+    nextMilestoneDebt?.accountName
+    ?? (mortgageOnlyClient ? activeMortgages[0]?.accountName ?? null : null);
+  const nextMilestoneDate = nextTimelineEntry
+    ? CalculationService.formatMonthYear(nextTimelineEntry.payoffDate)
+    : (nextMilestoneDebt && formatProjectedPayoffMonthYear(nextMilestoneDebt))
+      || (mortgageOnlyClient ? mortgagePayoffLabel : null);
 
   const getTimeOfDay = (): string => {
     const hour = new Date().getHours();
@@ -543,13 +544,18 @@ export default function Dashboard({
 
   if (debts.length === 0) {
     return (
-      <div className="text-center py-16">
-        <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Welcome to NOVO</h2>
-        <p className="text-gray-600 mb-6">Get started by adding your debts and creating a payoff strategy.</p>
-        <p className="text-sm text-gray-500 mb-8">
-          Track your progress, log payments, and watch your debt disappear over time.
-        </p>
+      <div className="bg-brand-gray-light min-h-screen">
+        <div className="max-w-5xl mx-auto px-5 py-8">
+          <BenWelcomeNote />
+          <div className="text-center py-16">
+            <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Welcome to NOVO</h2>
+            <p className="text-gray-600 mb-6">Get started by adding your debts and creating a payoff strategy.</p>
+            <p className="text-sm text-gray-500 mb-8">
+              Track your progress, log payments, and watch your debt disappear over time.
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -573,6 +579,7 @@ export default function Dashboard({
       </div>
 
       <div className="max-w-5xl mx-auto px-5 pb-8">
+        <BenWelcomeNote />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 my-5">
           <div className="bg-orange-50 border border-brand-gray-border rounded-lg p-3 sm:p-4 border-l-4 border-l-brand-orange min-w-0">
             <p className="text-[10px] sm:text-[11px] text-brand-gray uppercase tracking-wide truncate whitespace-nowrap overflow-hidden">
@@ -615,11 +622,19 @@ export default function Dashboard({
             <p className="text-[10px] sm:text-[11px] text-brand-gray mt-0.5 line-clamp-2">After savings carve-out</p>
           </div>
           <div className="bg-purple-50 border border-brand-gray-border rounded-lg p-3 sm:p-4 border-l-4 border-l-brand-orange-dark min-w-0">
-            <p className="text-[10px] sm:text-[11px] text-brand-gray uppercase tracking-wide truncate whitespace-nowrap overflow-hidden">Debt-free date</p>
-            <p className="text-[18px] sm:text-[22px] font-medium text-brand-navy mt-1 whitespace-nowrap">
-              {metricDebtDateLabel}
+            <p className="text-[10px] sm:text-[11px] text-brand-gray uppercase tracking-wide truncate whitespace-nowrap overflow-hidden">
+              Next milestone
             </p>
-            <p className="text-[10px] sm:text-[11px] text-brand-gray mt-0.5 line-clamp-2">{metricDebtDateSubtext}</p>
+            <p className="text-[18px] sm:text-[22px] font-medium text-brand-navy mt-1 truncate">
+              {nextMilestoneDate ?? nextMilestoneName ?? '—'}
+            </p>
+            <p className="text-[10px] sm:text-[11px] text-brand-gray mt-0.5 line-clamp-2">
+              {nextMilestoneDate && nextMilestoneName
+                ? nextMilestoneName
+                : nextMilestoneName && !nextMilestoneDate
+                  ? 'Next debt to pay off'
+                  : 'Build a plan to see your next date'}
+            </p>
           </div>
         </div>
 
@@ -1006,12 +1021,14 @@ export default function Dashboard({
               {hasDebtFreedomDebts && (
                 <div className="bg-white border border-brand-gray-border rounded-lg p-4">
                   <h3 className="text-sm font-medium text-brand-navy mb-3">Debt freedom progress</h3>
-                  <div className="flex items-center justify-between text-[11px] text-brand-gray mb-1.5">
-                    <span>{dfProgressPercentage.toFixed(1)}% paid off</span>
-                    <span>{CalculationService.formatCurrency(dfCurrentBalance)} remaining</span>
-                  </div>
+                  <p className="text-lg font-medium text-brand-navy">
+                    {dfProgressPercentage.toFixed(1)}% paid off
+                  </p>
+                  <p className="text-[13px] font-medium text-brand-green mt-0.5 mb-2">
+                    {CalculationService.formatCurrency(dfPaydown.paidOffAmount)} paid off
+                  </p>
                   <BrandProgressBar percent={dfProgressPercentage} tone="orange" size="md" className="mb-3" />
-                  <p className="text-xs text-brand-gray mb-2">
+                  <p className="text-[11px] text-brand-gray mb-2">
                     {CalculationService.formatCurrency(dfCurrentBalance)} remaining of{' '}
                     {CalculationService.formatCurrency(dfStartingBalance)} starting
                   </p>
@@ -1048,7 +1065,7 @@ export default function Dashboard({
                     </p>
                   )}
                   {activeMortgages.map((mortgage, index) => {
-                    const { percentage, balanceIncreased, increaseAmount } = getDebtProgressInfo(mortgage);
+                    const { percentage, paidOff, balanceIncreased, increaseAmount } = getDebtProgressInfo(mortgage);
                     const biweeklyTip = getMortgageBiweeklyTip(mortgage);
                     const projectedPayoff = formatProjectedPayoffMonthYear(mortgage);
 
@@ -1056,21 +1073,24 @@ export default function Dashboard({
                       <div key={mortgage.id}>
                         {index > 0 && <div className="border-t border-brand-gray-border my-4" />}
                         <p className="text-[13px] font-medium text-brand-navy mb-2">{mortgage.name}</p>
-                        <div
-                          className={`flex items-center justify-between text-[11px] mb-1.5 ${
-                            balanceIncreased ? 'text-brand-orange' : 'text-brand-gray'
-                          }`}
-                        >
-                          <span>
-                            {balanceIncreased
-                              ? `Balance increased ${CalculationService.formatCurrency(increaseAmount)} since starting`
-                              : `${percentage.toFixed(1)}% paid down`}
-                          </span>
-                          <span className="text-brand-gray">
-                            {CalculationService.formatCurrency(mortgage.currentBalance)} remaining
-                          </span>
-                        </div>
+                        {balanceIncreased ? (
+                          <p className="text-[13px] font-medium text-brand-orange mb-2">
+                            Balance increased {CalculationService.formatCurrency(increaseAmount)} since starting
+                          </p>
+                        ) : (
+                          <>
+                            <p className="text-lg font-medium text-brand-navy">
+                              {percentage.toFixed(1)}% paid down
+                            </p>
+                            <p className="text-[13px] font-medium text-brand-green mt-0.5 mb-2">
+                              {CalculationService.formatCurrency(paidOff)} paid off
+                            </p>
+                          </>
+                        )}
                         <BrandProgressBar percent={percentage} tone="blue" size="md" className="mb-2" />
+                        <p className="text-[11px] text-brand-gray mb-1">
+                          {CalculationService.formatCurrency(mortgage.currentBalance)} remaining
+                        </p>
                         <p className="text-[11px] text-brand-gray mb-1">
                           Original: {formatOriginalAmountForDisplay(mortgage.startingBalance)} · Started:{' '}
                           {formatMortgageStartedDate(mortgage)}

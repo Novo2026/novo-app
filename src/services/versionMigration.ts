@@ -16,7 +16,7 @@ const PROTECTED_PREFIXES = ['sb-'];
  *
  * Durable Setup Guide progress is NOT cleared here — treat like financial data:
  * novo_start_here_dismissed, novo_smarter_payments_visited,
- * novo_first_chat_completed, novo_install_date.
+ * novo_first_chat_completed, novo_install_date, novo_ben_welcome_dismissed.
  */
 const MIGRATION_CLEAR_KEYS = [
   'novo_proactive_messages',

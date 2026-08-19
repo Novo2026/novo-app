@@ -439,6 +439,7 @@ export const StorageService = {
     localStorage.removeItem('novo_first_chat_completed');
     localStorage.removeItem('novo_install_date');
     localStorage.removeItem('novo_start_here_dismissed');
+    localStorage.removeItem('novo_ben_welcome_dismissed');
 
     sessionStorage.clear();
   },

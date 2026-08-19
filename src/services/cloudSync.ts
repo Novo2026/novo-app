@@ -17,6 +17,7 @@ const EXCLUDE_KEYS = [
   'askNovoClicked',
   'lastVisit',
   'novo_install_date',
+  'novo_ben_welcome_dismissed',
 ];
 
 function shouldSyncKey(key: string): boolean {

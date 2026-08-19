@@ -44,7 +44,7 @@ function getSteps(hasHELOC: boolean, _isHomeowner: boolean): StartHereStep[] {
     {
       id: 'profile',
       title: 'Your profile is set up',
-      novoCoaching: `This is the foundation everything else builds on. Your income, expenses, and surplus number tell me how aggressively we can attack your debt. The more accurate this is, the better your plan will be.`,
+      novoCoaching: `This is the foundation everything else builds on. Your income, expenses, and surplus number tell me how we can plan your debt payoff. The more accurate this is, the better your plan will be.`,
       completedMessage: `Profile complete — I have what I need to build your plan.`,
       ctaLabel: 'Review your profile',
       ctaSection: 'settings',
@@ -56,7 +56,7 @@ function getSteps(hasHELOC: boolean, _isHomeowner: boolean): StartHereStep[] {
     {
       id: 'debts',
       title: 'Add all your debts',
-      novoCoaching: `I need the full picture to help you. Every debt — credit cards, car loans, student loans, personal loans — needs to be in here. Don't leave anything out. The interest you're paying on debts you forgot to add is still costing you every single day. This step usually takes about 5 minutes and it's the most important thing you'll do in NOVO.`,
+      novoCoaching: `I need the full picture to help you. Add the debts you're working on — credit cards, car loans, student loans, personal loans. The more complete this is, the better NOVO can help. This step usually takes about 5 minutes.`,
       completedMessage: `All debts entered — I can see your full financial picture now.`,
       ctaLabel: 'Go to My Debts',
       ctaSection: 'debts',
@@ -352,7 +352,7 @@ export default function StartHereRibbon({ onNavigate, onOpenChat, userName }: St
                       </span>
                       {isCurrent && (
                         <span className="text-xs bg-brand-orange text-white px-2 py-0.5 rounded-full font-bold">
-                          Do this next
+                          Up next
                         </span>
                       )}
                     </div>
