@@ -291,9 +291,9 @@ function App() {
         description: s.description || '',
         ...(isW2
           ? {
-              w2NetMonthlyAmount: '',
+              w2NetMonthlyAmount: (s as { w2NetMonthlyAmount?: string }).w2NetMonthlyAmount || '',
               w2GrossMonthlyAmount: monthlyStr,
-              w2Person1Net: '',
+              w2Person1Net: (s as { w2NetMonthlyAmount?: string }).w2NetMonthlyAmount || '',
               w2Person1Gross: monthlyStr,
               w2Person2Net: '',
               w2Person2Gross: '',

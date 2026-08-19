@@ -25,7 +25,7 @@ export interface IncomeSource {
 const INCOME_TYPES = [
   { type: 'w2', label: 'W2 / Salary', desc: 'Regular paycheck from employer', icon: Briefcase },
   { type: 'self_employed', label: 'Self-Employed / Business', desc: 'Business income, owner draws, or distributions', icon: Building2 },
-  { type: 'commission', label: 'Commission / Variable', desc: 'Income that varies month to month', icon: TrendingUp },
+  { type: 'commission', label: 'Commission / Bonus / Variable', desc: 'Commission, annual bonus, or other income that varies', icon: TrendingUp },
   { type: 'rental', label: 'Rental Income', desc: 'Income from properties in your personal name only', icon: Home },
   { type: 'other', label: 'Other Income', desc: 'Pension, Social Security, alimony, side income', icon: Wallet },
 ] as const;
@@ -157,6 +157,10 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
 
   const totalMonthlyNet = sources.reduce(
     (sum, s) => sum + getSourceMonthlyNet(s, showDualPerson),
+    0
+  );
+  const totalMonthlyGross = sources.reduce(
+    (sum, s) => sum + getSourceMonthlyGross(s, showDualPerson),
     0
   );
 
@@ -569,7 +573,7 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
                     <div className="space-y-3">
                       <div>
                         <label className="block text-xs font-medium text-brand-gray mb-1">
-                          Person 1 — Commission / Variable
+                          Person 1 — Commission / Bonus / Variable
                         </label>
                         <div className="relative">
                           <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
@@ -581,11 +585,11 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
                             className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
                           />
                         </div>
-                        <p className="text-[11px] text-brand-gray mt-1">12-month average monthly take-home</p>
+                        <p className="text-[11px] text-brand-gray mt-1">12-month average monthly take-home (include bonuses)</p>
                       </div>
                       <div className="pt-2 border-t border-brand-gray-border">
                         <label className="block text-xs font-medium text-brand-gray mb-1">
-                          Person 2 — Commission / Variable
+                          Person 2 — Commission / Bonus / Variable
                         </label>
                         <div className="relative">
                           <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
@@ -617,7 +621,7 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
                           className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
                         />
                       </div>
-                      <p className="text-[11px] text-brand-gray mt-1">Add up last 12 months of commission and divide by 12</p>
+                      <p className="text-[11px] text-brand-gray mt-1">Add up last 12 months of commission and bonuses and divide by 12</p>
                     </div>
                   )}
 
@@ -699,16 +703,22 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
         })}
       </div>
 
-      {sources.length > 0 && totalMonthlyNet > 0 && (
-        <div className="bg-brand-gray-light border border-brand-gray-border rounded-lg p-3 mt-4">
+      {(sources.length > 0 && (totalMonthlyNet > 0 || totalMonthlyGross > 0)) && (
+        <div className="bg-brand-gray-light border border-brand-gray-border rounded-lg p-3 mt-4 space-y-2">
           <div className="flex justify-between items-center gap-3">
             <p className="text-xs text-brand-gray">Combined Household Take-Home Pay</p>
             <p className="text-base font-medium text-brand-navy">
               ${totalMonthlyNet.toLocaleString('en-US', { maximumFractionDigits: 0 })}
             </p>
           </div>
+          <div className="flex justify-between items-center gap-3">
+            <p className="text-xs text-brand-gray">Combined Gross Monthly Income</p>
+            <p className="text-base font-medium text-brand-navy">
+              ${totalMonthlyGross.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+            </p>
+          </div>
           <p className="text-[11px] text-brand-gray mt-1">
-            Across {sources.length} income source{sources.length > 1 ? 's' : ''}. Click Save Income Sources below to update Net Monthly Income in your profile. Gross Monthly Income updates from W2 gross plus a gross-equivalent for every other source.
+            Calculated from your sources. Click Save Income Sources to update Net and Gross Monthly Income in your profile below (those fields stay read-only once sources are saved).
           </p>
         </div>
       )}
