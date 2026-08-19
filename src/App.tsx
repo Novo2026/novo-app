@@ -266,6 +266,45 @@ function App() {
     }));
 
     localStorage.setItem('novo_income_sources', JSON.stringify(incomeSourcesSummary));
+
+    const incomeSourcesV2 = (data.incomeSources || []).map((s: {
+      id?: string;
+      type: string;
+      label: string;
+      useAnnual?: boolean;
+      annualAmount?: string;
+      monthlyAmount?: string;
+      description?: string;
+    }) => {
+      const monthly = s.useAnnual && s.annualAmount
+        ? (parseFloat(s.annualAmount.replace(/[^0-9.]/g, '')) || 0) / 12
+        : parseFloat((s.monthlyAmount || '').replace(/[^0-9.]/g, '')) || 0;
+      const monthlyStr = monthly > 0 ? String(monthly) : '';
+      const isW2 = s.type === 'w2';
+      return {
+        id: s.id || `income_${s.type}_${Date.now()}`,
+        type: s.type,
+        label: s.label,
+        monthlyAmount: isW2 ? '' : monthlyStr,
+        annualAmount: s.annualAmount || '',
+        useAnnual: s.type === 'self_employed' ? !!s.useAnnual : false,
+        description: s.description || '',
+        ...(isW2
+          ? {
+              w2NetMonthlyAmount: '',
+              w2GrossMonthlyAmount: monthlyStr,
+              w2Person1Net: '',
+              w2Person1Gross: monthlyStr,
+              w2Person2Net: '',
+              w2Person2Gross: '',
+            }
+          : {}),
+        ...(s.type === 'self_employed' ? { selfEmpPerson1: monthlyStr, selfEmpPerson2: '' } : {}),
+        ...(s.type === 'commission' ? { commissionPerson1: monthlyStr, commissionPerson2: '' } : {}),
+      };
+    });
+    localStorage.setItem('novo_income_sources_v2', JSON.stringify(incomeSourcesV2));
+
     localStorage.setItem('novo_rental_income', totalRentalIncome.toString());
 
     const additionalPropertyDebts = (data.additionalProperties || [])

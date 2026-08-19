@@ -24,7 +24,7 @@ import LearnHELOCModal from './LearnHELOCModal';
 import HelocSuccessModal from './HelocSuccessModal';
 import { clearMilestoneHistory } from '../utils/milestoneEngine';
 import { UpgradeModal } from './AccessGate';
-import IncomeSourcesEditor from './IncomeSourcesEditor';
+import IncomeSourcesEditor, { hasStoredIncomeSources } from './IncomeSourcesEditor';
 import { isPro, getAccessRecord, isProExpired } from '../services/accessControl';
 import type { FinancialProfile, FeaturePreferences, HomeEquity } from '../types';
 
@@ -107,6 +107,7 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
     monthlySavingsGoal: 0,
     surplusCommitmentPercent: 100,
   });
+  const incomeFieldsLocked = hasStoredIncomeSources();
   const [featurePreferences, setFeaturePreferences] = useState<FeaturePreferences>({
     helocEnabled: false,
     checkingEnabled: true,
@@ -203,11 +204,23 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
   };
 
   const handleSaveFinancialProfile = () => {
-    if (!confirmFinancialProfileSaveIfNeeded(financialProfile)) {
+    const incomeLocked = hasStoredIncomeSources();
+    const storedProfile = StorageService.getFinancialProfile();
+    const profileToSave =
+      incomeLocked && storedProfile
+        ? {
+            ...financialProfile,
+            monthlyGrossIncome: storedProfile.monthlyGrossIncome,
+            monthlyNetIncome: storedProfile.monthlyNetIncome,
+          }
+        : financialProfile;
+
+    if (!confirmFinancialProfileSaveIfNeeded(profileToSave, storedProfile)) {
       return;
     }
 
-    StorageService.saveFinancialProfile(financialProfile);
+    StorageService.saveFinancialProfile(profileToSave);
+    setFinancialProfile(profileToSave);
     setShowFinancialSuccess(true);
     onDataUpdate();
     setTimeout(() => setShowFinancialSuccess(false), 3000);
@@ -477,37 +490,50 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
             <h3 className="text-sm font-medium text-brand-navy">Financial Profile</h3>
           </div>
           <p className="text-xs text-brand-gray mb-5 leading-relaxed">
-            Update your income and expense information. These values are used in payment strategy calculations.
+            {incomeFieldsLocked
+              ? 'Update expenses and savings here. Gross and net income come from Income Sources above — save that card to change them.'
+              : 'Update your income and expense information. These values are used in payment strategy calculations.'}
           </p>
 
           <div className="space-y-4">
             {[
               {
                 label: 'Gross Monthly Income',
-                hint: 'Total income before taxes and deductions',
+                hint: incomeFieldsLocked
+                  ? 'From Income Sources (W2 gross plus gross-equivalent for other sources). Edit and save Income Sources to change this.'
+                  : 'Total income before taxes and deductions',
                 field: 'monthlyGrossIncome' as const,
+                incomeField: true,
               },
               {
                 label: 'Net Monthly Income',
-                hint: 'Take-home pay after taxes and deductions',
+                hint: incomeFieldsLocked
+                  ? 'From Income Sources take-home total. Edit and save Income Sources to change this.'
+                  : 'Take-home pay after taxes and deductions',
                 field: 'monthlyNetIncome' as const,
+                incomeField: true,
               },
               {
                 label: 'Monthly Essential Expenses',
                 hint: 'Housing, utilities, groceries, insurance, transportation',
                 field: 'monthlyEssentialExpenses' as const,
+                incomeField: false,
               },
               {
                 label: 'Monthly Discretionary Expenses',
                 hint: 'Entertainment, dining out, shopping, subscriptions',
                 field: 'monthlyDiscretionaryExpenses' as const,
+                incomeField: false,
               },
               {
                 label: 'Monthly Savings Goal',
                 hint: 'Set aside before debt payoff so your emergency fund / savings keep growing',
                 field: 'monthlySavingsGoal' as const,
+                incomeField: false,
               },
-            ].map(({ label, hint, field }) => (
+            ].map(({ label, hint, field, incomeField }) => {
+              const locked = incomeField && incomeFieldsLocked;
+              return (
               <div key={field}>
                 <label className="block text-xs font-medium text-brand-gray mb-1">{label}</label>
                 <p className="text-[11px] text-brand-gray mb-1.5">{hint}</p>
@@ -516,20 +542,24 @@ export default function Settings({ onDataUpdate, onHelocEnabledFirstTime, onNavi
                   <input
                     type="number"
                     value={financialProfile[field] || ''}
-                    onChange={(e) =>
-                      setFinancialProfile({ ...financialProfile, [field]: parseFloat(e.target.value) || 0 })
-                    }
+                    readOnly={locked}
+                    disabled={locked}
+                    onChange={(e) => {
+                      if (locked) return;
+                      setFinancialProfile({ ...financialProfile, [field]: parseFloat(e.target.value) || 0 });
+                    }}
                     onFocus={(e) => {
                       if (e.target.value === '0') e.target.value = '';
                     }}
                     placeholder="Enter amount"
-                    className={`${inputClassName} pl-8 pr-3`}
+                    className={`${inputClassName} pl-8 pr-3 ${locked ? 'bg-brand-gray-light cursor-not-allowed' : ''}`}
                     step="0.01"
                     min="0"
                   />
                 </div>
               </div>
-            ))}
+              );
+            })}
 
             <button
               type="button"

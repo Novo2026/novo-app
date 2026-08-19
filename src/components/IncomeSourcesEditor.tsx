@@ -56,6 +56,28 @@ function getSourceMonthlyNet(s: IncomeSource, showDualPerson: boolean): number {
   return parseMoney(s.monthlyAmount);
 }
 
+/** W2 uses dedicated gross fields; other types use the same monthly figure as a DTI gross-equivalent. */
+function getSourceMonthlyGross(s: IncomeSource, showDualPerson: boolean): number {
+  if (s.type === 'w2') {
+    return parseMoney(s.w2Person1Gross || s.w2GrossMonthlyAmount) + parseMoney(s.w2Person2Gross);
+  }
+  return getSourceMonthlyNet(s, showDualPerson);
+}
+
+export function hasStoredIncomeSources(): boolean {
+  try {
+    const v2 = localStorage.getItem('novo_income_sources_v2');
+    if (v2) {
+      const parsed = JSON.parse(v2);
+      return Array.isArray(parsed) && parsed.length > 0;
+    }
+    const v1 = JSON.parse(localStorage.getItem('novo_income_sources') || '[]');
+    return Array.isArray(v1) && v1.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 function getStoredIncomeSources(): IncomeSource[] {
   try {
     const v2 = localStorage.getItem('novo_income_sources_v2');
@@ -96,25 +118,30 @@ function getStoredIncomeSources(): IncomeSource[] {
       }));
     }
     const v1 = JSON.parse(localStorage.getItem('novo_income_sources') || '[]');
-    return v1.map((s: any) => ({
-      id: `income_${s.type}_${Date.now()}`,
-      type: s.type,
-      label: s.label,
-      monthlyAmount: s.monthlyAmount ? String(s.monthlyAmount) : '',
-      annualAmount: '',
-      useAnnual: false,
-      description: '',
-      w2NetMonthlyAmount: s.type === 'w2' ? (s.monthlyAmount ? String(s.monthlyAmount) : '') : undefined,
-      w2GrossMonthlyAmount: s.type === 'w2' ? (s.monthlyAmount ? String(s.monthlyAmount) : '') : undefined,
-      w2Person1Net: s.type === 'w2' ? (s.monthlyAmount ? String(s.monthlyAmount) : '') : undefined,
-      w2Person1Gross: s.type === 'w2' ? (s.monthlyAmount ? String(s.monthlyAmount) : '') : undefined,
-      w2Person2Net: s.type === 'w2' ? '' : undefined,
-      w2Person2Gross: s.type === 'w2' ? '' : undefined,
-      selfEmpPerson1: s.type === 'self_employed' ? (s.monthlyAmount ? String(s.monthlyAmount) : '') : undefined,
-      selfEmpPerson2: s.type === 'self_employed' ? '' : undefined,
-      commissionPerson1: s.type === 'commission' ? (s.monthlyAmount ? String(s.monthlyAmount) : '') : undefined,
-      commissionPerson2: s.type === 'commission' ? '' : undefined,
-    }));
+    return v1.map((s: any) => {
+      const amount = s.monthlyAmount ? String(s.monthlyAmount) : '';
+      // Onboarding v1 stored source amounts as gross. Keep them on W2 gross only so
+      // take-home is not prefilled with a before-tax number.
+      return {
+        id: `income_${s.type}_${Date.now()}`,
+        type: s.type,
+        label: s.label,
+        monthlyAmount: s.type === 'w2' ? '' : amount,
+        annualAmount: '',
+        useAnnual: false,
+        description: '',
+        w2NetMonthlyAmount: s.type === 'w2' ? '' : undefined,
+        w2GrossMonthlyAmount: s.type === 'w2' ? amount : undefined,
+        w2Person1Net: s.type === 'w2' ? '' : undefined,
+        w2Person1Gross: s.type === 'w2' ? amount : undefined,
+        w2Person2Net: s.type === 'w2' ? '' : undefined,
+        w2Person2Gross: s.type === 'w2' ? '' : undefined,
+        selfEmpPerson1: s.type === 'self_employed' ? amount : undefined,
+        selfEmpPerson2: s.type === 'self_employed' ? '' : undefined,
+        commissionPerson1: s.type === 'commission' ? amount : undefined,
+        commissionPerson2: s.type === 'commission' ? '' : undefined,
+      };
+    });
   } catch {
     return [];
   }
@@ -182,7 +209,10 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
     const w2Person1Gross = parseFloat((w2Source?.w2Person1Gross || w2Source?.w2GrossMonthlyAmount || '').replace(/[^0-9.]/g, '')) || 0;
     const w2Person2Net = parseFloat((w2Source?.w2Person2Net || '').replace(/[^0-9.]/g, '')) || 0;
     const w2Person2Gross = parseFloat((w2Source?.w2Person2Gross || '').replace(/[^0-9.]/g, '')) || 0;
-    const combinedGrossIncome = w2Person1Gross + w2Person2Gross;
+    const combinedGrossIncome = sources.reduce(
+      (sum, s) => sum + getSourceMonthlyGross(s, showDualPerson),
+      0
+    );
 
     localStorage.setItem('w2Person1Net', w2Person1Net.toString());
     localStorage.setItem('w2Person1Gross', w2Person1Gross.toString());
@@ -520,7 +550,7 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
 
                   {typeInfo.type === 'self_employed' && !showDualPerson && !existing.useAnnual && (
                     <div>
-                      <label className="block text-xs font-medium text-brand-gray mb-1">Monthly amount (gross)</label>
+                      <label className="block text-xs font-medium text-brand-gray mb-1">Monthly take-home (after taxes)</label>
                       <div className="relative">
                         <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
                         <input
@@ -531,6 +561,7 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
                           className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
                         />
                       </div>
+                      <p className="text-[11px] text-brand-gray mt-1">Owner draw or typical monthly take-home — not gross revenue. This amount is also used as a gross-equivalent for DTI.</p>
                     </div>
                   )}
 
@@ -574,7 +605,7 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
                   {typeInfo.type === 'commission' && !showDualPerson && (
                     <div>
                       <label className="block text-xs font-medium text-brand-gray mb-1">
-                        12-month average monthly amount
+                        12-month average monthly take-home
                       </label>
                       <div className="relative">
                         <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
@@ -608,7 +639,7 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
 
                   {typeInfo.type === 'other' && (
                     <div>
-                      <label className="block text-xs font-medium text-brand-gray mb-1">Monthly amount (gross)</label>
+                      <label className="block text-xs font-medium text-brand-gray mb-1">Monthly take-home</label>
                       <div className="relative">
                         <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
                         <input
@@ -619,12 +650,13 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
                           className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
                         />
                       </div>
+                      <p className="text-[11px] text-brand-gray mt-1">What actually lands in your accounts. Also used as a gross-equivalent for DTI.</p>
                     </div>
                   )}
 
                   {existing.useAnnual && typeInfo.type === 'self_employed' && !showDualPerson && (
                     <div>
-                      <label className="block text-xs font-medium text-brand-gray mb-1">Annual amount</label>
+                      <label className="block text-xs font-medium text-brand-gray mb-1">Annual take-home (we&apos;ll average it)</label>
                       <div className="relative">
                         <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
                         <input
@@ -675,14 +707,14 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
             </p>
           </div>
           <p className="text-[11px] text-brand-gray mt-1">
-            Across {sources.length} income source{sources.length > 1 ? 's' : ''}. This total feeds into your monthly net income for payoff planning.
+            Across {sources.length} income source{sources.length > 1 ? 's' : ''}. Click Save Income Sources below to update Net Monthly Income in your profile. Gross Monthly Income updates from W2 gross plus a gross-equivalent for every other source.
           </p>
         </div>
       )}
 
       <div className="mt-4 bg-blue-50 border border-brand-blue/20 rounded-lg p-3">
         <p className="text-[11px] text-brand-navy leading-relaxed">
-          💡 Your Take-Home Pay (after taxes) drives your debt payoff plan and surplus calculations. Gross income is used only for mortgage qualification estimates.
+          💡 Take-home drives your debt payoff plan. Gross (W2 before-tax plus a gross-equivalent for other sources) is used for DTI and mortgage estimates. Saving here is what updates Gross and Net Monthly Income below — those two fields are not edited in Financial Profile once you have income sources.
         </p>
       </div>
 
