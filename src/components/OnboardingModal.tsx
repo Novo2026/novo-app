@@ -1,8 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
-import { DollarSign, CreditCard, CheckCircle, ChevronLeft, Plus, X, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { DollarSign, CreditCard, CheckCircle, ChevronLeft, Plus, X, Info, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { CalculationService } from '../services/calculations';
 import CashFlowWarningModal from './CashFlowWarningModal';
 import LearnHELOCModal from './LearnHELOCModal';
+import {
+  findMatchingMortgageForProperty,
+  findMatchingPropertyForMortgageDebt,
+  findPropertyDebtDuplicates,
+} from '../utils/mortgageDuplicateGuard';
 
 interface DebtInput {
   id: string;
@@ -69,6 +74,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const [showLearnHELOCModal, setShowLearnHELOCModal] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
   const [showStrategyExplanation, setShowStrategyExplanation] = useState(false);
+  const [showDuplicateMortgageWarning, setShowDuplicateMortgageWarning] = useState(false);
   const [data, setData] = useState<OnboardingData>({
     userName: '',
     partnerName: '',
@@ -248,19 +254,26 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
     }
   };
 
+  const finishOnboarding = () => {
+    localStorage.removeItem('onboardingProgress');
+    localStorage.setItem('novo_account_type', data.accountType || 'solo');
+
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('event', 'onboarding_complete');
+    }
+
+    onComplete(data);
+  };
+
   const handleNext = () => {
     if (canProceed()) {
       if (step === 4) {
-        // Clear onboarding progress when complete
-        localStorage.removeItem('onboardingProgress');
-        localStorage.setItem('novo_account_type', data.accountType || 'solo');
-
-        // Track onboarding completion in Google Analytics
-        if (typeof window !== 'undefined' && (window as any).gtag) {
-          (window as any).gtag('event', 'onboarding_complete');
+        const duplicates = findPropertyDebtDuplicates(data.additionalProperties, data.debts);
+        if (duplicates.length > 0) {
+          setShowDuplicateMortgageWarning(true);
+          return;
         }
-
-        onComplete(data);
+        finishOnboarding();
       } else if (step === 2) {
         // Check cash flow after step 2 before proceeding
         const cashFlow = getCashFlow();
@@ -1058,7 +1071,12 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         <div className="space-y-4 pt-2">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Do you own additional properties?</label>
-            <p className="text-xs text-gray-500 mb-3">Investment properties, rental properties, or second homes — in your personal name only. Do NOT include properties owned by an LLC or partnership.</p>
+            <p className="text-xs text-gray-500 mb-2">Investment properties, rental properties, or second homes — in your personal name only. Do NOT include properties owned by an LLC or partnership.</p>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3">
+              <p className="text-sm text-amber-950 leading-relaxed">
+                This is for properties <strong>other than your primary home</strong>. Don&apos;t add your primary mortgage here — that goes under <strong>Add Your Debts</strong> as a Mortgage.
+              </p>
+            </div>
           </div>
 
           {(data.additionalProperties || []).map((prop, idx) => (
@@ -1159,6 +1177,19 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                   </div>
                 )}
               </div>
+
+              {(() => {
+                const match = findMatchingMortgageForProperty(prop, data.debts);
+                if (!match) return null;
+                return (
+                  <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 flex gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-950 leading-relaxed">
+                      This looks similar to a mortgage you already added{match.debtName ? ` (“${match.debtName}”)` : ''}. Are you sure this is a different property? Adding both will count the same loan twice in your totals and DTI.
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
           ))}
 
@@ -1243,6 +1274,19 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                 </div>
               </div>
             )}
+
+            {debt.type === 'Mortgage' && (() => {
+              const match = findMatchingPropertyForMortgageDebt(debt, data.additionalProperties);
+              if (!match) return null;
+              return (
+                <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 flex gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-950 leading-relaxed">
+                    This looks similar to an additional property you already added{match.propertyName !== 'Additional property' ? ` (“${match.propertyName}”)` : ''}. Are you sure this is a different property? Your primary mortgage belongs here; extra homes belong in Additional Properties — not both for the same house.
+                  </p>
+                </div>
+              );
+            })()}
 
             <input
               type="text"
@@ -1526,6 +1570,57 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
           onReviewExpenses={handleCashFlowReview}
           onContactCoach={handleCashFlowContactCoach}
         />
+      )}
+
+      {showDuplicateMortgageWarning && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-gray-900/70 backdrop-blur-sm"
+            onClick={() => setShowDuplicateMortgageWarning(false)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-1">This looks like a duplicate mortgage</h2>
+                <p className="text-sm text-gray-600">
+                  An additional property looks similar to a mortgage you already added. Are you sure this is a different property? If it&apos;s the same home, skip it in Additional Properties so it isn&apos;t counted twice.
+                </p>
+              </div>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-5 space-y-2">
+              {findPropertyDebtDuplicates(data.additionalProperties, data.debts).map((match, idx) => (
+                <p key={`${match.debtName}-${idx}`} className="text-sm text-amber-950">
+                  “{match.propertyName}” ({CalculationService.formatCurrency(match.propertyBalance)}) looks like “{match.debtName}” ({CalculationService.formatCurrency(match.debtBalance)})
+                </p>
+              ))}
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDuplicateMortgageWarning(false);
+                  setStep(3);
+                }}
+                className="flex-1 py-3 px-4 rounded-lg border-2 border-gray-300 bg-white text-gray-800 font-semibold text-sm hover:bg-gray-50 min-h-[48px]"
+              >
+                Go back and review
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDuplicateMortgageWarning(false);
+                  finishOnboarding();
+                }}
+                className="flex-1 py-3 px-4 rounded-lg bg-amber-600 text-white font-semibold text-sm hover:bg-amber-700 min-h-[48px]"
+              >
+                Yes, they&apos;re different
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <LearnHELOCModal
