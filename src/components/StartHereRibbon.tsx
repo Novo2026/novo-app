@@ -108,11 +108,8 @@ function getSteps(hasHELOC: boolean, _isHomeowner: boolean): StartHereStep[] {
       ctaLabel: 'Go to Tracker',
       ctaSection: 'tracker',
       checkComplete: () => {
-        const transactions = localStorage.getItem('novo_checking_transactions');
-        if (!transactions) return false;
-        try {
-          return JSON.parse(transactions).length > 0;
-        } catch { return false; }
+        const transactions = StorageService.getCheckingTransactions();
+        return transactions.length > 0;
       },
     },
     {

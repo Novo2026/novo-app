@@ -202,18 +202,99 @@ export function getPayoffScheduleMonthCap(debt: Debt): number | undefined {
   return remaining != null && remaining > 0 ? remaining : undefined;
 }
 
-/** Installment loan with start date + term — contractual maturity (display only). */
+/** Enough data to show a projected payoff date. */
 export function hasProjectedPayoffMetadata(debt: Debt): boolean {
+  if (!isInstallmentLoanCategory(debt.category)) return false;
+  if (debt.category === 'Mortgage') {
+    if (debt.currentBalance <= 0) return true;
+    if (debt.minimumPayment > 0 && debt.interestRate >= 0) return true;
+    return (
+      (debt.originalAmount != null && debt.originalAmount > 0) &&
+      debt.loanTerm != null &&
+      debt.loanTerm > 0 &&
+      debt.interestRate >= 0
+    );
+  }
   return (
-    isInstallmentLoanCategory(debt.category) &&
     Boolean(debt.loanStartDate?.trim()) &&
     debt.loanTerm != null &&
     debt.loanTerm > 0
   );
 }
 
-/** Contractual payoff date: loan start + full term in months. */
+/** Standard P&I payment from original principal, annual rate %, and term in months. */
+export function calculateAmortizedMonthlyPayment(
+  principal: number,
+  annualRatePercent: number,
+  termMonths: number
+): number {
+  if (principal <= 0 || termMonths <= 0) return 0;
+  const monthlyRate = annualRatePercent / 12 / 100;
+  if (monthlyRate === 0) return principal / termMonths;
+  const factor = Math.pow(1 + monthlyRate, termMonths);
+  return (principal * (monthlyRate * factor)) / (factor - 1);
+}
+
+/**
+ * Months to pay off a balance at a fixed monthly payment (standard amortization N).
+ * Returns null if the payment never covers interest.
+ */
+export function calculateAmortizedMonthsRemaining(
+  balance: number,
+  annualRatePercent: number,
+  monthlyPayment: number
+): number | null {
+  if (balance <= 0) return 0;
+  if (monthlyPayment <= 0) return null;
+
+  const monthlyRate = annualRatePercent / 12 / 100;
+  if (monthlyRate === 0) return Math.ceil(balance / monthlyPayment);
+
+  if (monthlyPayment <= balance * monthlyRate) return null;
+
+  const months =
+    -Math.log(1 - (monthlyRate * balance) / monthlyPayment) / Math.log(1 + monthlyRate);
+  if (!Number.isFinite(months) || months < 0) return null;
+  return Math.max(1, Math.ceil(months));
+}
+
+function resolveMortgageMonthlyPayment(debt: Debt): number | null {
+  if (debt.minimumPayment > 0) return debt.minimumPayment;
+
+  const termMonths = getLoanTermInMonths(debt);
+  const principal = debt.originalAmount && debt.originalAmount > 0
+    ? debt.originalAmount
+    : debt.startingBalance > 0
+      ? debt.startingBalance
+      : 0;
+  if (!termMonths || principal <= 0) return null;
+
+  const payment = calculateAmortizedMonthlyPayment(principal, debt.interestRate, termMonths);
+  return payment > 0 ? payment : null;
+}
+
+/**
+ * Mortgage: payoff date from CURRENT balance forward (amortization), not original start+term.
+ * Other installment loans: keep contractual start + full term for display.
+ */
 export function getProjectedPayoffDate(debt: Debt): Date | null {
+  if (debt.category === 'Mortgage') {
+    if (debt.currentBalance <= 0) return new Date();
+
+    const payment = resolveMortgageMonthlyPayment(debt);
+    if (payment == null) return null;
+
+    const monthsRemaining = calculateAmortizedMonthsRemaining(
+      debt.currentBalance,
+      debt.interestRate,
+      payment
+    );
+    if (monthsRemaining == null) return null;
+
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth() + monthsRemaining, today.getDate());
+  }
+
   if (!hasProjectedPayoffMetadata(debt) || !debt.loanStartDate) return null;
 
   const start = parseLoanStartDate(debt.loanStartDate);
