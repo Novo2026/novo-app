@@ -8,6 +8,14 @@ import {
   findMatchingPropertyForMortgageDebt,
   findPropertyDebtDuplicates,
 } from '../utils/mortgageDuplicateGuard';
+import {
+  type IncomeFrequency,
+  INCOME_FREQUENCY_OPTIONS,
+  frequencyAmountLabel,
+  fromMonthlyEquivalent,
+  normalizeIncomeFrequency,
+  toMonthlyEquivalent,
+} from '../utils/incomeFrequency';
 
 interface DebtInput {
   id: string;
@@ -30,6 +38,8 @@ export interface IncomeSource {
   useAnnual: boolean;
   description: string;
   w2NetMonthlyAmount?: string;
+  commissionGrossMonthlyAmount?: string;
+  commissionFrequency?: IncomeFrequency;
 }
 
 export interface AdditionalProperty {
@@ -117,6 +127,9 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
           if (s.type === 'w2') {
             return sum + (parseFloat((s.monthlyAmount || '').replace(/[^0-9.]/g, '')) || 0);
           }
+          if (s.type === 'commission') {
+            return sum + (parseFloat((s.commissionGrossMonthlyAmount || '').replace(/[^0-9.]/g, '')) || 0);
+          }
           if (s.useAnnual && s.annualAmount) {
             return sum + (parseFloat(s.annualAmount.replace(/[^0-9.]/g, '')) / 12 || 0);
           }
@@ -181,6 +194,9 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const sourceMonthlyGross = (s: IncomeSource): number => {
     if (s.type === 'w2') {
       return parseCurrency(s.monthlyAmount || '');
+    }
+    if (s.type === 'commission') {
+      return parseCurrency(s.commissionGrossMonthlyAmount || '');
     }
     return sourceMonthlyNet(s);
   };
@@ -590,6 +606,12 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                         useAnnual: source.type === 'self_employed',
                         description: '',
                         w2NetMonthlyAmount: source.type === 'w2' ? '' : undefined,
+                        ...(source.type === 'commission'
+                          ? {
+                              commissionFrequency: 'monthly' as IncomeFrequency,
+                              commissionGrossMonthlyAmount: '',
+                            }
+                          : {}),
                       };
                       setIncomeSources([...current, newSource]);
                     }
@@ -734,29 +756,92 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                       </div>
                     )}
 
-                    {source.type === 'commission' && (
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">
-                          12-month average monthly take-home
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
-                          <input
-                            type="text"
-                            value={existing.monthlyAmount}
-                            onChange={e => {
-                              const updated = (data.incomeSources || []).map(s =>
-                                s.type === source.type ? { ...s, monthlyAmount: e.target.value } : s
-                              );
-                              setIncomeSources(updated);
-                            }}
-                            placeholder="0"
-                            className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
-                          />
+                    {source.type === 'commission' && (() => {
+                      const freq = normalizeIncomeFrequency(existing.commissionFrequency);
+                      const formatPeriodDisplay = (monthlyStored: string | undefined): string => {
+                        if (monthlyStored === undefined || monthlyStored === '') return '';
+                        const monthly = parseCurrency(monthlyStored);
+                        return fromMonthlyEquivalent(monthly, freq).toString();
+                      };
+                      const parsePeriodInputToMonthly = (raw: string): string => {
+                        if (raw === '') return '';
+                        const parsed = parseFloat(raw.replace(/[^0-9.]/g, '')) || 0;
+                        return toMonthlyEquivalent(parsed, freq).toString();
+                      };
+                      return (
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">How often do you receive this?</label>
+                            <select
+                              value={freq}
+                              onChange={(e) => {
+                                const updated = (data.incomeSources || []).map(s =>
+                                  s.type === source.type
+                                    ? { ...s, commissionFrequency: normalizeIncomeFrequency(e.target.value) }
+                                    : s
+                                );
+                                setIncomeSources(updated);
+                              }}
+                              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none bg-white"
+                            >
+                              {INCOME_FREQUENCY_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                            <p className="text-xs text-gray-400 mt-1">
+                              Enter the amount and how often you receive it — we&apos;ll calculate your monthly average.
+                            </p>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">
+                              {frequencyAmountLabel(freq, 'net')}
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                              <input
+                                type="text"
+                                value={formatPeriodDisplay(existing.monthlyAmount)}
+                                onChange={e => {
+                                  const updated = (data.incomeSources || []).map(s =>
+                                    s.type === source.type
+                                      ? { ...s, monthlyAmount: parsePeriodInputToMonthly(e.target.value) }
+                                      : s
+                                  );
+                                  setIncomeSources(updated);
+                                }}
+                                placeholder="0"
+                                className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">
+                              {frequencyAmountLabel(freq, 'gross')}
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-2 text-gray-500 text-sm">$</span>
+                              <input
+                                type="text"
+                                value={formatPeriodDisplay(existing.commissionGrossMonthlyAmount)}
+                                onChange={e => {
+                                  const updated = (data.incomeSources || []).map(s =>
+                                    s.type === source.type
+                                      ? { ...s, commissionGrossMonthlyAmount: parsePeriodInputToMonthly(e.target.value) }
+                                      : s
+                                  );
+                                  setIncomeSources(updated);
+                                }}
+                                placeholder="0"
+                                className="w-full pl-7 pr-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange outline-none"
+                              />
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1">Used for DTI. Take-home drives payoff planning.</p>
+                          </div>
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">Add up last 12 months of commission and bonuses and divide by 12</p>
-                      </div>
-                    )}
+                      );
+                    })()}
 
                     {source.type === 'rental' && (
                       <div>

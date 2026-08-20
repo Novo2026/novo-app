@@ -1,6 +1,14 @@
 import { useState } from 'react';
 import { CheckCircle, Briefcase, Building2, TrendingUp, Home, Wallet } from 'lucide-react';
 import { StorageService } from '../services/storage';
+import {
+  type IncomeFrequency,
+  INCOME_FREQUENCY_OPTIONS,
+  frequencyAmountLabel,
+  fromMonthlyEquivalent,
+  normalizeIncomeFrequency,
+  toMonthlyEquivalent,
+} from '../utils/incomeFrequency';
 
 export interface IncomeSource {
   id: string;
@@ -18,8 +26,15 @@ export interface IncomeSource {
   w2Person2Gross?: string;
   selfEmpPerson1?: string;
   selfEmpPerson2?: string;
+  /** Monthly-equivalent take-home for person 1 (commission). */
   commissionPerson1?: string;
+  /** Monthly-equivalent take-home for person 2 (commission). */
   commissionPerson2?: string;
+  commissionPerson1Gross?: string;
+  commissionPerson2Gross?: string;
+  /** Monthly-equivalent gross for solo commission. */
+  commissionGrossMonthlyAmount?: string;
+  commissionFrequency?: IncomeFrequency;
 }
 
 const INCOME_TYPES = [
@@ -56,12 +71,32 @@ function getSourceMonthlyNet(s: IncomeSource, showDualPerson: boolean): number {
   return parseMoney(s.monthlyAmount);
 }
 
-/** W2 uses dedicated gross fields; other types use the same monthly figure as a DTI gross-equivalent. */
+/** W2 and commission use dedicated gross fields; other types use take-home as a DTI gross-equivalent. */
 function getSourceMonthlyGross(s: IncomeSource, showDualPerson: boolean): number {
   if (s.type === 'w2') {
     return parseMoney(s.w2Person1Gross || s.w2GrossMonthlyAmount) + parseMoney(s.w2Person2Gross);
   }
+  if (s.type === 'commission') {
+    if (showDualPerson) {
+      return parseMoney(s.commissionPerson1Gross) + parseMoney(s.commissionPerson2Gross);
+    }
+    return parseMoney(s.commissionGrossMonthlyAmount);
+  }
   return getSourceMonthlyNet(s, showDualPerson);
+}
+
+function formatPeriodDisplay(monthlyStored: string | undefined, frequency: IncomeFrequency): string {
+  if (monthlyStored === undefined || monthlyStored === '') return '';
+  const monthly = parseMoney(monthlyStored);
+  if (!monthly && monthlyStored !== '0') return '';
+  const period = fromMonthlyEquivalent(monthly, frequency);
+  return period.toString();
+}
+
+function parsePeriodInputToMonthly(raw: string, frequency: IncomeFrequency): string {
+  if (raw === '') return '';
+  const parsed = parseFloat(raw.replace(/[^0-9.]/g, '')) || 0;
+  return toMonthlyEquivalent(parsed, frequency).toString();
 }
 
 export function hasStoredIncomeSources(): boolean {
@@ -115,6 +150,18 @@ function getStoredIncomeSources(): IncomeSource[] {
             : s.commissionPerson1,
         commissionPerson2:
           s.type === 'commission' ? s.commissionPerson2 ?? '' : s.commissionPerson2,
+        commissionPerson1Gross:
+          s.type === 'commission'
+            ? s.commissionPerson1Gross ?? s.commissionPerson1 ?? s.monthlyAmount ?? ''
+            : s.commissionPerson1Gross,
+        commissionPerson2Gross:
+          s.type === 'commission' ? s.commissionPerson2Gross ?? '' : s.commissionPerson2Gross,
+        commissionGrossMonthlyAmount:
+          s.type === 'commission'
+            ? s.commissionGrossMonthlyAmount ?? s.monthlyAmount ?? ''
+            : s.commissionGrossMonthlyAmount,
+        commissionFrequency:
+          s.type === 'commission' ? normalizeIncomeFrequency(s.commissionFrequency) : s.commissionFrequency,
       }));
     }
     const v1 = JSON.parse(localStorage.getItem('novo_income_sources') || '[]');
@@ -140,6 +187,10 @@ function getStoredIncomeSources(): IncomeSource[] {
         selfEmpPerson2: s.type === 'self_employed' ? '' : undefined,
         commissionPerson1: s.type === 'commission' ? amount : undefined,
         commissionPerson2: s.type === 'commission' ? '' : undefined,
+        commissionPerson1Gross: s.type === 'commission' ? amount : undefined,
+        commissionPerson2Gross: s.type === 'commission' ? '' : undefined,
+        commissionGrossMonthlyAmount: s.type === 'commission' ? amount : undefined,
+        commissionFrequency: s.type === 'commission' ? 'monthly' as const : undefined,
       };
     });
   } catch {
@@ -180,8 +231,19 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
         ...(typeInfo.type === 'self_employed' && showDualPerson
           ? { selfEmpPerson1: '', selfEmpPerson2: '' }
           : {}),
-        ...(typeInfo.type === 'commission' && showDualPerson
-          ? { commissionPerson1: '', commissionPerson2: '' }
+        ...(typeInfo.type === 'commission'
+          ? {
+              commissionFrequency: 'monthly' as IncomeFrequency,
+              commissionGrossMonthlyAmount: '',
+              ...(showDualPerson
+                ? {
+                    commissionPerson1: '',
+                    commissionPerson2: '',
+                    commissionPerson1Gross: '',
+                    commissionPerson2Gross: '',
+                  }
+                : {}),
+            }
           : {}),
       };
       setSources([...sources, newSource]);
@@ -569,59 +631,173 @@ export default function IncomeSourcesEditor({ onSaved }: { onSaved?: () => void 
                     </div>
                   )}
 
-                  {typeInfo.type === 'commission' && showDualPerson && (
+                  {typeInfo.type === 'commission' && (
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-xs font-medium text-brand-gray mb-1">
-                          Person 1 — Commission / Bonus / Variable
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
-                          <input
-                            type="text"
-                            value={existing.commissionPerson1 || ''}
-                            onChange={e => updateSource(typeInfo.type, { commissionPerson1: e.target.value })}
-                            placeholder="0"
-                            className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
-                          />
-                        </div>
-                        <p className="text-[11px] text-brand-gray mt-1">12-month average monthly take-home (include bonuses)</p>
+                        <label className="block text-xs font-medium text-brand-gray mb-1">How often do you receive this?</label>
+                        <select
+                          value={normalizeIncomeFrequency(existing.commissionFrequency)}
+                          onChange={(e) =>
+                            updateSource(typeInfo.type, {
+                              commissionFrequency: normalizeIncomeFrequency(e.target.value),
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none bg-white"
+                        >
+                          {INCOME_FREQUENCY_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[11px] text-brand-gray mt-1">
+                          Enter the amount and how often you receive it — we&apos;ll calculate your monthly average.
+                        </p>
                       </div>
-                      <div className="pt-2 border-t border-brand-gray-border">
-                        <label className="block text-xs font-medium text-brand-gray mb-1">
-                          Person 2 — Commission / Bonus / Variable
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
-                          <input
-                            type="text"
-                            value={existing.commissionPerson2 || ''}
-                            onChange={e => updateSource(typeInfo.type, { commissionPerson2: e.target.value })}
-                            placeholder="0"
-                            className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
-                          />
-                        </div>
-                        <p className="text-[11px] text-brand-gray mt-1">Optional — leave blank if not applicable</p>
-                      </div>
-                    </div>
-                  )}
 
-                  {typeInfo.type === 'commission' && !showDualPerson && (
-                    <div>
-                      <label className="block text-xs font-medium text-brand-gray mb-1">
-                        12-month average monthly take-home
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
-                        <input
-                          type="text"
-                          value={existing.monthlyAmount}
-                          onChange={e => updateSource(typeInfo.type, { monthlyAmount: e.target.value })}
-                          placeholder="0"
-                          className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
-                        />
-                      </div>
-                      <p className="text-[11px] text-brand-gray mt-1">Add up last 12 months of commission and bonuses and divide by 12</p>
+                      {(() => {
+                        const freq = normalizeIncomeFrequency(existing.commissionFrequency);
+                        if (showDualPerson) {
+                          return (
+                            <>
+                              <div>
+                                <label className="block text-xs font-medium text-brand-gray mb-1">
+                                  Person 1 — Commission / Bonus / Variable
+                                </label>
+                                <div className="space-y-2">
+                                  <div>
+                                    <label className="block text-xs font-semibold text-brand-navy mb-1">
+                                      {frequencyAmountLabel(freq, 'net')}
+                                    </label>
+                                    <div className="relative">
+                                      <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
+                                      <input
+                                        type="text"
+                                        value={formatPeriodDisplay(existing.commissionPerson1, freq)}
+                                        onChange={(e) =>
+                                          updateSource(typeInfo.type, {
+                                            commissionPerson1: parsePeriodInputToMonthly(e.target.value, freq),
+                                          })
+                                        }
+                                        placeholder="0"
+                                        className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium text-brand-gray mb-1">
+                                      {frequencyAmountLabel(freq, 'gross')}
+                                    </label>
+                                    <div className="relative">
+                                      <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
+                                      <input
+                                        type="text"
+                                        value={formatPeriodDisplay(existing.commissionPerson1Gross, freq)}
+                                        onChange={(e) =>
+                                          updateSource(typeInfo.type, {
+                                            commissionPerson1Gross: parsePeriodInputToMonthly(e.target.value, freq),
+                                          })
+                                        }
+                                        placeholder="0"
+                                        className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="pt-2 border-t border-brand-gray-border space-y-2">
+                                <label className="block text-xs font-medium text-brand-gray mb-1">
+                                  Person 2 — Commission / Bonus / Variable
+                                </label>
+                                <p className="text-[11px] text-brand-gray">Optional — leave blank if not applicable</p>
+                                <div>
+                                  <label className="block text-xs font-semibold text-brand-navy mb-1">
+                                    {frequencyAmountLabel(freq, 'net')}
+                                  </label>
+                                  <div className="relative">
+                                    <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
+                                    <input
+                                      type="text"
+                                      value={formatPeriodDisplay(existing.commissionPerson2, freq)}
+                                      onChange={(e) =>
+                                        updateSource(typeInfo.type, {
+                                          commissionPerson2: parsePeriodInputToMonthly(e.target.value, freq),
+                                        })
+                                      }
+                                      placeholder="0"
+                                      className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
+                                    />
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-brand-gray mb-1">
+                                    {frequencyAmountLabel(freq, 'gross')}
+                                  </label>
+                                  <div className="relative">
+                                    <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
+                                    <input
+                                      type="text"
+                                      value={formatPeriodDisplay(existing.commissionPerson2Gross, freq)}
+                                      onChange={(e) =>
+                                        updateSource(typeInfo.type, {
+                                          commissionPerson2Gross: parsePeriodInputToMonthly(e.target.value, freq),
+                                        })
+                                      }
+                                      placeholder="0"
+                                      className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            </>
+                          );
+                        }
+                        return (
+                          <>
+                            <div>
+                              <label className="block text-xs font-semibold text-brand-navy mb-1">
+                                {frequencyAmountLabel(freq, 'net')}
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
+                                <input
+                                  type="text"
+                                  value={formatPeriodDisplay(existing.monthlyAmount, freq)}
+                                  onChange={(e) =>
+                                    updateSource(typeInfo.type, {
+                                      monthlyAmount: parsePeriodInputToMonthly(e.target.value, freq),
+                                    })
+                                  }
+                                  placeholder="0"
+                                  className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-brand-gray mb-1">
+                                {frequencyAmountLabel(freq, 'gross')}
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-3 top-2 text-brand-gray text-sm">$</span>
+                                <input
+                                  type="text"
+                                  value={formatPeriodDisplay(existing.commissionGrossMonthlyAmount, freq)}
+                                  onChange={(e) =>
+                                    updateSource(typeInfo.type, {
+                                      commissionGrossMonthlyAmount: parsePeriodInputToMonthly(e.target.value, freq),
+                                    })
+                                  }
+                                  placeholder="0"
+                                  className="w-full pl-7 pr-4 py-2 border border-brand-gray-border rounded-md text-sm text-brand-navy focus:border-brand-navy outline-none"
+                                />
+                              </div>
+                              <p className="text-[11px] text-brand-gray mt-1">
+                                Used for DTI and mortgage qualification. Take-home drives payoff planning.
+                              </p>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   )}
 

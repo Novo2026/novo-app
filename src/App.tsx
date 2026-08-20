@@ -275,12 +275,18 @@ function App() {
       annualAmount?: string;
       monthlyAmount?: string;
       description?: string;
+      w2NetMonthlyAmount?: string;
+      commissionGrossMonthlyAmount?: string;
+      commissionFrequency?: string;
     }) => {
       const monthly = s.useAnnual && s.annualAmount
         ? (parseFloat(s.annualAmount.replace(/[^0-9.]/g, '')) || 0) / 12
         : parseFloat((s.monthlyAmount || '').replace(/[^0-9.]/g, '')) || 0;
       const monthlyStr = monthly > 0 ? String(monthly) : '';
       const isW2 = s.type === 'w2';
+      const isCommission = s.type === 'commission';
+      const commissionGross = parseFloat((s.commissionGrossMonthlyAmount || '').replace(/[^0-9.]/g, '')) || 0;
+      const commissionGrossStr = commissionGross > 0 ? String(commissionGross) : '';
       return {
         id: s.id || `income_${s.type}_${Date.now()}`,
         type: s.type,
@@ -291,16 +297,25 @@ function App() {
         description: s.description || '',
         ...(isW2
           ? {
-              w2NetMonthlyAmount: (s as { w2NetMonthlyAmount?: string }).w2NetMonthlyAmount || '',
+              w2NetMonthlyAmount: s.w2NetMonthlyAmount || '',
               w2GrossMonthlyAmount: monthlyStr,
-              w2Person1Net: (s as { w2NetMonthlyAmount?: string }).w2NetMonthlyAmount || '',
+              w2Person1Net: s.w2NetMonthlyAmount || '',
               w2Person1Gross: monthlyStr,
               w2Person2Net: '',
               w2Person2Gross: '',
             }
           : {}),
         ...(s.type === 'self_employed' ? { selfEmpPerson1: monthlyStr, selfEmpPerson2: '' } : {}),
-        ...(s.type === 'commission' ? { commissionPerson1: monthlyStr, commissionPerson2: '' } : {}),
+        ...(isCommission
+          ? {
+              commissionFrequency: s.commissionFrequency || 'monthly',
+              commissionGrossMonthlyAmount: commissionGrossStr,
+              commissionPerson1: monthlyStr,
+              commissionPerson2: '',
+              commissionPerson1Gross: commissionGrossStr,
+              commissionPerson2Gross: '',
+            }
+          : {}),
       };
     });
     localStorage.setItem('novo_income_sources_v2', JSON.stringify(incomeSourcesV2));
